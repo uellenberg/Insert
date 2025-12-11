@@ -1,12 +1,11 @@
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
 
-use crate::ir::arm32::ir_to_arm32;
-use crate::mir::lower::mir_to_ir;
+use crate::codegen::c::mir_to_c;
 use crate::mir::{MIRContext, visit_mir};
 use crate::parser::parse_file;
 
-mod ir;
+mod codegen;
 mod mir;
 mod parser;
 
@@ -25,10 +24,6 @@ fn main() {
 
     println!("{:#}", mir_ctx.program);
 
-    let ir = mir_to_ir(&mir_ctx.program);
-    println!("{ir}");
-
-    let asm = ir_to_arm32(&ir);
-
-    println!("{asm}");
+    let c = mir_to_c(&mir_ctx.program);
+    println!("{c}");
 }

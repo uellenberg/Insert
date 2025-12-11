@@ -3,7 +3,7 @@ use crate::mir::{
     MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use std::borrow::Cow;
-use std::fmt::{Display, Formatter, Pointer};
+use std::fmt::{Display, Formatter};
 
 impl<'a> Display for MIRProgram<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -91,10 +91,15 @@ impl<'a> Display for MIRStatement<'a> {
         match self {
             MIRStatement::CreateVariable {
                 var,
+                value,
                 span,
                 arg: _arg,
             } => {
-                write!(f, "let {}: {};", &var.name, &var.ty)?;
+                if let Some(value) = value {
+                    write!(f, "let {}: {} = {};", &var.name, &var.ty, value)?;
+                } else {
+                    write!(f, "let {}: {};", &var.name, &var.ty)?;
+                }
 
                 if f.alternate() {
                     writeln!(f, " /* {span} */")?;

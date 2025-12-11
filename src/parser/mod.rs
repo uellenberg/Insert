@@ -210,6 +210,7 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         ty,
                         span: span.clone(),
                     },
+                    value: None,
                     arg: false,
                     span,
                 });
@@ -227,14 +228,9 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         ty,
                         span: span.clone(),
                     },
+                    value: Some(value),
                     arg: false,
                     span: span.clone(),
-                });
-
-                body.push(MIRStatement::SetVariable {
-                    name: Cow::Borrowed(identifier),
-                    value,
-                    span,
                 });
             }
             Rule::setVariable => {

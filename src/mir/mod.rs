@@ -2,19 +2,14 @@ mod display;
 mod drop;
 mod expr;
 mod function;
-mod if_statement;
 mod label;
-mod loop_statement;
-pub mod lower;
 mod scope;
 mod type_check;
 
 use crate::mir::drop::drop_at_scope_end;
-use crate::mir::expr::{const_eval, const_optimize_expr, split_exprs_to_locals};
+use crate::mir::expr::{const_eval, const_optimize_expr};
 use crate::mir::function::{insert_fn_arg_args, resolve_fns_to_vars};
-use crate::mir::if_statement::flatten_ifs;
 use crate::mir::label::rename_labels;
-use crate::mir::loop_statement::flatten_loops;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
@@ -68,31 +63,12 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     // All variables are now dropped, including
     // arg variables.
 
-    flatten_loops(ctx);
-
-    // Loops no longer exist
-    // in MIR.
-
-    // This needs to happen after
-    // scope drop is added because
-    // it erases scope.
-    flatten_ifs(ctx);
-
-    // If statements no longer exist
-    // in MIR.
-
     // This needs to happen after all
     // operations that create labels.
     rename_labels(ctx);
 
     // Labels are now unique and ready
     // to be processed in asm.
-
-    split_exprs_to_locals(ctx);
-
-    // Expressions are now split
-    // into primitives and ready to
-    // be processed in asm.
 
     true
 }
@@ -200,6 +176,9 @@ pub enum MIRStatement<'a> {
     CreateVariable {
         /// The variable to create.
         var: MIRVariable<'a>,
+
+        /// An optional initial value.
+        value: Option<MIRExpression<'a>>,
 
         /// This is used for function arguments,
         /// to allow them to be analyzed the same

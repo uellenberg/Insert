@@ -158,13 +158,29 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
         &|statement, scope| {
             match statement {
                 // No expressions.
-                MIRStatement::CreateVariable { .. } => {}
+                MIRStatement::CreateVariable { value: None, .. } => {}
                 MIRStatement::DropVariable(..) => {}
                 MIRStatement::Goto { .. } => {}
                 MIRStatement::Label { .. } => {}
                 MIRStatement::ContinueStatement { .. } => {}
                 MIRStatement::BreakStatement { .. } => {}
                 MIRStatement::LoopStatement { .. } => {}
+
+                MIRStatement::CreateVariable {
+                    var,
+                    value: Some(value),
+                    ..
+                } => {
+                    let Some(ty) = check_expression(ctx, value, Some(scope)) else {
+                        return false;
+                    };
+
+                    if ty.ty != var.ty.ty {
+                        print_unexpected_expr_ty(ctx, var.ty.clone(), ty, value.span.clone());
+
+                        return false;
+                    }
+                }
 
                 MIRStatement::SetVariable { value, name, span } => {
                     let var_ty;

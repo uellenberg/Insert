@@ -18,7 +18,7 @@ pub fn resolve_fns_to_vars<'a>(ctx: &mut MIRContext<'_>) {
             &|statement, scope| {
                 match statement {
                     // No expressions.
-                    MIRStatement::CreateVariable { .. } => {}
+                    MIRStatement::CreateVariable { value: None, .. } => {}
                     MIRStatement::DropVariable(_, ..) => {}
                     MIRStatement::Goto { .. } => {}
                     MIRStatement::Label { .. } => {}
@@ -26,7 +26,10 @@ pub fn resolve_fns_to_vars<'a>(ctx: &mut MIRContext<'_>) {
                     MIRStatement::BreakStatement { .. } => {}
                     MIRStatement::LoopStatement { .. } => {}
 
-                    MIRStatement::SetVariable { value, .. }
+                    MIRStatement::CreateVariable {
+                        value: Some(value), ..
+                    }
+                    | MIRStatement::SetVariable { value, .. }
                     | MIRStatement::IfStatement {
                         condition: value, ..
                     }
@@ -119,6 +122,7 @@ pub fn insert_fn_arg_args(ctx: &mut MIRContext<'_>) {
                 .iter()
                 .map(|arg| MIRStatement::CreateVariable {
                     var: arg.clone(),
+                    value: None,
                     arg: true,
                     span: arg.span.clone(),
                 }),
