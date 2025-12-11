@@ -252,12 +252,35 @@ fn decorate_with_type(name: &str, ty: &MIRType) -> String {
     format!("{} {}{}", prefix, name, postfix)
 }
 
-/// Determines if the inner expression needs to be wrapped in parentheses
-/// when using in the outer expression.
-fn needs_wrap(inner: &MIRExpression, outer: &MIRExpression) -> bool {
-    // TODO: Implement.
+/// Returns the precedence of an operator, or None if precedence
+/// doesn't apply to it (e.g., variable / literals).
+///
+/// Given outer(a, inner(b, c)), inner must be wrapped if its precedence
+/// number is higher than outer's. If inner/outer has no precedence, then it
+/// needs no wrapping.
+fn precedence(op: &MIRExpressionInner) -> Option<usize> {
+    // https://en.cppreference.com/w/c/language/operator_precedence.html
+    match op {
+        MIRExpressionInner::Variable(..)
+        | MIRExpressionInner::Number(_)
+        | MIRExpressionInner::Bool(_)
+        | MIRExpressionInner::FunctionCall(_) => None,
 
-    true
+        MIRExpressionInner::Mul(..) | MIRExpressionInner::Div(..) => Some(3),
+
+        MIRExpressionInner::Add(..) | MIRExpressionInner::Sub(..) => Some(4),
+
+        MIRExpressionInner::Less(..)
+        | MIRExpressionInner::Greater(..)
+        | MIRExpressionInner::LessEq(..)
+        | MIRExpressionInner::GreaterEq(..) => Some(6),
+
+        MIRExpressionInner::Equal(..) | MIRExpressionInner::NotEqual(..) => Some(7),
+
+        MIRExpressionInner::BoolAnd(..) => Some(8),
+
+        MIRExpressionInner::BoolOr(..) => Some(9),
+    }
 }
 
 /// Lowers a child expression and correctly wraps it in parentheses
@@ -265,7 +288,14 @@ fn needs_wrap(inner: &MIRExpression, outer: &MIRExpression) -> bool {
 fn lower_wrap_expression<'a>(expr: &'a MIRExpression, outer: &'a MIRExpression) -> Cow<'a, str> {
     let lowered = lower_expression(expr);
 
-    if needs_wrap(expr, outer) {
+    let outer_precedence = precedence(&outer.inner);
+    let inner_precedence = precedence(&expr.inner);
+    let needs_wrap = match (outer_precedence, inner_precedence) {
+        (Some(outer), Some(inner)) if inner > outer => true,
+        _ => false,
+    };
+
+    if needs_wrap {
         format!("({})", lowered).into()
     } else {
         lowered.into()
