@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
+extern crate core;
 
 use crate::codegen::c::mir_to_c;
 use crate::mir::{MIRContext, visit_mir};

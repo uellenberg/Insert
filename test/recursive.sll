@@ -1,11 +1,11 @@
-function main() {
-    fib(10);
-}
-
 function fib(v: u32) -> u32 {
     if v <= 1 {
         return v;
     }
 
     return fib(v - 1) + fib(v - 2);
+}
+
+function main() {
+    fib(10);
 }
