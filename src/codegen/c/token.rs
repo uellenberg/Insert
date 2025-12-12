@@ -86,3 +86,35 @@ fn is_ident_char(c: char) -> bool {
 fn is_punct_char(c: char) -> bool {
     "!%^&*-+=|~<>.?/:".contains(c)
 }
+
+/// Escapes a string for use in a C string literal.
+pub fn escape_string(s: &str) -> String {
+    let mut output = String::with_capacity(s.len());
+    for c in s.chars() {
+        let add = match c {
+            '\"' => "\\\"",
+            '\\' => "\\",
+            '\n' => "\\n",
+            '\r' => "\\r",
+            '\t' => "\\t",
+            '\0' => "\\0",
+            c => {
+                if c.is_control() {
+                    if c.is_ascii() && (c as u32) <= 0o777 {
+                        // \nnn in octal
+                        &format!("\\{:03o}", c as u32)
+                    } else {
+                        // \uhhhh in hex
+                        &format!("\\u{:04x}", c as u32)
+                    }
+                } else {
+                    &c.to_string()
+                }
+            }
+        };
+
+        output.push_str(&add);
+    }
+
+    output
+}

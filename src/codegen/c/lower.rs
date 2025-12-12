@@ -1,4 +1,4 @@
-use crate::codegen::c::token::{CToken, CTokens};
+use crate::codegen::c::token::{CToken, CTokens, escape_string};
 use crate::codegen::{Token, Tokens, merge_tokens, spread};
 use crate::mir::{
     MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram, MIRStatement,
@@ -240,6 +240,10 @@ fn lower_expression<'a>(expr: &MIRExpression<'a>) -> CTokens<'a> {
         MIRExpressionInner::BoolAnd(left, right) => lower_binary!(left, "&&", right),
         MIRExpressionInner::BoolOr(left, right) => lower_binary!(left, "||", right),
         MIRExpressionInner::Number(num) => spread![CToken::new(num.to_string().into())],
+        // This MUST be a single token, as we cannot insert spaces between the quotes and the string content.
+        MIRExpressionInner::String(val) => spread![CToken::new(
+            ("\"".to_string() + &escape_string(val) + "\"").into()
+        )],
         MIRExpressionInner::Bool(val) => {
             if *val {
                 spread![CToken::new("true".into())]
@@ -284,6 +288,10 @@ fn lower_datatype<'a>(ty: &MIRType<'a>) -> (CTokens<'a>, CTokens<'a>) {
             spread![CToken::new("unsigned".into()), CToken::new("int".into())],
             [].into(),
         ),
+        MIRTypeInner::String => (
+            spread![CToken::new("char".into()), CToken::new("*".into())],
+            [].into(),
+        ),
         MIRTypeInner::Bool => (spread![CToken::new("bool".into())], [].into()),
         MIRTypeInner::Unit => (spread![CToken::new("void".into())], [].into()),
         MIRTypeInner::FunctionPtr(args, ret) => todo!(),
@@ -308,6 +316,7 @@ fn precedence(op: &MIRExpressionInner) -> Option<usize> {
     match op {
         MIRExpressionInner::Variable(..)
         | MIRExpressionInner::Number(_)
+        | MIRExpressionInner::String(_)
         | MIRExpressionInner::Bool(_)
         | MIRExpressionInner::FunctionCall(_) => None,
 

@@ -245,6 +245,8 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::BoolAnd(lhs, rhs) => write!(f, "({} && {})", lhs, rhs),
             MIRExpressionInner::BoolOr(lhs, rhs) => write!(f, "({} || {})", lhs, rhs),
             MIRExpressionInner::Number(val) => write!(f, "{}", val),
+            // TODO: Is escaping here worth it?
+            MIRExpressionInner::String(val) => write!(f, "\"{}\"", val),
             MIRExpressionInner::Bool(val) => write!(f, "{}", val),
             MIRExpressionInner::Variable(name) => write!(f, "{}", name),
             MIRExpressionInner::FunctionCall(fn_call) => (&**fn_call).fmt(f),

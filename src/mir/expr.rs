@@ -248,6 +248,7 @@ fn reduce_expr<'a>(
             simple_binary!(left, right, Bool, Bool, ||, BoolOr)
         }
         MIRExpressionInner::Number(val) => MIRExpressionInner::Number(*val),
+        MIRExpressionInner::String(val) => MIRExpressionInner::String(val.clone()),
         MIRExpressionInner::Bool(val) => MIRExpressionInner::Bool(*val),
         MIRExpressionInner::Variable(name) => get_const(name.clone())
             .map(|v| v.inner)

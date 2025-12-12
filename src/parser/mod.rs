@@ -519,6 +519,7 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
 
     let expr = match data.as_rule() {
         Rule::number => MIRExpressionInner::Number(parse_number(data)),
+        Rule::string => MIRExpressionInner::String(Cow::Owned(parse_string(data))),
         Rule::functionCallDirect => {
             let mut data = data.into_inner();
 
@@ -572,6 +573,53 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
     }
 }
 
+fn parse_string<'a>(value: Pair<'a, Rule>) -> String {
+    assert_eq!(value.as_rule(), Rule::string);
+
+    let mut output = String::new();
+    println!("{:?}", value);
+    let parts = value.into_inner();
+
+    for part in parts {
+        match part.as_rule() {
+            Rule::stringInner => {
+                // No escape sequences.
+                output += part.as_str();
+            }
+            Rule::stringEscape => {
+                // Skip the "\"
+                let escaped = part.into_inner().next().unwrap();
+                match escaped.as_rule() {
+                    Rule::stringUnicode => {
+                        // Skip the "u"
+                        let code = u32::from_str_radix(&escaped.as_str()[1..], 16).unwrap();
+                        output.push(char::from_u32(code).unwrap());
+                    }
+                    Rule::stringNormal => {
+                        // "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
+                        let c = match escaped.as_str() {
+                            "\"" => '"',
+                            "\\" => '\\',
+                            "/" => '/',
+                            "n" => '\n',
+                            "r" => '\r',
+                            "t" => '\t',
+                            "0" => '\0',
+                            _ => unreachable!(),
+                        };
+
+                        output.push(c);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    output
+}
+
 fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {
     assert_eq!(value.as_rule(), Rule::variableType);
 
@@ -579,6 +627,7 @@ fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {
         "u32" => MIRTypeInner::U32,
         "bool" => MIRTypeInner::Bool,
         "()" => MIRTypeInner::Unit,
+        "string" => MIRTypeInner::String,
         _ => unreachable!(),
     };
 

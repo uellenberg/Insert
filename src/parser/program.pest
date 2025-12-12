@@ -93,7 +93,7 @@ breakStatement = { "break" ~ ";" }
 
 continueStatement = { "continue" ~ ";" }
 
-variableType = { "u32" | "bool" | "()" }
+variableType = { "u32" | "bool" | "()" | "string" }
 
 expression = { logical }
 
@@ -118,7 +118,7 @@ multiplication = {
 }
 
 primary = {
-    number | functionCallDirect | functionCallIndirect | boolLiteral | identifier | "(" ~ expression ~ ")"
+    number | string | functionCallDirect | functionCallIndirect | boolLiteral | identifier | "(" ~ expression ~ ")"
 }
 
 logicalOp = { "&&" | "||" }
@@ -139,6 +139,12 @@ number = @{
     ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~
     ("." ~ ASCII_DIGIT*)?
 }
+
+string  = ${ "\"" ~ (stringInner | stringEscape)* ~ "\"" }
+stringInner = ${ (!("\"" | "\\") ~ ANY)+ }
+stringEscape = ${ "\\" ~ (stringNormal | stringUnicode) }
+stringNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
+stringUnicode = ${ "u" ~ ASCII_HEX_DIGIT{4} }
 
 boolLiteral = { "true" | "false" }
 

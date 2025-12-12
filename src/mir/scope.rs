@@ -420,6 +420,7 @@ pub fn explore_expression_mut<'a>(
         // No expressions.
         MIRExpressionInner::Number(_)
         | MIRExpressionInner::Bool(_)
+        | MIRExpressionInner::String(_)
         | MIRExpressionInner::Variable(_) => {}
     }
 

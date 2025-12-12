@@ -1,4 +1,6 @@
 function fib(v: u32) -> u32 {
+    let test: string = "my test string\u0000";
+
     if v <= 1 {
         return v;
     }

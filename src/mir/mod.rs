@@ -15,7 +15,6 @@ use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
 use indexmap::IndexMap;
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 /// Context that can be used
 /// throughout the MIR processing.
@@ -360,6 +359,9 @@ pub enum MIRExpressionInner<'a> {
     /// Number literal.
     Number(i64),
 
+    /// String literal (language-dependent).
+    String(Cow<'a, str>),
+
     /// Bool literal.
     Bool(bool),
 
@@ -397,6 +399,9 @@ pub enum MIRTypeInner<'a> {
     /// Unit type (void).
     Unit,
 
+    /// String (language-dependent).
+    String,
+
     /// A function pointer, args -> return value.
     FunctionPtr(Vec<MIRTypeInner<'a>>, Box<MIRTypeInner<'a>>),
 
@@ -410,6 +415,7 @@ impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
             MIRTypeInner::U32 => Cow::Borrowed("u32"),
             MIRTypeInner::Unit => Cow::Borrowed("()"),
             MIRTypeInner::Bool => Cow::Borrowed("bool"),
+            MIRTypeInner::String => Cow::Borrowed("string"),
             MIRTypeInner::FunctionPtr(args, ret) => Cow::Owned(format!(
                 "fn({}) -> {}",
                 args.iter()
