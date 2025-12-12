@@ -3,6 +3,7 @@ use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
     MIRStatement,
 };
+use indexmap::IndexMap;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -169,7 +170,7 @@ fn eval_static<'a>(ctx: &mut MIRContext<'a>, constant_name: Cow<'a, str>) -> boo
 /// the values inside constants.
 /// This MUST be run after constant evaluation.
 fn reduce_expr_simple<'a>(
-    constants: &HashMap<Cow<'a, str>, MIRConstant<'a>>,
+    constants: &IndexMap<Cow<'a, str>, MIRConstant<'a>>,
     expr: &MIRExpression<'a>,
 ) -> MIRExpression<'a> {
     reduce_expr(&expr, &mut |name| {

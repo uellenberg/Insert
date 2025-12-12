@@ -13,6 +13,7 @@ use crate::mir::label::rename_labels;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
+use indexmap::IndexMap;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
@@ -81,15 +82,15 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 pub struct MIRProgram<'a> {
     /// A list of constants in the program.
     /// Name -> Constant data.
-    pub constants: HashMap<Cow<'a, str>, MIRConstant<'a>>,
+    pub constants: IndexMap<Cow<'a, str>, MIRConstant<'a>>,
 
     /// A list of statics in the program.
     /// Name -> Static data.
-    pub statics: HashMap<Cow<'a, str>, MIRStatic<'a>>,
+    pub statics: IndexMap<Cow<'a, str>, MIRStatic<'a>>,
 
     /// A list of functions in the program.
     /// Name -> Function data.
-    pub functions: HashMap<Cow<'a, str>, MIRFunction<'a>>,
+    pub functions: IndexMap<Cow<'a, str>, MIRFunction<'a>>,
 }
 
 /// A constant variable.
