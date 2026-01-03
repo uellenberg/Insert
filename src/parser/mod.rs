@@ -40,7 +40,7 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
         match pair.as_rule() {
             Rule::constDeclaration => {
                 let constant = parse_constant(location, pair);
-                if !check_no_duplicates(&ctx, constant.name.clone(), &constant.span) {
+                if !check_no_duplicates(ctx, constant.name.clone(), &constant.span) {
                     return false;
                 }
 
@@ -50,7 +50,7 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
             }
             Rule::staticDeclaration => {
                 let static_data = parse_static(location, pair);
-                if !check_no_duplicates(&ctx, static_data.name.clone(), &static_data.span) {
+                if !check_no_duplicates(ctx, static_data.name.clone(), &static_data.span) {
                     return false;
                 }
 
@@ -60,7 +60,7 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
             }
             Rule::functionDeclaration => {
                 let function_data = parse_function(location, pair);
-                if !check_no_duplicates(&ctx, function_data.name.clone(), &function_data.span) {
+                if !check_no_duplicates(ctx, function_data.name.clone(), &function_data.span) {
                     return false;
                 }
 
@@ -380,7 +380,7 @@ fn parse_function_call_args<'a>(
     let mut exprs = vec![];
 
     for pair in value.into_inner() {
-        let span = to_span(location, pair.as_span());
+        let _span = to_span(location, pair.as_span());
 
         match pair.as_rule() {
             Rule::expression => {

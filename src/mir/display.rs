@@ -11,29 +11,29 @@ impl<'a> Display for MIRProgram<'a> {
 
         for (_name, constant) in &self.constants {
             constant.fmt(f)?;
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         if !self.constants.is_empty() {
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         write!(f, "// Statics: \n\n")?;
 
         for (_name, static_data) in &self.statics {
             static_data.fmt(f)?;
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         if !self.statics.is_empty() {
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         write!(f, "// Functions: \n\n")?;
 
         for (_name, function) in &self.functions {
             function.fmt(f)?;
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         Ok(())
@@ -75,11 +75,11 @@ impl<'a> Display for MIRFunction<'a> {
             }
             write!(f, "{}: {}", &arg.name, &arg.ty)?;
         }
-        write!(f, ") : {} {{\n", &self.ret_ty)?;
+        writeln!(f, ") : {} {{", &self.ret_ty)?;
 
         for stmt in &self.body {
             write_indented(f, stmt, "    ")?;
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         write!(f, "}}")
@@ -168,18 +168,18 @@ impl<'a> Display for MIRStatement<'a> {
                 span,
                 ..
             } => {
-                write!(f, "if {} {{\n", condition)?;
+                writeln!(f, "if {} {{", condition)?;
                 for stmt in on_true {
                     write_indented(f, stmt, "    ")?;
-                    write!(f, "\n")?;
+                    writeln!(f)?;
                 }
                 write!(f, "}}")?;
 
                 if !on_false.is_empty() {
-                    write!(f, " else {{\n")?;
+                    writeln!(f, " else {{")?;
                     for stmt in on_false {
                         write_indented(f, stmt, "    ")?;
-                        write!(f, "\n")?;
+                        writeln!(f)?;
                     }
                     write!(f, "}}")?;
                 }
@@ -189,11 +189,11 @@ impl<'a> Display for MIRStatement<'a> {
                 }
             }
             MIRStatement::LoopStatement { body, span, .. } => {
-                write!(f, "loop {{\n")?;
+                writeln!(f, "loop {{")?;
 
                 for stmt in body {
                     write_indented(f, stmt, "    ")?;
-                    write!(f, "\n")?;
+                    writeln!(f)?;
                 }
 
                 write!(f, "}}")?;
@@ -249,7 +249,7 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::String(val) => write!(f, "\"{}\"", val),
             MIRExpressionInner::Bool(val) => write!(f, "{}", val),
             MIRExpressionInner::Variable(name) => write!(f, "{}", name),
-            MIRExpressionInner::FunctionCall(fn_call) => (&**fn_call).fmt(f),
+            MIRExpressionInner::FunctionCall(fn_call) => (**fn_call).fmt(f),
         }
     }
 }
@@ -308,7 +308,7 @@ fn write_indented(f: &mut Formatter<'_>, item: &impl Display, indent: &str) -> s
 
     for line in fmt.lines() {
         if !first {
-            write!(f, "\n")?;
+            writeln!(f)?;
         } else {
             first = false;
         }

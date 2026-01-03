@@ -91,7 +91,7 @@ impl<'a> Token<'a> for CToken<'a> {
             return false;
         }
 
-        *left.to_mut() += &*right;
+        *left.to_mut() += right;
         true
     }
 }
@@ -133,7 +133,7 @@ pub fn escape_string(s: &str) -> String {
             }
         };
 
-        output.push_str(&add);
+        output.push_str(add);
     }
 
     output

@@ -159,7 +159,7 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
             // is shared between pre_run and for_each.
             {
                 let mut child_scope = scope.child();
-                if !pre_run(&statement, &mut child_scope) {
+                if !pre_run(statement, &mut child_scope) {
                     return false;
                 }
 
@@ -232,7 +232,7 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
         // is constructed in reverse drop
         // order.
         for var in scope.to_drop.iter().rev() {
-            on_scope_drop(var, &scope);
+            on_scope_drop(var, scope);
         }
     }
 
@@ -259,7 +259,7 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
             // is shared between pre_run and for_each.
             {
                 let mut child_scope = scope.child();
-                if !pre_run(&statement, &mut child_scope) {
+                if !pre_run(statement, &mut child_scope) {
                     return false;
                 }
 

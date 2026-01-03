@@ -189,7 +189,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         var_ty = var.ty.clone();
                     } else if let Some(var) = ctx.program.statics.get(name) {
                         var_ty = var.ty.clone();
-                    } else if let Some(var) = ctx.program.constants.get(name) {
+                    } else if let Some(_var) = ctx.program.constants.get(name) {
                         eprintln!("Cannot set constants!");
                         return false;
                     } else {
@@ -357,7 +357,7 @@ fn check_fn_call<'a>(
         unreachable!();
     };
 
-    **actual_ret_ty = (&**expected_ret_ty).clone();
+    **actual_ret_ty = (**expected_ret_ty).clone();
 
     // Ensure that both function types have the
     // same arg length.
@@ -391,7 +391,7 @@ fn check_fn_call<'a>(
 
     // Store the computed return type.
     *ret_ty = Some(MIRType {
-        ty: (&**expected_ret_ty).clone(),
+        ty: (**expected_ret_ty).clone(),
         span: expected_ty.span,
     });
 
@@ -521,11 +521,10 @@ fn check_expression<'a>(
                 simple_binary!(left, right, "Binary or", MIRTypeInner::Bool)
             }
             MIRExpressionInner::Variable(name, ..) => {
-                if let Some(scope) = scope {
-                    if let Some(var) = scope.get_variable(name) {
+                if let Some(scope) = scope
+                    && let Some(var) = scope.get_variable(name) {
                         return Some(var.ty.clone());
                     }
-                }
 
                 if let Some(var) = ctx.program.constants.get(name) {
                     return Some(var.ty.clone());

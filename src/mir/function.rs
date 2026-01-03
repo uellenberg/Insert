@@ -9,7 +9,7 @@ use crate::mir::{
 /// This needs to run before type checking, so
 /// that type checking can accurately understand
 /// a function's source.
-pub fn resolve_fns_to_vars<'a>(ctx: &mut MIRContext<'_>) {
+pub fn resolve_fns_to_vars(ctx: &mut MIRContext<'_>) {
     let mut functions = ctx.program.functions.clone();
 
     for function in functions.values_mut() {
@@ -19,7 +19,7 @@ pub fn resolve_fns_to_vars<'a>(ctx: &mut MIRContext<'_>) {
                 match statement {
                     // No expressions.
                     MIRStatement::CreateVariable { value: None, .. } => {}
-                    MIRStatement::DropVariable(_, ..) => {}
+                    MIRStatement::DropVariable(..) => {}
                     MIRStatement::Goto { .. } => {}
                     MIRStatement::Label { .. } => {}
                     MIRStatement::ContinueStatement { .. } => {}
@@ -89,11 +89,8 @@ fn resolve_expr_fn_to_vars<'a>(
     expr: &mut MIRExpression<'a>,
 ) -> bool {
     explore_expression_mut(expr, &mut |expr| {
-        match &mut expr.inner {
-            MIRExpressionInner::FunctionCall(fn_data) => {
-                resolve_fn_to_var(ctx, scope, &mut *fn_data);
-            }
-            _ => {}
+        if let MIRExpressionInner::FunctionCall(fn_data) = &mut expr.inner {
+            resolve_fn_to_var(ctx, scope, &mut *fn_data);
         }
 
         true

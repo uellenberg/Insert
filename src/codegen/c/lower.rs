@@ -38,10 +38,10 @@ pub fn mir_to_c(program: &MIRProgram, options: LowerOptions) -> String {
         output_str.push_str(token_text);
 
         // Add space if needed to allow compilation.
-        if let Some(next) = iter.peek() {
-            if token.needs_space_between(next) {
-                output_str.push(' ');
-            }
+        if let Some(next) = iter.peek()
+            && token.needs_space_between(next)
+        {
+            output_str.push(' ');
         }
     }
     output_str
@@ -84,11 +84,9 @@ fn lower_block<'a>(block: &Vec<MIRStatement<'a>>, info: CWriterInfo) -> CTokens<
 
     block
         .iter()
-        .map(|v| lower_statement(v, inner_info))
         // Remove None values.
-        .flatten()
-        .map(|v| spread![...indent.clone(), ...v, NEWLINE])
-        .flatten()
+        .filter_map(|v| lower_statement(v, inner_info))
+        .flat_map(|v| spread![...indent.clone(), ...v, NEWLINE])
         .collect::<CTokens<'a>>()
 }
 
@@ -322,7 +320,7 @@ fn lower_datatype<'a>(ty: &MIRType<'a>, _info: CWriterInfo) -> (CTokens<'a>, CTo
         ),
         MIRTypeInner::Bool => (spread![CToken::new("bool".into())], [].into()),
         MIRTypeInner::Unit => (spread![CToken::new("void".into())], [].into()),
-        MIRTypeInner::FunctionPtr(args, ret) => todo!(),
+        MIRTypeInner::FunctionPtr(_args, _ret) => todo!(),
         MIRTypeInner::Named(name) => (spread![CToken::new(name.clone())], [].into()),
     }
 }
@@ -330,7 +328,7 @@ fn lower_datatype<'a>(ty: &MIRType<'a>, _info: CWriterInfo) -> (CTokens<'a>, CTo
 /// Adds a datatype to a variable/function name.
 fn decorate_with_type<'a>(name: Cow<'a, str>, ty: &MIRType<'a>, info: CWriterInfo) -> CTokens<'a> {
     let (prefix, postfix) = lower_datatype(ty, info);
-    spread![...prefix, CToken::new(name.into()), ...postfix]
+    spread![...prefix, CToken::new(name), ...postfix]
 }
 
 /// Returns the precedence of an operator, or None if precedence

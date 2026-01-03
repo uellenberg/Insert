@@ -23,7 +23,7 @@ pub fn drop_at_scope_end(ctx: &mut MIRContext<'_>) {
 
                 true
             },
-            &mut |_, _, _| true,
+            &|_, _, _| true,
         ) {
             panic!("drop_at_scope_end returned false!");
         }

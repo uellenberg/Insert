@@ -54,7 +54,7 @@ pub fn rename_labels(ctx: &mut MIRContext) {
 
         if !<StatementExplorer>::rewrite_block(
             &mut function.body,
-            &mut move |statement, scope, block| {
+            &mut move |statement, _scope, block| {
                 let statement = match statement {
                     MIRStatement::Label { name, span } => MIRStatement::Label {
                         name: label_mapper.map(name),
@@ -82,7 +82,7 @@ pub fn rename_labels(ctx: &mut MIRContext) {
                 true
             },
             &mut |_, _| true,
-            &mut |_, _, _| true,
+            &|_, _, _| true,
         ) {
             panic!("rename_labels returned false!");
         }

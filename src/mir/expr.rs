@@ -43,7 +43,7 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
                 match statement {
                     // No expressions.
                     MIRStatement::CreateVariable { value: None, .. } => {}
-                    MIRStatement::DropVariable(_, ..) => {}
+                    MIRStatement::DropVariable(..) => {}
                     MIRStatement::Goto { .. } => {}
                     MIRStatement::Label { .. } => {}
                     MIRStatement::ContinueStatement { .. } => {}
@@ -60,7 +60,7 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
                     | MIRStatement::GotoNotEqual {
                         condition: value, ..
                     } => {
-                        *value = reduce_expr_simple(&ctx.program.constants, &value);
+                        *value = reduce_expr_simple(&ctx.program.constants, value);
                     }
 
                     MIRStatement::FunctionCall(MIRFnCall { source, args, .. }) => {
@@ -69,7 +69,7 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
                         }
 
                         for arg in args {
-                            *arg = reduce_expr_simple(&ctx.program.constants, &arg);
+                            *arg = reduce_expr_simple(&ctx.program.constants, arg);
                         }
                     }
 
@@ -134,7 +134,7 @@ fn eval_constant<'a>(
     });
 
     // Constants must be fully reduced.
-    if !matches!(reduced.inner, MIRExpressionInner::Number(_, ..)) {
+    if !matches!(reduced.inner, MIRExpressionInner::Number(..)) {
         eprintln!("Failed to reduce constant to a number: {:?}", &old_expr);
         return false;
     }
@@ -156,7 +156,7 @@ fn eval_static<'a>(ctx: &mut MIRContext<'a>, constant_name: Cow<'a, str>) -> boo
     let reduced = reduce_expr_simple(&ctx.program.constants, &old_expr);
 
     // Statics must be fully reduced.
-    if !matches!(reduced.inner, MIRExpressionInner::Number(_, ..)) {
+    if !matches!(reduced.inner, MIRExpressionInner::Number(..)) {
         eprintln!("Failed to reduce static to a number: {:?}", &old_expr);
         return false;
     }
@@ -173,7 +173,7 @@ fn reduce_expr_simple<'a>(
     constants: &IndexMap<Cow<'a, str>, MIRConstant<'a>>,
     expr: &MIRExpression<'a>,
 ) -> MIRExpression<'a> {
-    reduce_expr(&expr, &mut |name| {
+    reduce_expr(expr, &mut |name| {
         // Ensure the constant exists.
         if !constants.contains_key(&name) {
             return None;
