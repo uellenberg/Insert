@@ -15,7 +15,7 @@ use std::path::Path;
 
 #[derive(Parser)]
 #[grammar = "parser/program.pest"]
-struct SLLParser;
+struct InsertParser;
 
 /// Parses a file into MIR,
 /// returning whether it was successful.
@@ -28,7 +28,7 @@ pub fn parse_file<'a>(location: &'a Path, ctx: &mut MIRContext<'a>) -> bool {
 /// Parses some data file into MIR,
 /// returning whether it was successful.
 fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -> bool {
-    let ast = match SLLParser::parse(Rule::program, data) {
+    let ast = match InsertParser::parse(Rule::program, data) {
         Ok(ast) => ast,
         Err(err) => {
             eprintln!("{err}");
