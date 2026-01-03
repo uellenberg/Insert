@@ -4,6 +4,14 @@ pub mod c;
 
 type Tokens<T> = smallvec::SmallVec<T, 8>;
 
+/// The style represents why the token exists, and is used to strip out
+/// unneeded tokens when different compiler flags are passed.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TokenStyle {
+    Required,
+    Fancy,
+}
+
 /// A single token in the source code to be output.
 /// The final source will be constructed from concatenated tokens.
 ///
@@ -14,6 +22,9 @@ type Tokens<T> = smallvec::SmallVec<T, 8>;
 ///
 /// However, text cannot be inserted within a token, and other rules apply
 /// for when and how tokens can be appended depending on the language.
+///
+/// In general, space and comments can be inserted between tokens (depending on the language),
+/// but not within a token.
 pub trait Token<'a> {
     /// The raw text of the token.
     ///
@@ -22,10 +33,27 @@ pub trait Token<'a> {
     /// passes.
     fn text(&self) -> &Option<Cow<'a, str>>;
 
+    /// Gets the token's style (what purpose it serves in the output).
+    #[must_use]
+    fn style(&self) -> TokenStyle;
+
+    /// Determines if a space is required between this token and the next
+    /// to prevent accidental merging.
+    #[must_use]
+    fn needs_space_between(&self, next: &Self) -> bool;
+
     /// Tries to merge next to the right of this token.
     /// Returns whether merging succeeded.
     #[must_use]
     fn try_merge(&mut self, next: &Self) -> bool;
+}
+
+/// Options passed to the lowering process, controlling
+/// how the output should be formatted.
+#[derive(Clone, Debug, Default)]
+pub struct LowerOptions {
+    /// Should fancy tokens be included in the output?
+    pub fancy: bool,
 }
 
 /// Combines multiple tokens into a single token while preserving their rules correctly.
@@ -66,6 +94,11 @@ pub fn merge_tokens<'a, T: Token<'a>>(tokens: &mut Tokens<T>) {
 
     // write_index points to the last token's index, so decrease the total length to match.
     tokens.truncate(write_index + 1);
+}
+
+/// Removes all fancy tokens from the given list of tokens.
+pub fn strip_fancy_tokens<'a, T: Token<'a>>(tokens: &mut Tokens<T>) {
+    tokens.retain(|token| token.style() != TokenStyle::Fancy);
 }
 
 /// Creates a new instance of `Tokens` filled with the given elements.

@@ -2,6 +2,7 @@
 #![feature(iter_intersperse)]
 extern crate core;
 
+use crate::codegen::LowerOptions;
 use crate::codegen::c::mir_to_c;
 use crate::mir::{MIRContext, visit_mir};
 use crate::parser::parse_file;
@@ -25,6 +26,8 @@ fn main() {
 
     println!("{:#}", mir_ctx.program);
 
-    let c = mir_to_c(&mir_ctx.program);
+    let lower_options = LowerOptions { fancy: true };
+
+    let c = mir_to_c(&mir_ctx.program, lower_options);
     println!("{c}");
 }

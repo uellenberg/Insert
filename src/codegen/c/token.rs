@@ -1,5 +1,14 @@
-use crate::codegen::{Token, Tokens};
+use crate::codegen::{Token, TokenStyle, Tokens};
 use std::borrow::Cow;
+
+pub const LEFT_PAREN: CToken<'static> = CToken::new(Cow::Borrowed("("));
+pub const RIGHT_PAREN: CToken<'static> = CToken::new(Cow::Borrowed(")"));
+pub const LEFT_SQUIGGLE: CToken<'static> = CToken::new(Cow::Borrowed("{"));
+pub const RIGHT_SQUIGGLE: CToken<'static> = CToken::new(Cow::Borrowed("}"));
+pub const SEMI: CToken<'static> = CToken::new(Cow::Borrowed(";"));
+
+pub const INDENT: CToken<'static> = CToken::new_fancy(Cow::Borrowed("    "));
+pub const NEWLINE: CToken<'static> = CToken::new_fancy(Cow::Borrowed("\n"));
 
 pub type CTokens<'a> = Tokens<CToken<'a>>;
 
@@ -8,18 +17,35 @@ pub type CTokens<'a> = Tokens<CToken<'a>>;
 #[derive(Debug, Clone)]
 pub struct CToken<'a> {
     text: Option<Cow<'a, str>>,
+    style: TokenStyle,
 }
 
 impl<'a> CToken<'a> {
-    pub fn new(text: Cow<'a, str>) -> Self {
-        Self { text: Some(text) }
+    pub const fn new(text: Cow<'a, str>) -> Self {
+        Self {
+            text: Some(text),
+            style: TokenStyle::Required,
+        }
+    }
+
+    pub const fn new_fancy(text: Cow<'a, str>) -> Self {
+        Self {
+            text: Some(text),
+            style: TokenStyle::Fancy,
+        }
     }
 }
 
-impl<'a> CToken<'a> {
-    /// Determines if a space is required between this token and the next
-    /// to prevent accidental merging by the C compiler.
-    pub fn needs_space_between(&self, next: &CToken) -> bool {
+impl<'a> Token<'a> for CToken<'a> {
+    fn text(&self) -> &Option<Cow<'a, str>> {
+        &self.text
+    }
+
+    fn style(&self) -> TokenStyle {
+        self.style
+    }
+
+    fn needs_space_between(&self, next: &Self) -> bool {
         let Some(left) = &self.text else {
             return false;
         };
@@ -47,12 +73,6 @@ impl<'a> CToken<'a> {
         }
 
         false
-    }
-}
-
-impl<'a> Token<'a> for CToken<'a> {
-    fn text(&self) -> &Option<Cow<'a, str>> {
-        &self.text
     }
 
     fn try_merge(&mut self, next: &Self) -> bool {

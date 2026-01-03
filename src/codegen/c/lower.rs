@@ -1,5 +1,8 @@
-use crate::codegen::c::token::{CToken, CTokens, escape_string};
-use crate::codegen::{Token, Tokens, merge_tokens, spread};
+use crate::codegen::c::token::{
+    CToken, CTokens, INDENT, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI,
+    escape_string,
+};
+use crate::codegen::{LowerOptions, Token, Tokens, merge_tokens, spread, strip_fancy_tokens};
 use crate::mir::{
     MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram, MIRStatement,
     MIRStatic, MIRType, MIRTypeInner,
@@ -7,17 +10,21 @@ use crate::mir::{
 use std::borrow::Cow;
 
 /// Converts a program from MIR to C.
-pub fn mir_to_c(program: &MIRProgram) -> String {
+pub fn mir_to_c(program: &MIRProgram, options: LowerOptions) -> String {
+    let info = CWriterInfo::default();
     let mut output = spread![];
 
     for val in program.statics.values() {
-        output.extend(lower_static(val));
+        output.extend(lower_static(val, info));
     }
 
     for val in program.functions.values() {
-        output.extend(lower_function(val));
+        output.extend(lower_function(val, info));
     }
 
+    if !options.fancy {
+        strip_fancy_tokens(&mut output);
+    }
     merge_tokens(&mut output);
     println!("{:#?}", output);
 
@@ -40,102 +47,119 @@ pub fn mir_to_c(program: &MIRProgram) -> String {
     output_str
 }
 
+#[derive(Default, Debug, Copy, Clone)]
+struct CWriterInfo {
+    /// The current indentation level.
+    /// This represents the number of tabs of indentation (not the number of spaces).
+    indent_level: u32,
+}
+
 /// Converts a function from MIR to C.
-fn lower_function<'a>(func: &MIRFunction<'a>) -> CTokens<'a> {
-    let decorated = decorate_with_type(func.name.clone(), &func.ret_ty);
+fn lower_function<'a>(func: &MIRFunction<'a>, info: CWriterInfo) -> CTokens<'a> {
+    let decorated = decorate_with_type(func.name.clone(), &func.ret_ty, info);
     let args = func
         .args
         .iter()
-        .map(|arg| decorate_with_type(arg.name.clone(), &arg.ty))
+        .map(|arg| decorate_with_type(arg.name.clone(), &arg.ty, info))
         .intersperse(spread![CToken::new(",".into())])
         .flatten()
         .collect::<CTokens<'a>>();
-    let block = lower_block(&func.body);
+    let block = lower_block(&func.body, info);
 
-    spread![...decorated, CToken::new("(".into()), ...args, CToken::new(")".into()), CToken::new("{".into()), ...block, CToken::new("}".into())]
+    spread![...decorated, LEFT_PAREN, ...args, RIGHT_PAREN, LEFT_SQUIGGLE, NEWLINE, ...block, RIGHT_SQUIGGLE, NEWLINE]
+}
+
+/// Returns the indentation for the given level (level = number of tabs).
+fn indent_tokens<'a>(indent_level: u32) -> CTokens<'a> {
+    (0..indent_level).map(|_| INDENT).collect::<CTokens<'a>>()
 }
 
 /// Converts a block of statements from MIR to C.
-fn lower_block<'a>(block: &Vec<MIRStatement<'a>>) -> CTokens<'a> {
+fn lower_block<'a>(block: &Vec<MIRStatement<'a>>, info: CWriterInfo) -> CTokens<'a> {
+    // Items inside a block ({ ... }) should be indented.
+    let mut inner_info = info;
+    inner_info.indent_level += 1;
+
+    let indent = indent_tokens(inner_info.indent_level);
+
     block
         .iter()
-        .map(lower_statement)
+        .map(|v| lower_statement(v, inner_info))
         // Remove None values.
         .flatten()
+        .map(|v| spread![...indent.clone(), ...v, NEWLINE])
         .flatten()
         .collect::<CTokens<'a>>()
 }
 
 /// Converts a statement from MIR to C.
 /// Returns None if the statement is not valid C (i.e., it should be ignored).
-fn lower_statement<'a>(stmt: &MIRStatement<'a>) -> Option<CTokens<'a>> {
+fn lower_statement<'a>(stmt: &MIRStatement<'a>, info: CWriterInfo) -> Option<CTokens<'a>> {
     match stmt {
         // Just for analysis, no real codegen.
         MIRStatement::CreateVariable { arg: true, .. } | MIRStatement::DropVariable(..) => None,
 
         MIRStatement::CreateVariable { var, value, .. } => {
-            let decorated = decorate_with_type(var.name.clone(), &var.ty);
+            let decorated = decorate_with_type(var.name.clone(), &var.ty, info);
 
             if let Some(value) = value {
-                let expr = lower_expression(value);
+                let expr = lower_expression(value, info);
 
                 Some(spread![
                     ...decorated,
                     CToken::new("=".into()),
                     ...expr,
-                    CToken::new(";".into())
+                    SEMI,
                 ])
             } else {
                 Some(spread![
                     ...decorated,
-                    CToken::new(";".into())
+                    SEMI,
                 ])
             }
         }
 
         MIRStatement::SetVariable { name, value, .. } => {
-            let expr = lower_expression(value);
+            let expr = lower_expression(value, info);
 
             Some(spread![
                 CToken::new(name.clone()),
                 CToken::new("=".into()),
                 ...expr,
-                CToken::new(";".into())
+                SEMI,
             ])
         }
 
         MIRStatement::FunctionCall(call) => {
-            let fn_src = lower_fn_source(&call.source);
+            let fn_src = lower_fn_source(&call.source, info);
             let args = call
                 .args
                 .iter()
-                .map(lower_expression)
+                .map(|v| lower_expression(v, info))
                 .intersperse(spread![CToken::new(",".into())])
                 .flatten()
                 .collect::<CTokens<'a>>();
 
             Some(spread![
                 ...fn_src,
-                CToken::new("(".into()),
+                LEFT_PAREN,
                 ...args,
-                CToken::new(");".into())
+                RIGHT_PAREN,
+                SEMI,
             ])
         }
 
         MIRStatement::Return { expr, .. } => {
             if let Some(expr) = expr {
-                let ret_expr = lower_expression(expr);
+                let ret_expr = lower_expression(expr, info);
 
                 Some(spread![
                     CToken::new("return".into()),
                     ...ret_expr,
-                    CToken::new(";".into())
+                    SEMI,
                 ])
             } else {
-                Some(spread![
-                    CToken::new("return".into()),
-                    CToken::new(";".into())
-                ])
+                Some(spread![CToken::new("return".into()), SEMI])
             }
         }
 
@@ -149,78 +173,82 @@ fn lower_statement<'a>(stmt: &MIRStatement<'a>) -> Option<CTokens<'a>> {
             on_false,
             ..
         } => {
-            let cond = lower_expression(condition);
-            let true_block = lower_block(on_true);
+            let cond = lower_expression(condition, info);
+            let true_block = lower_block(on_true, info);
 
             if on_false.is_empty() {
                 Some(spread![
                     CToken::new("if".into()),
-                    CToken::new("(".into()),
+                    LEFT_PAREN,
                     ...cond,
-                    CToken::new(")".into()),
-                    CToken::new("{".into()),
+                    RIGHT_PAREN,
+                    LEFT_SQUIGGLE,
+                    NEWLINE,
                     ...true_block,
-                    CToken::new("}".into())
+                    ...indent_tokens(info.indent_level),
+                    RIGHT_SQUIGGLE
                 ])
             } else {
-                let false_block = lower_block(on_false);
+                let false_block = lower_block(on_false, info);
 
                 Some(spread![
                     CToken::new("if".into()),
-                    CToken::new("(".into()),
+                    LEFT_PAREN,
                     ...cond,
-                    CToken::new(")".into()),
-                    CToken::new("{".into()),
+                    RIGHT_PAREN,
+                    LEFT_SQUIGGLE,
+                    NEWLINE,
                     ...true_block,
-                    CToken::new("}".into()),
+                    ...indent_tokens(info.indent_level),
+                    RIGHT_SQUIGGLE,
                     CToken::new("else".into()),
-                    CToken::new("{".into()),
+                    LEFT_SQUIGGLE,
+                    NEWLINE,
                     ...false_block,
-                    CToken::new("}".into())
+                    ...indent_tokens(info.indent_level),
+                    RIGHT_SQUIGGLE
                 ])
             }
         }
 
         MIRStatement::LoopStatement { body, .. } => {
-            let loop_body = lower_block(body);
+            let loop_body = lower_block(body, info);
 
             Some(spread![
                 CToken::new("while".into()),
-                CToken::new("(".into()),
+                LEFT_PAREN,
                 CToken::new("1".into()),
-                CToken::new(")".into()),
-                CToken::new("{".into()),
+                RIGHT_PAREN,
+                LEFT_SQUIGGLE,
+                NEWLINE,
                 ...loop_body,
-                CToken::new("}".into())
+                ...indent_tokens(info.indent_level),
+                RIGHT_SQUIGGLE
             ])
         }
 
-        MIRStatement::ContinueStatement { .. } => Some(spread![
-            CToken::new("continue".into()),
-            CToken::new(";".into())
-        ]),
+        MIRStatement::ContinueStatement { .. } => {
+            Some(spread![CToken::new("continue".into()), SEMI])
+        }
 
-        MIRStatement::BreakStatement { .. } => Some(spread![
-            CToken::new("break".into()),
-            CToken::new(";".into())
-        ]),
+        MIRStatement::BreakStatement { .. } => Some(spread![CToken::new("break".into()), SEMI]),
     }
 }
 
 /// Converts a static variable from MIR to C.
-fn lower_static<'a>(val: &MIRStatic<'a>) -> CTokens<'a> {
-    let decorated = decorate_with_type(val.name.clone(), &val.ty);
-    let expr = lower_expression(&val.value);
+fn lower_static<'a>(val: &MIRStatic<'a>, info: CWriterInfo) -> CTokens<'a> {
+    let decorated = decorate_with_type(val.name.clone(), &val.ty, info);
+    let expr = lower_expression(&val.value, info);
 
-    spread![CToken::new("static".into()), ...decorated, CToken::new("=".into()), ...expr, CToken::new(";".into())]
+    spread![CToken::new("static".into()), ...decorated, CToken::new("=".into()), ...expr, SEMI]
 }
 
 /// Converts an expression from MIR to C.
-fn lower_expression<'a>(expr: &MIRExpression<'a>) -> CTokens<'a> {
+fn lower_expression<'a>(expr: &MIRExpression<'a>, info: CWriterInfo) -> CTokens<'a> {
     macro_rules! lower_binary {
         ($left:expr, $op:tt, $right:expr) => {{
-            let left = lower_wrap_expression($left, expr);
-            let right = lower_wrap_expression($right, expr);
+            let left = lower_wrap_expression($left, expr, info);
+            let right = lower_wrap_expression($right, expr, info);
 
             spread![...left, CToken::new($op.into()), ...right]
         }}
@@ -256,24 +284,24 @@ fn lower_expression<'a>(expr: &MIRExpression<'a>) -> CTokens<'a> {
             let args = call
                 .args
                 .iter()
-                .map(lower_expression)
+                .map(|v| lower_expression(v, info))
                 .intersperse(spread![CToken::new(", ".into())])
                 .flatten()
                 .collect::<CTokens<'a>>();
-            let src = lower_fn_source(&call.source);
+            let src = lower_fn_source(&call.source, info);
 
-            spread![...src, CToken::new("(".into()), ...args, CToken::new(")".into())]
+            spread![...src, LEFT_PAREN, ...args, RIGHT_PAREN]
         }
     }
 }
 
 /// Lowers a function source into a callable string (i.e., () can be added after it).
-fn lower_fn_source<'a>(src: &MIRFnSource<'a>) -> CTokens<'a> {
+fn lower_fn_source<'a>(src: &MIRFnSource<'a>, info: CWriterInfo) -> CTokens<'a> {
     match src {
         MIRFnSource::Direct(src, _) => spread![CToken::new(src.clone())],
         MIRFnSource::Indirect(name) => {
-            let lowered = lower_expression(name);
-            spread![CToken::new("(".into()), ...lowered, CToken::new(")".into())]
+            let lowered = lower_expression(name, info);
+            spread![LEFT_PAREN, ...lowered, RIGHT_PAREN]
         }
     }
 }
@@ -282,7 +310,7 @@ fn lower_fn_source<'a>(src: &MIRFnSource<'a>) -> CTokens<'a> {
 /// Returns the type as (prefix, postfix), where
 /// a variable can be constructed as:
 /// {PREFIX} name{POSTFIX} (e.g., char* strings[]).
-fn lower_datatype<'a>(ty: &MIRType<'a>) -> (CTokens<'a>, CTokens<'a>) {
+fn lower_datatype<'a>(ty: &MIRType<'a>, _info: CWriterInfo) -> (CTokens<'a>, CTokens<'a>) {
     match &ty.ty {
         MIRTypeInner::U32 => (
             spread![CToken::new("unsigned".into()), CToken::new("int".into())],
@@ -300,8 +328,8 @@ fn lower_datatype<'a>(ty: &MIRType<'a>) -> (CTokens<'a>, CTokens<'a>) {
 }
 
 /// Adds a datatype to a variable/function name.
-fn decorate_with_type<'a>(name: Cow<'a, str>, ty: &MIRType<'a>) -> CTokens<'a> {
-    let (prefix, postfix) = lower_datatype(ty);
+fn decorate_with_type<'a>(name: Cow<'a, str>, ty: &MIRType<'a>, info: CWriterInfo) -> CTokens<'a> {
+    let (prefix, postfix) = lower_datatype(ty, info);
     spread![...prefix, CToken::new(name.into()), ...postfix]
 }
 
@@ -339,8 +367,12 @@ fn precedence(op: &MIRExpressionInner) -> Option<usize> {
 
 /// Lowers a child expression and correctly wraps it in parentheses
 /// if needed.
-fn lower_wrap_expression<'a>(expr: &MIRExpression<'a>, outer: &MIRExpression<'a>) -> CTokens<'a> {
-    let lowered = lower_expression(expr);
+fn lower_wrap_expression<'a>(
+    expr: &MIRExpression<'a>,
+    outer: &MIRExpression<'a>,
+    info: CWriterInfo,
+) -> CTokens<'a> {
+    let lowered = lower_expression(expr, info);
 
     let outer_precedence = precedence(&outer.inner);
     let inner_precedence = precedence(&expr.inner);
@@ -350,7 +382,7 @@ fn lower_wrap_expression<'a>(expr: &MIRExpression<'a>, outer: &MIRExpression<'a>
     };
 
     if needs_wrap {
-        spread![CToken::new("(".into()), ...lowered, CToken::new(")".into())]
+        spread![LEFT_PAREN, ...lowered, RIGHT_PAREN]
     } else {
         lowered
     }

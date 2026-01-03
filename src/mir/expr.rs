@@ -5,7 +5,7 @@ use crate::mir::{
 };
 use indexmap::IndexMap;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// Attempts to evaluate all constants and statics, returning
 /// whether it was successful.
