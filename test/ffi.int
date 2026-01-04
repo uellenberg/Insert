@@ -1,0 +1,37 @@
+// A target block is used to conditionally compile code for a specific target.
+target "C" {
+    // Functions can be overloaded, although name conflicts in the target code aren't allowed.
+    // That means that nomangle functions can't be overloaded (one nomangle function is fine, but two with the same name are not).
+    inline function string(input: u32) -> string {
+        let output: string;
+        asprintf(&output, "%u", input);
+        return output;
+    }
+
+    // Inline functions can take references to variables as arguments.
+    // These are not the same as & references, which are essentially pointers.
+    // output has type string, and needs to be used as such.
+    // When this function is inlined, output directly corresponds to the variable passed into it.
+    // The caller needs to use ref syntax to call this function, like string_to(ref text, 123).
+    // It cannot be constructed as an expression.
+    //
+    // Here we could just write the argument as output: &string, since we don't need to set it,
+    // but the ref syntax allows the function's interface to stay portable across targets.
+    inline function string_to(ref output: string, input: u32) {
+        asprintf(&output, "%u", input);
+    }
+
+    // This declares an external function asprintf, which takes in a string as its first argument
+    // and any other arguments following it, returns nothing, maps to the "asprintf" function in the target
+    // output, and requires importing with #import <stdio.h> (this last string can be omitted if it's available by default).
+    //
+    // The compiler will keep track of imports and output them automatically, as small as it can make them.
+    //
+    // Multiple conflicting external functions cannot be declared at the same time, although declarations
+    // which can be merged will be.
+    //
+    // The "..." operator can only appear at the end of the argument list.
+    //
+    // This function can't have any attributes (inline/helper/nomangle) applied, as it's essentially an alias.
+    extern function asprintf(ptr: &string, ...) -> () from "asprintf", "<stdio.h>";
+}

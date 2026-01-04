@@ -42,7 +42,7 @@ function main() {
     //
     // It creates a string variable, output.
     // If output isn't specified, then the quine will be printed automatically.
-    quine output = (offset, text) {
+    quine output = (ref offset, ref text) {
         // offset refers to the chunk offset within the marker.
         // If we do marker!(CHUNK), then later chunk!(CHUNK, 2), and chunk!(CHUNK, 3),
         // then CHUNK + 0 refers to the first two characters after the marker, CHUNK + 1
