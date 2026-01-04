@@ -4,11 +4,17 @@
 // This places 0 in the compiled (and interpreted) code, but
 // during quine output, creates a binding that can be used to replace
 // the value.
+// It also tells the compiler to treat the value opaquely.
 // This binding is equivalent to a marker.
-static ball_y: u32 = binding!(BALL_Y, 0);
+// nomangle tells the compiler that this variable shouldn't be automatically renamed.
+// It can always be applied to functions and statics, although I'm not sure how it'll apply to locals.
+nomangle static ball_y: u32 = binding BALL_Y (0);
 
 // These values will have to be fiddled with a bit.
 // Too small, and they'll cause an error.
+//
+// consts map directly to variables in the target output.
+// Use "inline const" to inline them directly, and "nomangle const" to prevent them from being renamed.
 const SCREEN_WIDTH: u32 = 10;
 const SCREEN_HEIGHT: u32 = 10;
 const BALL_SIZE: u32 = 4;
@@ -21,14 +27,21 @@ const RIGHT_SIZE: u32 = SCREEN_WIDTH - LEFT_SIZE - BALL_SIZE;
 // This makes it accessible when outputting the quine, and can be used as an offset.
 //
 // START and END are special markers that refer to the first and last chunks respectively.
-marker!(MAIN);
+marker MAIN;
 
+// By default, functions are exported to the target output.
+// They can be marked as "inline", which will copy their body directly into the call site,
+// with variables renamed to avoid conflicts and early returns disallowed.
+// Functions can also be marked as "helper", in which case they will only be exported
+// if they're referenced directly/indirectly from the main function.
+// Functions other than "inline" can be marked as "nomangle", which will prevent them from being renamed.
 function main() {
     // A quine statement can only be used once in the program.
     // It splits the parent chunk, and handles building the self-referential part
     // of the output automatically.
     //
     // It creates a string variable, output.
+    // If output isn't specified, then the quine will be printed automatically.
     quine output = (offset, text) {
         // offset refers to the chunk offset within the marker.
         // If we do marker!(CHUNK), then later chunk!(CHUNK, 2), and chunk!(CHUNK, 3),
@@ -49,16 +62,24 @@ function main() {
         }
     };
 
-    print(output);
+    // This is a call to a compiler intrinsic, which takes in its arguments
+    // and generates the corresponding code for them.
+    // Print is an intrinsic because there are so many ways to write it, and
+    // those are radically different depending on the targe language.
+    print!(output);
 }
 
 // All the code between START and this line now lives in the END chunk.
-marker!(MAIN_END);
+marker MAIN_END;
 
-// Certain basic operations (like binding and chunk above) are allowed to be used freely, but
-// when using the full language to establish information about the output code, we need to tell
-// the compiler that this is compile-time only. That means anything in here will never be output.
-comp! {
+// Bindings and markers above must be interlaced directly into the final output, as they
+// declare chunks based on the source code.
+// However, if we want to do any processing based on the output target code, we need to
+// use the config block.
+// This runs in function scope, with access to the full suite of the language (minus accessing statics).
+// It allows us to instruct the compiler how to format the output at a character level.
+// The position where this is declared doesn't matter, and only one config block is allowed.
+config {
     // This is in function-scope.
     // Functions cannot be created in here (but you can do them outside as inline functions).
     // We also cannot access statics, as it would lead to subtle bugs.
@@ -78,10 +99,14 @@ comp! {
         //
         // Tokens have certain boundaries which restrict where they can be split
         // at.
-        // If we try, we'll get an error.
-        // I need a working compiler first to figure out the best solution, but it
-        // will involve some way to automatically specify padding.
-        chunk!(MAIN, offset);
-        chunk!(MAIN, offset + LEFT_SIZE);
+        // The compiler will automatically ensure that:
+        // * Two chunks next to each other can be directly concatenated without any spaces.
+        // * Spaces / comments / newlines can be inserted between two chunks.
+        // * A chunk isn't split in the middle of a token. The compiler will automatically
+        //   insert padding to prevent this, only giving an error if it can't.
+        //   We don't have to worry about the padding; it will be as if it's always
+        //   been there.
+        chunk MAIN (offset);
+        chunk MAIN (offset + LEFT_SIZE);
     }
 }
