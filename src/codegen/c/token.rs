@@ -1,26 +1,17 @@
-use crate::codegen::{Token, TokenStyle, Tokens};
+use crate::codegen::c::CLowerer;
+use crate::codegen::token::{Token, TokenInfo, TokenStyle};
 use std::borrow::Cow;
 
-pub const LEFT_PAREN: CToken<'static> = CToken::new(Cow::Borrowed("("));
-pub const RIGHT_PAREN: CToken<'static> = CToken::new(Cow::Borrowed(")"));
-pub const LEFT_SQUIGGLE: CToken<'static> = CToken::new(Cow::Borrowed("{"));
-pub const RIGHT_SQUIGGLE: CToken<'static> = CToken::new(Cow::Borrowed("}"));
-pub const SEMI: CToken<'static> = CToken::new(Cow::Borrowed(";"));
+pub const LEFT_PAREN: Token<'static> = Token::new(Cow::Borrowed("("));
+pub const RIGHT_PAREN: Token<'static> = Token::new(Cow::Borrowed(")"));
+pub const LEFT_SQUIGGLE: Token<'static> = Token::new(Cow::Borrowed("{"));
+pub const RIGHT_SQUIGGLE: Token<'static> = Token::new(Cow::Borrowed("}"));
+pub const SEMI: Token<'static> = Token::new(Cow::Borrowed(";"));
 
-pub const INDENT: CToken<'static> = CToken::new_fancy(Cow::Borrowed("    "));
-pub const NEWLINE: CToken<'static> = CToken::new_fancy(Cow::Borrowed("\n"));
+pub const INDENT: Token<'static> = Token::new_fancy(Cow::Borrowed("    "));
+pub const NEWLINE: Token<'static> = Token::new_fancy(Cow::Borrowed("\n"));
 
-pub type CTokens<'a> = Tokens<CToken<'a>>;
-
-/// A valid program is produced if all tokens are separated by a space,
-/// excluding edge cases like preprocessor macros (which require newlines).
-#[derive(Debug, Clone)]
-pub struct CToken<'a> {
-    text: Option<Cow<'a, str>>,
-    style: TokenStyle,
-}
-
-impl<'a> CToken<'a> {
+impl<'a> Token<'a> {
     pub const fn new(text: Cow<'a, str>) -> Self {
         Self {
             text: Some(text),
@@ -36,20 +27,12 @@ impl<'a> CToken<'a> {
     }
 }
 
-impl<'a> Token<'a> for CToken<'a> {
-    fn text(&self) -> &Option<Cow<'a, str>> {
-        &self.text
-    }
-
-    fn style(&self) -> TokenStyle {
-        self.style
-    }
-
-    fn needs_space_between(&self, next: &Self) -> bool {
-        let Some(left) = &self.text else {
+impl TokenInfo for CLowerer {
+    fn needs_space_between<'a>(&self, left: &Token<'a>, right: &Token<'a>) -> bool {
+        let Some(left) = &left.text else {
             return false;
         };
-        let Some(right) = &next.text else {
+        let Some(right) = &right.text else {
             return false;
         };
 
@@ -73,26 +56,6 @@ impl<'a> Token<'a> for CToken<'a> {
         }
 
         false
-    }
-
-    fn try_merge(&mut self, next: &Self) -> bool {
-        let needs_space = self.needs_space_between(next);
-
-        let Some(left) = &mut self.text else {
-            return false;
-        };
-        let Some(right) = &next.text else {
-            return false;
-        };
-
-        // We can't merge if spaces must be inserted, as these
-        // are incompatible tokens.
-        if needs_space {
-            return false;
-        }
-
-        *left.to_mut() += right;
-        true
     }
 }
 

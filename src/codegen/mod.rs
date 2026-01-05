@@ -1,52 +1,12 @@
-use std::borrow::Cow;
-
 pub mod c;
+pub mod token;
 
-type Tokens<T> = smallvec::SmallVec<T, 8>;
-
-/// The style represents why the token exists, and is used to strip out
-/// unneeded tokens when different compiler flags are passed.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum TokenStyle {
-    Required,
-    Fancy,
-}
-
-/// A single token in the source code to be output.
-/// The final source will be constructed from concatenated tokens.
-///
-/// The exact definition for what is and isn't a token is somewhat vague,
-/// and very specific to the output language.
-/// A token could be anything from a single number in a larger number literal,
-/// all the way to the entire text of a multiline comment.
-///
-/// However, text cannot be inserted within a token, and other rules apply
-/// for when and how tokens can be appended depending on the language.
-///
-/// In general, space and comments can be inserted between tokens (depending on the language),
-/// but not within a token.
-pub trait Token<'a> {
-    /// The raw text of the token.
-    ///
-    /// Some types of tokens, such as those replacing
-    /// a quine array, aren't defined until further codegen
-    /// passes.
-    fn text(&self) -> &Option<Cow<'a, str>>;
-
-    /// Gets the token's style (what purpose it serves in the output).
-    #[must_use]
-    fn style(&self) -> TokenStyle;
-
-    /// Determines if a space is required between this token and the next
-    /// to prevent accidental merging.
-    #[must_use]
-    fn needs_space_between(&self, next: &Self) -> bool;
-
-    /// Tries to merge next to the right of this token.
-    /// Returns whether merging succeeded.
-    #[must_use]
-    fn try_merge(&mut self, next: &Self) -> bool;
-}
+use crate::mir::{
+    MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram, MIRStatement,
+    MIRStatic, MIRType,
+};
+use std::borrow::Cow;
+use token::Tokens;
 
 /// Options passed to the lowering process, controlling
 /// how the output should be formatted.
@@ -56,102 +16,69 @@ pub struct LowerOptions {
     pub fancy: bool,
 }
 
-/// Combines multiple tokens into a single token while preserving their rules correctly.
-/// Returns the original token array.
-pub fn merge_tokens<'a, T: Token<'a>>(tokens: &mut Tokens<T>) {
-    if tokens.is_empty() {
-        return;
-    }
+/// A trait for lowering MIR to a target language.
+///
+/// Implementors of this trait provide the logic to convert MIR constructs
+/// into tokens for a specific target language (e.g., C).
+pub trait Codegen {
+    /// The writer info type used during code generation.
+    /// This typically holds state like indentation level.
+    /// It's always safe to create a default value of this
+    /// for heuristics, but not for exact output tokens.
+    type Writer: Default + Copy;
 
-    // Skip the first token so we can merge with it.
-    let mut read_index = 1;
-    // This refers to the index we've previously written to.
-    // Initially, we act like we've already written to index 0.
-    let mut write_index = 0;
+    /// Converts a program from MIR to the target language.
+    fn lower_program(&self, program: &MIRProgram, options: LowerOptions) -> String;
 
-    while read_index < tokens.len() {
-        debug_assert!(read_index > write_index);
+    /// Converts a function from MIR to the target language.
+    fn lower_function<'a>(&self, func: &MIRFunction<'a>, info: Self::Writer) -> Tokens<'a>;
 
-        let [read, write] = tokens.get_disjoint_mut([read_index, write_index]).unwrap();
+    /// Converts a block of statements from MIR to the target language.
+    fn lower_block<'a>(&self, block: &[MIRStatement<'a>], info: Self::Writer) -> Tokens<'a>;
 
-        // Merge if possible.
-        // On failure, this creates a split / new token.
-        if write.try_merge(read) {
-            read_index += 1;
-            continue;
-        }
+    /// Converts a statement from MIR to the target language.
+    /// Returns None if the statement should be ignored (e.g., analysis-only statements).
+    fn lower_statement<'a>(
+        &self,
+        stmt: &MIRStatement<'a>,
+        info: Self::Writer,
+    ) -> Option<Tokens<'a>>;
 
-        // Merging failed, so write this token out and continue.
-        // write_index points to the previous token's spot, so we need to increment it.
-        write_index += 1;
-        // It's okay to swap a token with itself is less efficient.
-        if write_index != read_index {
-            tokens.swap(write_index, read_index);
-        }
+    /// Converts a static variable from MIR to the target language.
+    fn lower_static<'a>(&self, val: &MIRStatic<'a>, info: Self::Writer) -> Tokens<'a>;
 
-        read_index += 1;
-    }
+    /// Converts an expression from MIR to the target language.
+    fn lower_expression<'a>(&self, expr: &MIRExpression<'a>, info: Self::Writer) -> Tokens<'a>;
 
-    // write_index points to the last token's index, so decrease the total length to match.
-    tokens.truncate(write_index + 1);
+    /// Lowers a function source into a callable form.
+    fn lower_fn_source<'a>(&self, src: &MIRFnSource<'a>, info: Self::Writer) -> Tokens<'a>;
+
+    /// Converts a datatype from MIR to the target language.
+    /// Returns (prefix, postfix) where a variable can be constructed as:
+    /// {PREFIX} name{POSTFIX}.
+    fn lower_datatype<'a>(&self, ty: &MIRType<'a>, info: Self::Writer) -> (Tokens<'a>, Tokens<'a>);
+
+    /// Adds a datatype to a variable/function name.
+    fn decorate_with_type<'a>(
+        &self,
+        name: Cow<'a, str>,
+        ty: &MIRType<'a>,
+        info: Self::Writer,
+    ) -> Tokens<'a>;
+
+    /// Lowers a child expression and correctly wraps it in parentheses if needed.
+    fn lower_wrap_expression<'a>(
+        &self,
+        expr: &MIRExpression<'a>,
+        outer: &MIRExpression<'a>,
+        info: Self::Writer,
+    ) -> Tokens<'a>;
+
+    /// Returns the precedence of an operator, or None if precedence
+    /// doesn't apply to it (e.g., variable / literals).
+    ///
+    /// Given outer(a, inner(b, c)), inner must be wrapped if its precedence
+    /// number is higher than outer's. If inner/outer has no precedence, then it
+    /// needs no wrapping.
+    fn precedence(&self, op: &MIRExpressionInner) -> Option<usize>;
 }
-
-/// Removes all fancy tokens from the given list of tokens.
-pub fn strip_fancy_tokens<'a, T: Token<'a>>(tokens: &mut Tokens<T>) {
-    tokens.retain(|token| token.style() != TokenStyle::Fancy);
-}
-
-/// Creates a new instance of `Tokens` filled with the given elements.
-/// Other `Tokens` can be spread into this new instance by writing `...tokens`.
-/// Elements may be evaluated multiple times, and therefore MUST not have side effects.
-macro_rules! spread {
-    // -- Count --
-
-    (@count ... $collection:expr) => {
-        $collection.len()
-    };
-    (@count ... $collection:expr, $( $rest:tt )* ) => {
-        $collection.len() + spread!(@count $( $rest )* )
-    };
-
-    (@count) => { 0 };
-    (@count $e:expr) => { 1 };
-    (@count $e:expr, $( $rest:tt )* ) => {
-        1 + spread!(@count $( $rest )* )
-    };
-
-    // -- Fill --
-
-    (@fill $v:ident, ... $collection:expr) => {
-        $v.extend($collection);
-    };
-    (@fill $v:ident, ... $collection:expr, $( $rest:tt )* ) => {
-        $v.extend($collection);
-        spread!(@fill $v, $( $rest )*);
-    };
-
-    (@fill $v:ident, $e:expr) => {
-        $v.push($e);
-    };
-    (@fill $v:ident, $e:expr, $( $rest:tt )* ) => {
-        $v.push($e);
-        spread!(@fill $v, $( $rest )*);
-    };
-    (@fill $v:ident, ) => {};
-
-    // -- Entry --
-
-    [ $( $tt:tt )* ] => {
-        {
-            let cap = spread!(@count $( $tt )*);
-            #[allow(unused_mut)]
-            let mut v = Tokens::with_capacity(cap);
-
-            spread!(@fill v, $( $tt )*);
-
-            v
-        }
-    };
-}
-
-pub(crate) use spread;
