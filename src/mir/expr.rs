@@ -1,3 +1,4 @@
+use crate::mir::interpreter::Interpreter;
 use crate::mir::scope::StatementExplorer;
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
@@ -5,27 +6,37 @@ use crate::mir::{
 };
 use indexmap::IndexMap;
 use std::borrow::Cow;
-use std::collections::HashSet;
 
 /// Attempts to evaluate all constants and statics, returning
 /// whether it was successful.
-pub fn const_eval(ctx: &mut MIRContext<'_>) -> bool {
-    let mut current_evals = HashSet::new();
-    let mut done_evals = HashSet::new();
-
+pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a>) -> bool {
     let const_names = ctx.program.constants.keys().cloned().collect::<Vec<_>>();
     let static_names = ctx.program.statics.keys().cloned().collect::<Vec<_>>();
 
     for constant in const_names {
-        if !eval_constant(ctx, constant, &mut current_evals, &mut done_evals) {
+        let Ok(value) = interpreter.eval_const(&constant) else {
             return false;
-        }
+        };
+
+        ctx.program
+            .constants
+            .get_mut(&constant)
+            .unwrap()
+            .value
+            .inner = value.into();
     }
 
     for static_name in static_names {
-        if !eval_static(ctx, static_name) {
+        let Ok(value) = interpreter.eval_static(&static_name) else {
             return false;
-        }
+        };
+
+        ctx.program
+            .statics
+            .get_mut(&static_name)
+            .unwrap()
+            .value
+            .inner = value.into();
     }
 
     true
@@ -90,78 +101,6 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
             return false;
         }
     }
-
-    true
-}
-
-/// Attempts to evaluate a constant, returning
-/// whether it was successful.
-/// Evaluation means that it's reduced to a primitive.
-fn eval_constant<'a>(
-    ctx: &mut MIRContext<'a>,
-    constant_name: Cow<'a, str>,
-    current_evals: &mut HashSet<Cow<'a, str>>,
-    done_evals: &mut HashSet<Cow<'a, str>>,
-) -> bool {
-    if done_evals.contains(&constant_name) {
-        // Already done.
-        return true;
-    }
-
-    if current_evals.contains(&constant_name) {
-        // Eval loop.
-        eprintln!("Constant loop detected: {current_evals:?}");
-        return false;
-    }
-
-    current_evals.insert(constant_name.clone());
-
-    let old_expr = ctx.program.constants[&constant_name].value.clone();
-    let reduced = reduce_expr(&old_expr, &mut |name| {
-        // Ensure the constant exists.
-        if !ctx.program.constants.contains_key(&name) {
-            return None;
-        }
-
-        // Ensure the constant is evaluated.
-        if !eval_constant(ctx, name.clone(), current_evals, done_evals) {
-            return None;
-        }
-
-        // No need to validate that this is a primitive here,
-        // since eval_constant already does that.
-        Some(ctx.program.constants[&name].value.clone())
-    });
-
-    // Constants must be fully reduced.
-    if !matches!(reduced.inner, MIRExpressionInner::Number(..)) {
-        eprintln!("Failed to reduce constant to a number: {:?}", &old_expr);
-        return false;
-    }
-
-    ctx.program.constants.get_mut(&constant_name).unwrap().value = reduced;
-
-    current_evals.remove(&constant_name);
-    done_evals.insert(constant_name);
-
-    true
-}
-
-/// Attempts to evaluate a static, returning
-/// whether it was successful.
-/// This MUST occur after constant evaluation.
-/// Evaluation means that it's reduced to a primitive.
-fn eval_static<'a>(ctx: &mut MIRContext<'a>, constant_name: Cow<'a, str>) -> bool {
-    let old_expr = ctx.program.statics[&constant_name].value.clone();
-    let reduced = reduce_expr_simple(&ctx.program.constants, &old_expr);
-
-    // Statics must be fully reduced.
-    if !matches!(reduced.inner, MIRExpressionInner::Number(..)) {
-        eprintln!("Failed to reduce static to a number: {:?}", &old_expr);
-        return false;
-    }
-
-    ctx.program.statics.get_mut(&constant_name).unwrap().value = reduced;
 
     true
 }

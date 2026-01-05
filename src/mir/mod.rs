@@ -2,14 +2,14 @@ mod display;
 mod drop;
 mod expr;
 mod function;
-mod label;
+mod interpreter;
 mod scope;
 mod type_check;
 
 use crate::mir::drop::drop_at_scope_end;
 use crate::mir::expr::{const_eval, const_optimize_expr};
 use crate::mir::function::{insert_fn_arg_args, resolve_fns_to_vars};
-use crate::mir::label::rename_labels;
+use crate::mir::interpreter::Interpreter;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 /// Context that can be used
 /// throughout the MIR processing.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MIRContext<'a> {
     /// The current program.
     pub program: MIRProgram<'a>,
@@ -43,9 +43,16 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         return false;
     }
 
+    // The interpreter runs in its own scope, to avoid messing
+    // with our MIR.
+    // It applies some passes which can't be easily translated back.
+    let Ok(mut interpreter) = Interpreter::new(ctx.clone()) else {
+        return false;
+    };
+
     // Type information now exists.
 
-    if !const_eval(ctx) {
+    if !const_eval(ctx, &mut interpreter) {
         return false;
     }
 
@@ -63,13 +70,6 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     // All variables are now dropped, including
     // arg variables.
 
-    // This needs to happen after all
-    // operations that create labels.
-    rename_labels(ctx);
-
-    // Labels are now unique and ready
-    // to be processed in asm.
-
     true
 }
 
@@ -77,7 +77,7 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 /// Every name must be unique
 /// among all named items contained
 /// inside here.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MIRProgram<'a> {
     /// A list of constants in the program.
     /// Name -> Constant data.
@@ -238,6 +238,10 @@ pub enum MIRStatement<'a> {
         /// The name of the label to jump to.
         name: Cow<'a, str>,
 
+        /// The goto label's index in MIR.
+        /// This is added in late passes of the interpreter.
+        index: Option<usize>,
+
         /// The code that created
         /// this item.
         span: Span<'a>,
@@ -248,6 +252,10 @@ pub enum MIRStatement<'a> {
     GotoNotEqual {
         /// The name of the label to jump to.
         name: Cow<'a, str>,
+
+        /// The goto label's index in MIR.
+        /// This is added in late passes of the interpreter.
+        index: Option<usize>,
 
         /// The condition to check.
         /// If it's false, we'll jump.

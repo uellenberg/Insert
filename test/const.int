@@ -1,0 +1,15 @@
+function complexCalculations(a: u32) -> u32 {
+    let i: u32 = 0;
+    loop {
+        if i >= a {
+            break;
+        }
+
+        i = i + 1;
+    }
+
+    return i;
+}
+
+const value1: u32 = complexCalculations(10);
+static value: u32 = value1;
