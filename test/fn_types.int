@@ -1,0 +1,19 @@
+function main() {
+    let val: u32 = used();
+    val = addOne(val);
+    addOne(15);
+    used();
+    let res: u32 = addOne(addOne(val));
+}
+
+helper function used() -> u32 {
+    return 10;
+}
+
+helper function unused() -> u32 {
+    return 11;
+}
+
+inline function addOne(a: u32) -> u32 {
+    return a + 1;
+}

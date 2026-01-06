@@ -1,6 +1,6 @@
 use crate::mir::{
     MIRConstant, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
-    MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
@@ -68,6 +68,12 @@ impl<'a> Display for MIRStatic<'a> {
 
 impl<'a> Display for MIRFunction<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.fn_type {
+            MIRFunctionType::Export => {}
+            MIRFunctionType::Inline => write!(f, "inline ")?,
+            MIRFunctionType::Helper => write!(f, "helper ")?,
+        }
+
         write!(f, "function {}(", &self.name)?;
         for (i, arg) in self.args.iter().enumerate() {
             if i > 0 {
@@ -248,6 +254,7 @@ impl<'a> Display for MIRExpressionInner<'a> {
             // TODO: Is escaping here worth it?
             MIRExpressionInner::String(val) => write!(f, "\"{}\"", val),
             MIRExpressionInner::Bool(val) => write!(f, "{}", val),
+            MIRExpressionInner::Unit => write!(f, "()"),
             MIRExpressionInner::Variable(name) => write!(f, "{}", name),
             MIRExpressionInner::FunctionCall(fn_call) => (**fn_call).fmt(f),
         }

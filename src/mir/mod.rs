@@ -8,7 +8,9 @@ mod type_check;
 
 use crate::mir::drop::drop_at_scope_end;
 use crate::mir::expr::{const_eval, const_optimize_expr};
-use crate::mir::function::{insert_fn_arg_args, resolve_fns_to_vars};
+use crate::mir::function::{
+    export_functions, export_helpers, inline_functions, insert_fn_arg_args, resolve_fns_to_vars,
+};
 use crate::mir::interpreter::Interpreter;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
@@ -43,14 +45,18 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         return false;
     }
 
+    // Type information now exists.
+
+    if !inline_functions(ctx) {
+        return false;
+    }
+
     // The interpreter runs in its own scope, to avoid messing
     // with our MIR.
     // It applies some passes which can't be easily translated back.
     let Ok(mut interpreter) = Interpreter::new(ctx.clone()) else {
         return false;
     };
-
-    // Type information now exists.
 
     if !const_eval(ctx, &mut interpreter) {
         return false;
@@ -69,6 +75,16 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // All variables are now dropped, including
     // arg variables.
+
+    // TODO: Add a pass to remove unit variables (probably part of SSA -> function scope var generation).
+
+    export_helpers(ctx);
+
+    // Helper functions are now exported when needed.
+
+    export_functions(ctx);
+
+    // Non-export functions are now removed.
 
     true
 }
@@ -130,11 +146,28 @@ pub struct MIRStatic<'a> {
     pub span: Span<'a>,
 }
 
+/// The function's type (how it should be used and emitted).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MIRFunctionType {
+    /// Exported to the target code.
+    /// The default for all functions.
+    Export,
+
+    /// Directly inlined at the call site.
+    Inline,
+
+    /// Exported only if called.
+    Helper,
+}
+
 /// A function.
 #[derive(Debug, Clone)]
 pub struct MIRFunction<'a> {
     /// The function's name.
     pub name: Cow<'a, str>,
+
+    /// The function's type (how it should be used and emitted).
+    pub fn_type: MIRFunctionType,
 
     /// The function's return type.
     pub ret_ty: MIRType<'a>,
@@ -372,6 +405,9 @@ pub enum MIRExpressionInner<'a> {
 
     /// Bool literal.
     Bool(bool),
+
+    /// Unit literal.
+    Unit,
 
     /// Variable access.
     Variable(Cow<'a, str>),

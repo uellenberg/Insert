@@ -3,7 +3,7 @@ pub mod span;
 
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
-    MIRFunction, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
+    MIRFunction, MIRFunctionType, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
 use ariadne::{ColorGenerator, Label, Report, ReportKind};
 use pest::Parser;
@@ -155,7 +155,22 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let identifier = data.next().unwrap().as_str();
+    let fn_type;
+    let identifier;
+
+    let first_pair = data.next().unwrap();
+    if first_pair.as_rule() == Rule::identifier {
+        fn_type = MIRFunctionType::Export;
+        identifier = first_pair.as_str();
+    } else {
+        fn_type = match first_pair.as_rule() {
+            Rule::inlineOut => MIRFunctionType::Inline,
+            Rule::helperOut => MIRFunctionType::Helper,
+            _ => unreachable!(),
+        };
+        identifier = data.next().unwrap().as_str();
+    }
+
     let mut args = vec![];
     let mut ret = MIRType {
         ty: MIRTypeInner::Unit,
@@ -175,6 +190,7 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
                 // Function body is the last item.
                 return MIRFunction {
                     name: Cow::Borrowed(identifier),
+                    fn_type,
                     args,
                     ret_ty: ret,
                     body: parse_function_body(location, pair),

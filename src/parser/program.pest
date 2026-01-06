@@ -9,6 +9,7 @@ staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ 
 constDeclaration = { const_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
 
 functionDeclaration = {
+    (inlineOut | helperOut)? ~
     function ~
     space ~
     identifier ~
@@ -163,5 +164,10 @@ else_ = _{ "else" }
 loop_ = _{ "loop" }
 break_ = _{ "break" }
 continue_ = _{ "continue" }
+inline = _{ "inline" }
+helper = _{ "helper" }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ }
+inlineOut = { inline }
+helperOut = { helper }
+
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper }

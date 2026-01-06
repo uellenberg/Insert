@@ -51,45 +51,11 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
         let res = <StatementExplorer>::explore_block_mut(
             &mut function.body,
             &|statement, _scope| {
-                match statement {
-                    // No expressions.
-                    MIRStatement::CreateVariable { value: None, .. } => {}
-                    MIRStatement::DropVariable(..) => {}
-                    MIRStatement::Goto { .. } => {}
-                    MIRStatement::Label { .. } => {}
-                    MIRStatement::ContinueStatement { .. } => {}
-                    MIRStatement::BreakStatement { .. } => {}
-                    MIRStatement::LoopStatement { .. } => {}
+                find_exprs_mut(statement, &mut |expr| {
+                    reduce_expr_simple(&ctx.program.constants, expr);
 
-                    MIRStatement::CreateVariable {
-                        value: Some(value), ..
-                    }
-                    | MIRStatement::SetVariable { value, .. }
-                    | MIRStatement::IfStatement {
-                        condition: value, ..
-                    }
-                    | MIRStatement::GotoNotEqual {
-                        condition: value, ..
-                    } => {
-                        *value = reduce_expr_simple(&ctx.program.constants, value);
-                    }
-
-                    MIRStatement::FunctionCall(MIRFnCall { source, args, .. }) => {
-                        if let MIRFnSource::Indirect(expr) = source {
-                            *expr = reduce_expr_simple(&ctx.program.constants, expr);
-                        }
-
-                        for arg in args {
-                            *arg = reduce_expr_simple(&ctx.program.constants, arg);
-                        }
-                    }
-
-                    MIRStatement::Return { expr, .. } => {
-                        if let Some(expr) = expr {
-                            *expr = reduce_expr_simple(&ctx.program.constants, expr);
-                        }
-                    }
-                }
+                    true
+                });
 
                 true
             },
@@ -110,8 +76,8 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
 /// This MUST be run after constant evaluation.
 fn reduce_expr_simple<'a>(
     constants: &IndexMap<Cow<'a, str>, MIRConstant<'a>>,
-    expr: &MIRExpression<'a>,
-) -> MIRExpression<'a> {
+    expr: &mut MIRExpression<'a>,
+) {
     reduce_expr(expr, &mut |name| {
         // Ensure the constant exists.
         if !constants.contains_key(&name) {
@@ -123,83 +89,237 @@ fn reduce_expr_simple<'a>(
         // No need to validate that this is a primitive here,
         // since eval_constant already does that.
         Some(constants[&name].value.clone())
-    })
+    });
 }
 
 /// Attempts to reduce an expression
 /// using simple constant evaluation.
 fn reduce_expr<'a>(
-    expr: &MIRExpression<'a>,
+    expr: &mut MIRExpression<'a>,
     get_const: &mut impl FnMut(Cow<'a, str>) -> Option<MIRExpression<'a>>,
-) -> MIRExpression<'a> {
+) {
     macro_rules! simple_binary {
-        ($left:expr, $right:expr, $($red_i:path)|+, $red_o:path, $op:tt, $ret:path) => {{
+        ($left:expr, $right:expr, $($red_i:path)|+, $red_o:path, $op:tt) => {{
             use MIRExpressionInner::*;
 
-            let left = reduce_expr($left, get_const);
-            let right = reduce_expr($right, get_const);
-
-            $(if let $red_i(left, ..) = left.inner {
-                if let $red_i(right, ..) = right.inner {
-                    return $red_o(left $op right);
+            $(if let $red_i(left, ..) = $left.inner {
+                if let $red_i(right, ..) = $right.inner {
+                    return Some($red_o(left $op right));
                 }
             })+
 
-            $ret(Box::new(left), Box::new(right))
+            None
         }};
     }
 
-    let new_expr = (|| match &expr.inner {
-        MIRExpressionInner::Add(left, right) => {
-            simple_binary!(left, right, Number, Number, +, Add)
-        }
-        MIRExpressionInner::Sub(left, right) => {
-            simple_binary!(left, right, Number, Number, -, Sub)
-        }
-        MIRExpressionInner::Mul(left, right) => {
-            simple_binary!(left, right, Number, Number, *, Mul)
-        }
-        MIRExpressionInner::Div(left, right) => {
-            simple_binary!(left, right, Number, Number, /, Div)
-        }
-        MIRExpressionInner::Equal(left, right) => {
-            simple_binary!(left, right, Number | Bool, Bool, ==, Equal)
-        }
-        MIRExpressionInner::NotEqual(left, right) => {
-            simple_binary!(left, right, Number | Bool, Bool, !=, NotEqual)
-        }
-        MIRExpressionInner::Greater(left, right) => {
-            simple_binary!(left, right, Number | Bool, Bool, >, Greater)
-        }
-        MIRExpressionInner::Less(left, right) => {
-            simple_binary!(left, right, Number | Bool, Bool, <, Less)
-        }
-        MIRExpressionInner::GreaterEq(left, right) => {
-            simple_binary!(left, right, Number | Bool, Bool, >=, GreaterEq)
-        }
-        MIRExpressionInner::LessEq(left, right) => {
-            simple_binary!(left, right, Number | Bool, Bool, <=, LessEq)
-        }
-        MIRExpressionInner::BoolAnd(left, right) => {
-            simple_binary!(left, right, Bool, Bool, &&, BoolAnd)
-        }
-        MIRExpressionInner::BoolOr(left, right) => {
-            simple_binary!(left, right, Bool, Bool, ||, BoolOr)
-        }
-        MIRExpressionInner::Number(val) => MIRExpressionInner::Number(*val),
-        MIRExpressionInner::String(val) => MIRExpressionInner::String(val.clone()),
-        MIRExpressionInner::Bool(val) => MIRExpressionInner::Bool(*val),
-        MIRExpressionInner::Variable(name) => get_const(name.clone())
-            .map(|v| v.inner)
-            .unwrap_or(MIRExpressionInner::Variable(name.clone())),
-        MIRExpressionInner::FunctionCall(fn_data) => {
-            MIRExpressionInner::FunctionCall(fn_data.clone())
-        }
-    })();
+    explore_expr_mut(expr, &mut |expr| {
+        let new_expr = (|| match &expr.inner {
+            MIRExpressionInner::Add(left, right) => {
+                simple_binary!(left, right, Number, Number, +)
+            }
+            MIRExpressionInner::Sub(left, right) => {
+                simple_binary!(left, right, Number, Number, -)
+            }
+            MIRExpressionInner::Mul(left, right) => {
+                simple_binary!(left, right, Number, Number, *)
+            }
+            MIRExpressionInner::Div(left, right) => {
+                simple_binary!(left, right, Number, Number, /)
+            }
+            MIRExpressionInner::Equal(left, right) => {
+                simple_binary!(left, right, Number | Bool, Bool, ==)
+            }
+            MIRExpressionInner::NotEqual(left, right) => {
+                simple_binary!(left, right, Number | Bool, Bool, !=)
+            }
+            MIRExpressionInner::Greater(left, right) => {
+                simple_binary!(left, right, Number | Bool, Bool, >)
+            }
+            MIRExpressionInner::Less(left, right) => {
+                simple_binary!(left, right, Number | Bool, Bool, <)
+            }
+            MIRExpressionInner::GreaterEq(left, right) => {
+                simple_binary!(left, right, Number | Bool, Bool, >=)
+            }
+            MIRExpressionInner::LessEq(left, right) => {
+                simple_binary!(left, right, Number | Bool, Bool, <=)
+            }
+            MIRExpressionInner::BoolAnd(left, right) => {
+                simple_binary!(left, right, Bool, Bool, &&)
+            }
+            MIRExpressionInner::BoolOr(left, right) => {
+                simple_binary!(left, right, Bool, Bool, ||)
+            }
 
-    MIRExpression {
-        inner: new_expr,
-        ty: expr.ty.clone(),
-        span: expr.span.clone(),
-    }
+            MIRExpressionInner::Variable(name) => get_const(name.clone()).map(|v| v.inner),
+
+            // Already fully simplified.
+            MIRExpressionInner::Number(_)
+            | MIRExpressionInner::String(_)
+            | MIRExpressionInner::Bool(_)
+            | MIRExpressionInner::Unit
+            | MIRExpressionInner::FunctionCall(_) => None,
+        })();
+
+        if let Some(new_expr) = new_expr {
+            expr.inner = new_expr;
+        }
+
+        true
+    });
+}
+
+macro_rules! explore_expr_body {
+    ($recurse:expr, $expr:expr, $inner_expr_ref:expr, $fn_data:ident => ($fn_source:expr, $fn_args:expr), $visit:expr) => {{
+        macro_rules! binary_recurse {
+            ($left:expr, $right:expr) => {{
+                if !$recurse($left, $visit) {
+                    return false;
+                }
+                if !$recurse($right, $visit) {
+                    return false;
+                }
+            }};
+        }
+
+        match $inner_expr_ref {
+            MIRExpressionInner::Add(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Sub(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Mul(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Div(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Equal(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::NotEqual(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Greater(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Less(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::GreaterEq(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::LessEq(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::BoolAnd(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::BoolOr(left, right) => binary_recurse!(left, right),
+
+            MIRExpressionInner::FunctionCall($fn_data) => {
+                if let MIRFnSource::Indirect(expr) = $fn_source {
+                    if !$recurse(expr, $visit) {
+                        return false;
+                    }
+                }
+
+                for arg in $fn_args {
+                    if !$recurse(arg, $visit) {
+                        return false;
+                    }
+                }
+            }
+
+            // No inner expressions.
+            MIRExpressionInner::Number(_)
+            | MIRExpressionInner::String(_)
+            | MIRExpressionInner::Bool(_)
+            | MIRExpressionInner::Unit
+            | MIRExpressionInner::Variable(_) => {}
+        }
+
+        if !$visit($expr) {
+            return false;
+        }
+
+        true
+    }};
+}
+
+/// Recursively traverses an expression,
+/// calling the visit function on each expression
+/// bottom-up (visit is called after visiting children).
+/// The visit function should return true on success,
+/// and this function will return whether all visits
+/// succeeded.
+pub fn explore_expr<'a>(
+    expr: &MIRExpression<'a>,
+    visit: &mut impl FnMut(&MIRExpression<'a>) -> bool,
+) -> bool {
+    explore_expr_body!(explore_expr, expr, &expr.inner, fn_data => (&fn_data.source, &fn_data.args), visit)
+}
+
+/// Recursively traverses an expression,
+/// calling the rewrite on each expression
+/// bottom-up (rewrite is called after visiting children).
+/// The rewrite function should return true on success,
+/// and this function will return whether all rewrites
+/// succeeded.
+pub fn explore_expr_mut<'a>(
+    expr: &mut MIRExpression<'a>,
+    rewrite: &mut impl FnMut(&mut MIRExpression<'a>) -> bool,
+) -> bool {
+    explore_expr_body!(explore_expr_mut, expr, &mut expr.inner, fn_data => (&mut fn_data.source, &mut fn_data.args), rewrite)
+}
+
+macro_rules! extract_expr_body {
+    ($statement:expr, $for_each:expr) => {{
+        match $statement {
+            // No expressions.
+            MIRStatement::CreateVariable { value: None, .. } => {}
+            MIRStatement::DropVariable(..) => {}
+            MIRStatement::Goto { .. } => {}
+            MIRStatement::Label { .. } => {}
+            MIRStatement::ContinueStatement { .. } => {}
+            MIRStatement::BreakStatement { .. } => {}
+            MIRStatement::LoopStatement { .. } => {}
+
+            MIRStatement::CreateVariable {
+                value: Some(value), ..
+            }
+            | MIRStatement::SetVariable { value, .. }
+            | MIRStatement::IfStatement {
+                condition: value, ..
+            }
+            | MIRStatement::GotoNotEqual {
+                condition: value, ..
+            } => {
+                if !$for_each(value) {
+                    return false;
+                }
+            }
+
+            MIRStatement::FunctionCall(MIRFnCall { source, args, .. }) => {
+                if let MIRFnSource::Indirect(expr) = source {
+                    if !$for_each(expr) {
+                        return false;
+                    }
+                }
+
+                for arg in args {
+                    if !$for_each(arg) {
+                        return false;
+                    }
+                }
+            }
+
+            MIRStatement::Return { expr, .. } => {
+                if let Some(expr) = expr {
+                    if !$for_each(expr) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }};
+}
+
+/// Extracts all expressions from a statement
+/// and runs the for_each function on them.
+pub fn find_exprs<'a, 'b>(
+    statement: &'b MIRStatement<'a>,
+    for_each: &mut impl FnMut(&'b MIRExpression<'a>) -> bool,
+) -> bool {
+    extract_expr_body!(statement, for_each)
+}
+
+/// Extracts all expressions from a statement
+/// and runs the rewrite function on them.
+pub fn find_exprs_mut<'a, 'b>(
+    statement: &'b mut MIRStatement<'a>,
+    rewrite: &mut impl FnMut(&'b mut MIRExpression<'a>) -> bool,
+) -> bool {
+    extract_expr_body!(statement, rewrite)
 }

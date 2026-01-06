@@ -1,5 +1,5 @@
 function complexCalculations(a: u32) -> u32 {
-    let i: u32 = 0;
+    let i: u32 = 0 + 0 * 100;
     loop {
         if i >= a {
             break;

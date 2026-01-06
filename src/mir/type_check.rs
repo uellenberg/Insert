@@ -522,9 +522,10 @@ fn check_expression<'a>(
             }
             MIRExpressionInner::Variable(name, ..) => {
                 if let Some(scope) = scope
-                    && let Some(var) = scope.get_variable(name) {
-                        return Some(var.ty.clone());
-                    }
+                    && let Some(var) = scope.get_variable(name)
+                {
+                    return Some(var.ty.clone());
+                }
 
                 if let Some(var) = ctx.program.constants.get(name) {
                     return Some(var.ty.clone());
@@ -580,6 +581,11 @@ fn check_expression<'a>(
             }),
             MIRExpressionInner::Bool(_) => Some(MIRType {
                 ty: MIRTypeInner::Bool,
+                // Span is added after.
+                span: None,
+            }),
+            MIRExpressionInner::Unit => Some(MIRType {
+                ty: MIRTypeInner::Unit,
                 // Span is added after.
                 span: None,
             }),

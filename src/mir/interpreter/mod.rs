@@ -235,6 +235,7 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::Number(val) => Ok(InterpreterData::U32(*val as u32)),
             MIRExpressionInner::String(val) => Ok(InterpreterData::String(val.clone())),
             MIRExpressionInner::Bool(val) => Ok(InterpreterData::Bool(*val)),
+            MIRExpressionInner::Unit => Ok(InterpreterData::Unit(())),
             MIRExpressionInner::Variable(name) => {
                 if let Some(data) = scope.variables.get(name) {
                     return Ok(data.as_ref().expect("Variable has not been set!").clone());
