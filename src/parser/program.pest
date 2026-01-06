@@ -4,12 +4,12 @@ program = _{
     EOI
 }
 
-staticDeclaration = { "static" ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
+staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
 
-constDeclaration = { "const" ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
+constDeclaration = { const_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
 
 functionDeclaration = {
-    "function" ~
+    function ~
     space ~
     identifier ~
     "(" ~
@@ -46,9 +46,9 @@ functionStatement = _{
     | setVariable
 }
 
-createVariable = { "let" ~ space ~ identifier ~ ":" ~ variableType ~ ";" }
+createVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ ";" }
 
-createSetVariable = { "let" ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";" }
+createSetVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";" }
 
 setVariable = { identifier ~ "=" ~ expression ~ ";" }
 
@@ -62,10 +62,10 @@ functionCallArgs = {
     expression ~ ("," ~ expression)* ~ ","?
 }
 
-returnStmt = { "return" ~ expression? ~ ";" }
+returnStmt = { return_ ~ expression? ~ ";" }
 
 ifStatement = {
-    "if" ~
+    if_ ~
     expression ~
     "{" ~
     functionBody ~
@@ -74,7 +74,7 @@ ifStatement = {
 }
 
 ifElse = {
-    "else" ~
+    else_ ~
     (
         ifStatement
         | (
@@ -86,12 +86,12 @@ ifElse = {
 }
 
 loopStatement = {
-    "loop" ~ "{" ~ functionBody ~ "}"
+    loop_ ~ "{" ~ functionBody ~ "}"
 }
 
-breakStatement = { "break" ~ ";" }
+breakStatement = { break_ ~ ";" }
 
-continueStatement = { "continue" ~ ";" }
+continueStatement = { continue_ ~ ";" }
 
 variableType = { "u32" | "bool" | "()" | "string" }
 
@@ -130,6 +130,7 @@ additionOp = { "+" | "-" }
 multiplicationOp = { "*" | "/" }
 
 identifier = @{
+    !keyword ~
     (ASCII_ALPHA | "_") ~
     (ASCII_ALPHA | ASCII_DIGIT | "_")*
 }
@@ -151,3 +152,16 @@ boolLiteral = { "true" | "false" }
 space = _{ WHITESPACE* }
 
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+static_ = _{ "static" }
+const_ = _{ "const" }
+function = _{ "function" }
+let_ = _{ "let" }
+return_ = _{ "return" }
+if_ = _{ "if" }
+else_ = _{ "else" }
+loop_ = _{ "loop" }
+break_ = _{ "break" }
+continue_ = _{ "continue" }
+
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ }
