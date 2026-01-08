@@ -94,7 +94,7 @@ breakStatement = { break_ ~ ";" }
 
 continueStatement = { continue_ ~ ";" }
 
-variableType = { "u32" | "bool" | "()" | "string" }
+variableType = { "i32" | "u32" | "bool" | "()" | "string" }
 
 expression = { logical }
 
@@ -139,7 +139,8 @@ identifier = @{
 number = @{
     "-"? ~
     ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~
-    ("." ~ ASCII_DIGIT*)?
+    ("." ~ ASCII_DIGIT*)? ~
+    ("i32" | "u32")?
 }
 
 string  = ${ "\"" ~ (stringInner | stringEscape)* ~ "\"" }

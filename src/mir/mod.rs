@@ -398,7 +398,10 @@ pub enum MIRExpressionInner<'a> {
     BoolOr(Box<MIRExpression<'a>>, Box<MIRExpression<'a>>),
 
     /// Number literal.
-    Number(i64),
+    /// Using 128-bit is less efficient but lets us
+    /// get away with not specializing this to the
+    /// number type (e.g., u64 and i64 both fit within it).
+    Number(i128),
 
     /// String literal (language-dependent).
     String(Cow<'a, str>),
@@ -434,6 +437,14 @@ pub struct MIRType<'a> {
 /// The type of data a variable represents.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MIRTypeInner<'a> {
+    /// A currently unresolved number.
+    /// This is eliminated during type checking, and defaults
+    /// to i32 if there's any ambiguity.
+    UnknownNumber,
+
+    /// Signed 32-bit integer.
+    I32,
+
     /// Unsigned 32-bit integer.
     U32,
 
@@ -456,6 +467,8 @@ pub enum MIRTypeInner<'a> {
 impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
     fn from(value: MIRTypeInner<'a>) -> Self {
         match value {
+            MIRTypeInner::UnknownNumber => Cow::Borrowed("number"),
+            MIRTypeInner::I32 => Cow::Borrowed("i32"),
             MIRTypeInner::U32 => Cow::Borrowed("u32"),
             MIRTypeInner::Unit => Cow::Borrowed("()"),
             MIRTypeInner::Bool => Cow::Borrowed("bool"),

@@ -1,4 +1,4 @@
-use crate::mir::{MIRExpression, MIRExpressionInner, MIRFnSource, MIRStatement, MIRVariable};
+use crate::mir::{MIRStatement, MIRVariable};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::marker::PhantomData;

@@ -295,6 +295,8 @@ impl Codegen for CLowerer {
         _info: Self::Writer,
     ) -> (Tokens<'a>, Tokens<'a>) {
         match &ty.ty {
+            MIRTypeInner::UnknownNumber => unreachable!(),
+            MIRTypeInner::I32 => (spread![Token::new("int".into())], [].into()),
             MIRTypeInner::U32 => (
                 spread![Token::new("unsigned".into()), Token::new("int".into())],
                 [].into(),

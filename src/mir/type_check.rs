@@ -17,20 +17,30 @@ pub fn type_check(ctx: &mut MIRContext<'_>) -> bool {
     let mut statics = ctx.program.statics.clone();
     let mut functions = ctx.program.functions.clone();
 
+    // All of these have two passes to fully resolve types.
+    // Both passes pull type information from bottom to top and
+    // from top to bottom.
+    // In effect, the first pass will propagate type information
+    // upwards, and the second pass will push it downwards.
+    // This lets us resolve code like:
+    // let val: u32 = 1 + 2;
+    // Here, the expression 1 + 2 will normally be given the type u32,
+    // but we need the downwards pass to give 1 and 2 that type as well.
+
     for constant in constants.values_mut() {
-        if !check_constant(ctx, constant) {
+        if !check_constant(ctx, constant) || !check_constant(ctx, constant) {
             return false;
         }
     }
 
     for static_data in statics.values_mut() {
-        if !check_static(ctx, static_data) {
+        if !check_static(ctx, static_data) || !check_static(ctx, static_data) {
             return false;
         }
     }
 
     for function in functions.values_mut() {
-        if !check_function(ctx, function) {
+        if !check_function(ctx, function) || !check_function(ctx, function) {
             return false;
         }
     }
@@ -113,11 +123,11 @@ fn check_constant<'a>(ctx: &MIRContext<'a>, constant: &mut MIRConstant<'a>) -> b
         return false;
     };
 
-    if expr_type.ty != constant.ty.ty {
+    if !types_equal(expr_type, &mut constant.ty) {
         print_unexpected_expr_ty(
             ctx,
             constant.ty.clone(),
-            expr_type,
+            expr_type.clone(),
             constant.value.span.clone(),
         );
 
@@ -134,11 +144,11 @@ fn check_static<'a>(ctx: &MIRContext<'a>, static_data: &mut MIRStatic<'a>) -> bo
         return false;
     };
 
-    if expr_type.ty != static_data.ty.ty {
+    if !types_equal(expr_type, &mut static_data.ty) {
         print_unexpected_expr_ty(
             ctx,
             static_data.ty.clone(),
-            expr_type,
+            expr_type.clone(),
             static_data.value.span.clone(),
         );
 
@@ -175,15 +185,20 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         return false;
                     };
 
-                    if ty.ty != var.ty.ty {
-                        print_unexpected_expr_ty(ctx, var.ty.clone(), ty, value.span.clone());
+                    if !types_equal(ty, &mut var.ty) {
+                        print_unexpected_expr_ty(
+                            ctx,
+                            var.ty.clone(),
+                            ty.clone(),
+                            value.span.clone(),
+                        );
 
                         return false;
                     }
                 }
 
                 MIRStatement::SetVariable { value, name, span } => {
-                    let var_ty;
+                    let mut var_ty;
 
                     if let Some(var) = scope.get_variable(name) {
                         var_ty = var.ty.clone();
@@ -201,8 +216,8 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         return false;
                     };
 
-                    if ty.ty != var_ty.ty {
-                        print_unexpected_expr_ty(ctx, var_ty, ty, value.span.clone());
+                    if !types_equal(ty, &mut var_ty) {
+                        print_unexpected_expr_ty(ctx, var_ty, ty.clone(), value.span.clone());
 
                         return false;
                     }
@@ -230,6 +245,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         return false;
                     };
 
+                    // No need for type_equal since bool can't resolve numbers.
                     if cond_ty.ty != MIRTypeInner::Bool {
                         print_unexpected_expr_ty(
                             ctx,
@@ -237,7 +253,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                                 ty: MIRTypeInner::Bool,
                                 span: Some(span.clone()),
                             },
-                            cond_ty,
+                            cond_ty.clone(),
                             condition.span.clone(),
                         );
                         return false;
@@ -250,11 +266,11 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                             return false;
                         };
 
-                        if cond_ty.ty != function.ret_ty.ty {
+                        if !types_equal(cond_ty, &mut function.ret_ty.clone()) {
                             print_unexpected_expr_ty(
                                 ctx,
                                 function.ret_ty.clone(),
-                                cond_ty,
+                                cond_ty.clone(),
                                 expr.span.clone(),
                             );
 
@@ -262,6 +278,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         }
                     }
                     None => {
+                        // No need for type_equal since unit can't resolve numbers.
                         if function.ret_ty.ty != MIRTypeInner::Unit {
                             print_unexpected_expr_ty(
                                 ctx,
@@ -297,7 +314,7 @@ fn check_fn_call<'a>(
     ret_ty: &mut Option<MIRType<'a>>,
     span: &Span<'a>,
 ) -> bool {
-    let expected_ty = match source {
+    let mut expected_ty = match source {
         MIRFnSource::Direct(name, _span) => {
             let Some(fn_data) = ctx.program.functions.get(name) else {
                 // TODO: Function not found error.
@@ -312,7 +329,7 @@ fn check_fn_call<'a>(
                 return false;
             };
 
-            ty
+            ty.clone()
         }
     };
 
@@ -323,7 +340,7 @@ fn check_fn_call<'a>(
         }
     }
 
-    let actual_args = args
+    let mut actual_args = args
         .iter()
         .map(|arg| {
             arg.ty
@@ -345,10 +362,11 @@ fn check_fn_call<'a>(
     };
 
     // Ensure that we have a function type.
-    let MIRTypeInner::FunctionPtr(expected_args, expected_ret_ty) = &expected_ty.ty else {
+    let MIRTypeInner::FunctionPtr(expected_args, expected_ret_ty) = &mut expected_ty.ty else {
         print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
         return false;
     };
+    let expected_ret_ty = (**expected_ret_ty).clone();
 
     // Give actual_ty the correct return type.
     // We have more complete info in actual_args, so
@@ -356,8 +374,7 @@ fn check_fn_call<'a>(
     let MIRTypeInner::FunctionPtr(_, actual_ret_ty) = &mut actual_ty.ty else {
         unreachable!();
     };
-
-    **actual_ret_ty = (**expected_ret_ty).clone();
+    **actual_ret_ty = expected_ret_ty.clone();
 
     // Ensure that both function types have the
     // same arg length.
@@ -368,8 +385,8 @@ fn check_fn_call<'a>(
 
     // Ensure that individual arg types match,
     // for more granular errors.
-    for (actual, expected) in actual_args.iter().zip(expected_args.iter()) {
-        if &actual.ty != expected {
+    for (actual, expected) in actual_args.iter_mut().zip(expected_args.iter_mut()) {
+        if !types_equal_inner(&mut actual.ty, expected) {
             print_unexpected_expr_ty(
                 ctx,
                 MIRType {
@@ -384,14 +401,14 @@ fn check_fn_call<'a>(
     }
 
     // Ensure that actual matches expected.
-    if expected_ty.ty != actual_ty.ty {
+    if !types_equal(&mut expected_ty, &mut actual_ty) {
         print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
         return false;
     }
 
     // Store the computed return type.
     *ret_ty = Some(MIRType {
-        ty: (**expected_ret_ty).clone(),
+        ty: expected_ret_ty,
         span: expected_ty.span,
     });
 
@@ -447,32 +464,136 @@ fn print_left_right_unequal(
         .unwrap();
 }
 
+/// If ty1 == ty2, returns true, otherwise false.
+///
+/// This correctly resolves number types, so
+/// if UnknownNumber can be resolved, it will be.
+/// After calling this function, it is guaranteed that
+/// ty1 == ty2.
+fn types_equal<'a>(ty1: &mut MIRType<'a>, ty2: &mut MIRType<'a>) -> bool {
+    types_equal_inner(&mut ty1.ty, &mut ty2.ty)
+}
+
+/// This is the same as [types_equal] except for inner types.
+fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>) -> bool {
+    if ty1 == ty2 {
+        return true;
+    }
+
+    match (ty1, ty2) {
+        (to @ MIRTypeInner::UnknownNumber, from @ (MIRTypeInner::I32 | MIRTypeInner::U32))
+        | (from @ (MIRTypeInner::I32 | MIRTypeInner::U32), to @ MIRTypeInner::UnknownNumber) => {
+            *to = from.clone();
+
+            true
+        }
+        // Recursive types need special handling to fully resolve.
+        (MIRTypeInner::FunctionPtr(args1, ret1), MIRTypeInner::FunctionPtr(args2, ret2)) => {
+            if args1.len() != args2.len() {
+                return false;
+            }
+
+            // We need to be careful here, since we don't want to
+            // actually modify the types unless they fully match.
+            let mut new_ret1 = (**ret1).clone();
+            let mut new_ret2 = (**ret2).clone();
+
+            if !types_equal_inner(&mut new_ret1, &mut new_ret2) {
+                return false;
+            }
+
+            let mut new_args1 = args1.clone();
+            let mut new_args2 = args2.clone();
+
+            for (arg1, arg2) in new_args1.iter_mut().zip(new_args2.iter_mut()) {
+                if !types_equal_inner(arg1, arg2) {
+                    return false;
+                }
+            }
+
+            // The types are equal, so we can update them.
+            **ret1 = new_ret1;
+            **ret2 = new_ret2;
+
+            *args1 = new_args1;
+            *args2 = new_args2;
+
+            true
+        }
+        _ => false,
+    }
+}
+
 /// Checks whether the expression is valid,
 /// and modifies its type information to match.
 /// If it isn't, errors are reported.
 /// If it is, the expression's type is returned.
-fn check_expression<'a>(
+fn check_expression<'a, 'b>(
     ctx: &MIRContext<'a>,
-    expr: &mut MIRExpression<'a>,
+    expr: &'b mut MIRExpression<'a>,
     scope: Option<&Scope<'a>>,
-) -> Option<MIRType<'a>> {
+) -> Option<&'b mut MIRType<'a>> {
     macro_rules! simple_binary {
-        ($left:expr, $right:expr, $name:literal, internal) => {{
+        ($left:expr, $right:expr, $name:literal, $inherit_ty:expr, internal) => {{
+            // If we have inherit_ty, that means the expression's type should
+            // equal the left and right operands.
+            // This lets us propagate type information downwards, which is
+            // useful if the parent expression has context that inner one doesn't.
+            //
+            // This is done before the recursive step to allow it to fully propagate
+            // upwards in one pass. To be used effectively, we still need to run
+            // check_expression twice: once to propagate upwards and once to propagate
+            // downwards.
+            if let Some(inherit_ty) = $inherit_ty {
+                if let Some(left_ty) = &mut $left.ty
+                    && !types_equal(inherit_ty, left_ty)
+                {
+                    print_unexpected_expr_ty(
+                        ctx,
+                        inherit_ty.clone(),
+                        left_ty.clone(),
+                        $left.span.clone(),
+                    );
+                    return None;
+                }
+
+                if let Some(right_ty) = &mut $right.ty
+                    && !types_equal(inherit_ty, right_ty)
+                {
+                    print_unexpected_expr_ty(
+                        ctx,
+                        inherit_ty.clone(),
+                        right_ty.clone(),
+                        $right.span.clone(),
+                    );
+                    return None;
+                }
+            }
+
             let t_left = check_expression(ctx, $left, scope)?;
             let t_right = check_expression(ctx, $right, scope)?;
 
-            if t_left.ty != t_right.ty {
-                print_left_right_unequal(ctx, $name, t_left, t_right, expr.span.clone());
+            if !types_equal(t_left, t_right) {
+                print_left_right_unequal(
+                    ctx,
+                    $name,
+                    t_left.clone(),
+                    t_right.clone(),
+                    expr.span.clone(),
+                );
                 return None;
             }
 
-            Some(t_left)
+            // Left vs right doesn't matter.
+            Some(t_left.clone())
         }};
         ($left:expr, $right:expr, $name:literal) => {
-            simple_binary!($left, $right, $name, internal)
+            simple_binary!($left, $right, $name, &mut expr.ty, internal)
         };
         ($left:expr, $right:expr, $name:literal, $ty:expr) => {{
-            simple_binary!($left, $right, $name, internal);
+            // Types don't get pushed downwards from here (i.e., parent type
+            // has no significance to the children).
+            simple_binary!($left, $right, $name, &mut None, internal);
 
             Some(MIRType {
                 ty: $ty,
@@ -564,12 +685,17 @@ fn check_expression<'a>(
                         .expect("Function was not given a return type!"),
                 )
             }
-            MIRExpressionInner::Number(num) => {
-                // TODO: Handle negatives.
-                assert!(*num >= 0);
-
+            MIRExpressionInner::Number(val) => {
                 Some(MIRType {
-                    ty: MIRTypeInner::U32,
+                    ty: if *val < 0 {
+                        // Negative numbers must be signed.
+                        MIRTypeInner::I32
+                    } else if *val > i32::MAX as i128 {
+                        // Overflowing numbers must be unsigned.
+                        MIRTypeInner::U32
+                    } else {
+                        MIRTypeInner::UnknownNumber
+                    },
                     // Span is added after.
                     span: None,
                 })
@@ -596,11 +722,21 @@ fn check_expression<'a>(
     // whole span.
     ty.span = Some(expr.span.clone());
 
+    // If the expression already has a type, it cannot disagree with itself.
+    // This is used for, e.g., throwing an error if "-10u32" is written, and
+    // propagating the explicitly written type if it is valid.
+    if let Some(existing_ty) = &mut expr.ty {
+        if !types_equal(existing_ty, &mut ty) {
+            print_unexpected_expr_ty(ctx, existing_ty.clone(), ty.clone(), expr.span.clone());
+            return None;
+        }
+    }
+
     // Save the type for later
     // phases.
-    expr.ty = Some(ty.clone());
+    expr.ty = Some(ty);
 
     // Ensure that we return a type
     // whose span covers the entire expression.
-    expr.ty.clone()
+    (&mut expr.ty).as_mut()
 }

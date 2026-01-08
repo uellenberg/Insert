@@ -3,7 +3,9 @@ use crate::mir::interpreter::if_statement::flatten_ifs;
 use crate::mir::interpreter::label::label_to_index;
 use crate::mir::interpreter::loop_statement::flatten_loops;
 use crate::mir::type_check::type_check;
-use crate::mir::{MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRStatement};
+use crate::mir::{
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRStatement, MIRTypeInner,
+};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -26,6 +28,7 @@ pub struct Interpreter<'a> {
 /// The underlying data contained behind a variable / return value.
 #[derive(Debug, Clone)]
 pub enum InterpreterData<'a> {
+    I32(i32),
     U32(u32),
     Bool(bool),
     Unit(()),
@@ -196,34 +199,34 @@ impl<'a> Interpreter<'a> {
 
         match &expr.inner {
             MIRExpressionInner::Add(left, right) => {
-                simple_binary!(left, right, U32 > U32, +, Add)
+                simple_binary!(left, right, I32 > I32 | U32 > U32, +, Add)
             }
             MIRExpressionInner::Sub(left, right) => {
-                simple_binary!(left, right, U32 > U32, -, Sub)
+                simple_binary!(left, right, I32 > I32 | U32 > U32, -, Sub)
             }
             MIRExpressionInner::Mul(left, right) => {
-                simple_binary!(left, right, U32 > U32, *, Mul)
+                simple_binary!(left, right, I32 > I32 | U32 > U32, *, Mul)
             }
             MIRExpressionInner::Div(left, right) => {
-                simple_binary!(left, right, U32 > U32, /, Div)
+                simple_binary!(left, right, I32 > I32 | U32 > U32, /, Div)
             }
             MIRExpressionInner::Equal(left, right) => {
-                simple_binary!(left, right, U32 > Bool | Bool > Bool | Unit > Bool | String > Bool | FunctionPtr > Bool, ==, Equal)
+                simple_binary!(left, right, I32 > Bool | U32 > Bool | Bool > Bool | Unit > Bool | String > Bool | FunctionPtr > Bool, ==, Equal)
             }
             MIRExpressionInner::NotEqual(left, right) => {
-                simple_binary!(left, right, U32 > Bool | Bool > Bool | Unit > Bool | String > Bool | FunctionPtr > Bool, !=, NotEqual)
+                simple_binary!(left, right, I32 > Bool | U32 > Bool | Bool > Bool | Unit > Bool | String > Bool | FunctionPtr > Bool, !=, NotEqual)
             }
             MIRExpressionInner::Greater(left, right) => {
-                simple_binary!(left, right, U32 > Bool | Bool > Bool, >, Greater)
+                simple_binary!(left, right, I32 > Bool | U32 > Bool | Bool > Bool, >, Greater)
             }
             MIRExpressionInner::Less(left, right) => {
-                simple_binary!(left, right, U32 > Bool | Bool > Bool, <, Less)
+                simple_binary!(left, right, I32 > Bool | U32 > Bool | Bool > Bool, <, Less)
             }
             MIRExpressionInner::GreaterEq(left, right) => {
-                simple_binary!(left, right, U32 > Bool | Bool > Bool, >=, GreaterEq)
+                simple_binary!(left, right, I32 > Bool | U32 > Bool | Bool > Bool, >=, GreaterEq)
             }
             MIRExpressionInner::LessEq(left, right) => {
-                simple_binary!(left, right, U32 > Bool | Bool > Bool, <=, LessEq)
+                simple_binary!(left, right, I32 > Bool | U32 > Bool | Bool > Bool, <=, LessEq)
             }
             MIRExpressionInner::BoolAnd(left, right) => {
                 simple_binary!(left, right, Bool > Bool, &&, BoolAnd)
@@ -231,8 +234,26 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::BoolOr(left, right) => {
                 simple_binary!(left, right, Bool > Bool, ||, BoolOr)
             }
-            // TODO: Handle negatives.
-            MIRExpressionInner::Number(val) => Ok(InterpreterData::U32(*val as u32)),
+            MIRExpressionInner::Number(val) => {
+                let Some(ty) = &expr.ty else {
+                    unreachable!();
+                };
+
+                match ty.ty {
+                    MIRTypeInner::I32 => Ok(InterpreterData::I32(*val as i32)),
+                    MIRTypeInner::U32 => Ok(InterpreterData::U32(
+                        // This ensures that negatives are converted consistently.
+                        // They should wraparound, which won't happen when converting
+                        // from different size and signedness simultaneously.
+                        if *val < 0 {
+                            *val as i32 as u32
+                        } else {
+                            *val as u32
+                        },
+                    )),
+                    _ => unreachable!(),
+                }
+            }
             MIRExpressionInner::String(val) => Ok(InterpreterData::String(val.clone())),
             MIRExpressionInner::Bool(val) => Ok(InterpreterData::Bool(*val)),
             MIRExpressionInner::Unit => Ok(InterpreterData::Unit(())),
@@ -420,8 +441,8 @@ impl<'a> Interpreter<'a> {
 impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
     fn from(value: InterpreterData<'a>) -> Self {
         match value {
-            // TODO: Handle negative numbers.
-            InterpreterData::U32(v) => MIRExpressionInner::Number(v as i64),
+            InterpreterData::I32(v) => MIRExpressionInner::Number(v as i128),
+            InterpreterData::U32(v) => MIRExpressionInner::Number(v as i128),
             InterpreterData::Bool(v) => MIRExpressionInner::Bool(v),
             InterpreterData::Unit(_) => todo!("Add a unit expression to support this"),
             InterpreterData::String(v) => MIRExpressionInner::String(v),

@@ -533,8 +533,16 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
     let span = to_span(location, value.as_span());
     let data = value.into_inner().next().unwrap();
 
+    let mut ty = None;
+
     let expr = match data.as_rule() {
-        Rule::number => MIRExpressionInner::Number(parse_number(data)),
+        Rule::number => {
+            let res = parse_number(data);
+            // Type ascription from the number literal.
+            ty = res.1;
+
+            MIRExpressionInner::Number(res.0)
+        }
         Rule::string => MIRExpressionInner::String(Cow::Owned(parse_string(data))),
         Rule::functionCallDirect => {
             let mut data = data.into_inner();
@@ -584,7 +592,10 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
 
     MIRExpression {
         inner: expr,
-        ty: None,
+        ty: ty.map(|ty| MIRType {
+            ty,
+            span: Some(span.clone()),
+        }),
         span,
     }
 }
@@ -640,6 +651,7 @@ fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {
     assert_eq!(value.as_rule(), Rule::variableType);
 
     let ty = match value.as_str() {
+        "i32" => MIRTypeInner::I32,
         "u32" => MIRTypeInner::U32,
         "bool" => MIRTypeInner::Bool,
         "()" => MIRTypeInner::Unit,
@@ -653,8 +665,21 @@ fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {
     }
 }
 
-fn parse_number(value: Pair<'_, Rule>) -> i64 {
+/// Parses a number, including type ascription.
+/// Returns the number and a data type, if specified.
+fn parse_number(value: Pair<'_, Rule>) -> (i128, Option<MIRTypeInner<'_>>) {
     assert_eq!(value.as_rule(), Rule::number);
 
-    value.as_str().parse::<i64>().unwrap()
+    let mut value = value.as_str();
+    let mut ty = None;
+
+    if value.ends_with("i32") {
+        value = &value[..value.len() - 3];
+        ty = Some(MIRTypeInner::I32);
+    } else if value.ends_with("u32") {
+        value = &value[..value.len() - 3];
+        ty = Some(MIRTypeInner::U32);
+    }
+
+    (value.parse::<i128>().unwrap(), ty)
 }
