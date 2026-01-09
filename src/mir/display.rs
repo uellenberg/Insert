@@ -31,7 +31,7 @@ impl<'a> Display for MIRProgram<'a> {
 
         write!(f, "// Functions: \n\n")?;
 
-        for (_name, function) in &self.functions {
+        for function in self.functions.values() {
             function.fmt(f)?;
             writeln!(f)?;
         }

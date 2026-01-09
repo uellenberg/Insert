@@ -4,7 +4,8 @@ use crate::mir::interpreter::label::label_to_index;
 use crate::mir::interpreter::loop_statement::flatten_loops;
 use crate::mir::type_check::type_check;
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRStatement, MIRTypeInner,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionArgs, MIRStatement,
+    MIRTypeInner,
 };
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -278,7 +279,10 @@ impl<'a> Interpreter<'a> {
                     fn_data
                         .args
                         .iter()
-                        .map(|arg| self.eval_expr(arg, scope))
+                        .map(|arg| {
+                            self.eval_expr(arg, scope)
+                                .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
+                        })
                         .collect::<Result<Vec<_>, ()>>()?,
                 ),
                 MIRFnSource::Indirect(fn_name) => {
@@ -292,7 +296,10 @@ impl<'a> Interpreter<'a> {
                         fn_data
                             .args
                             .iter()
-                            .map(|arg| self.eval_expr(arg, scope))
+                            .map(|arg| {
+                                self.eval_expr(arg, scope)
+                                    .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
+                            })
                             .collect::<Result<Vec<_>, ()>>()?,
                     )
                 }
@@ -305,15 +312,17 @@ impl<'a> Interpreter<'a> {
     pub fn eval_function(
         &self,
         fn_name: &Cow<'a, str>,
-        args: Vec<InterpreterData<'a>>,
+        args: Vec<(InterpreterData<'a>, MIRTypeInner<'a>)>,
     ) -> Result<InterpreterData<'a>, ()> {
-        let Some(fn_data) = self.ctx.program.functions.get(fn_name) else {
+        let args_ty = MIRFunctionArgs(args.iter().map(|(_, ty)| ty.clone()).collect());
+
+        let Some(fn_data) = self.ctx.program.functions.get(&(fn_name, &args_ty)) else {
             panic!("Function not found!");
         };
         assert_eq!(fn_data.args.len(), args.len());
 
         let mut scope = InterpreterScope::default();
-        for (data, arg) in args.into_iter().zip(fn_data.args.iter()) {
+        for ((data, _ty), arg) in args.into_iter().zip(fn_data.args.iter()) {
             scope.variables.insert(arg.name.clone(), Some(data));
         }
 
@@ -382,7 +391,10 @@ impl<'a> Interpreter<'a> {
                         fn_data
                             .args
                             .iter()
-                            .map(|arg| self.eval_expr(arg, scope))
+                            .map(|arg| {
+                                self.eval_expr(arg, scope)
+                                    .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
+                            })
                             .collect::<Result<Vec<_>, ()>>()?,
                     )?;
                 }
@@ -397,7 +409,10 @@ impl<'a> Interpreter<'a> {
                         fn_data
                             .args
                             .iter()
-                            .map(|arg| self.eval_expr(arg, scope))
+                            .map(|arg| {
+                                self.eval_expr(arg, scope)
+                                    .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
+                            })
                             .collect::<Result<Vec<_>, ()>>()?,
                     )?;
                 }

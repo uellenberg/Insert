@@ -3,7 +3,8 @@ pub mod span;
 
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
-    MIRFunction, MIRFunctionType, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
+    MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType, MIRStatement, MIRStatic,
+    MIRType, MIRTypeInner, MIRVariable,
 };
 use ariadne::{ColorGenerator, Label, Report, ReportKind};
 use pest::Parser;
@@ -40,7 +41,7 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
         match pair.as_rule() {
             Rule::constDeclaration => {
                 let constant = parse_constant(location, pair);
-                if !check_no_duplicates(ctx, constant.name.clone(), &constant.span) {
+                if !check_no_duplicates(ctx, constant.name.clone(), None, &constant.span) {
                     return false;
                 }
 
@@ -50,7 +51,7 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
             }
             Rule::staticDeclaration => {
                 let static_data = parse_static(location, pair);
-                if !check_no_duplicates(ctx, static_data.name.clone(), &static_data.span) {
+                if !check_no_duplicates(ctx, static_data.name.clone(), None, &static_data.span) {
                     return false;
                 }
 
@@ -60,13 +61,20 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
             }
             Rule::functionDeclaration => {
                 let function_data = parse_function(location, pair);
-                if !check_no_duplicates(ctx, function_data.name.clone(), &function_data.span) {
+
+                if !check_no_duplicates(
+                    ctx,
+                    function_data.name.clone(),
+                    Some(&function_data.args_ty),
+                    &function_data.span,
+                ) {
                     return false;
                 }
 
-                ctx.program
-                    .functions
-                    .insert(function_data.name.clone(), function_data);
+                ctx.program.functions.insert(
+                    MIRFunctionKey(function_data.name.clone(), function_data.args_ty.clone()),
+                    function_data,
+                );
             }
             Rule::EOI => {}
             _ => unreachable!(),
@@ -76,14 +84,42 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
     true
 }
 
-fn check_no_duplicates<'a>(ctx: &MIRContext<'a>, name: Cow<'a, str>, span: &Span<'a>) -> bool {
+/// If the input is a function, args should be specified.
+/// If it's a const/static, None should be given instead.
+fn check_no_duplicates<'a>(
+    ctx: &MIRContext<'a>,
+    name: Cow<'a, str>,
+    args: Option<&MIRFunctionArgs<'a>>,
+    span: &Span<'a>,
+) -> bool {
     let defined_span;
     if let Some(var) = ctx.program.statics.get(&name) {
         defined_span = var.span.clone();
     } else if let Some(var) = ctx.program.constants.get(&name) {
         defined_span = var.span.clone();
-    } else if let Some(var) = ctx.program.functions.get(&name) {
-        defined_span = var.span.clone();
+    } else if let Some(args) = args {
+        // We're trying to define a new function, and it hasn't conflicted
+        // with anything else yet, as per the checks above.
+
+        let mut found_duplicate = None;
+
+        for option in ctx.program.functions.by_name(&name) {
+            if &option.args_ty == args {
+                found_duplicate = Some(option.span.clone());
+                break;
+            }
+        }
+
+        if let Some(found_duplicate) = found_duplicate {
+            // Two conflicting functions (same name, same args).
+            defined_span = found_duplicate;
+        } else {
+            // This is just an overload, which is allowed.
+            return true;
+        }
+    } else if let Some(option) = ctx.program.functions.by_name(&name).next() {
+        // We aren't trying to define a function, but a function with the same name already exists.
+        defined_span = option.span.clone();
     } else {
         // No duplicates.
         return true;
@@ -191,6 +227,7 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
                 return MIRFunction {
                     name: Cow::Borrowed(identifier),
                     fn_type,
+                    args_ty: MIRFunctionArgs(args.iter().map(|v| v.ty.ty.clone()).collect()),
                     args,
                     ret_ty: ret,
                     body: parse_function_body(location, pair),
@@ -276,6 +313,7 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         to_span(location, name_data.as_span()),
                     ),
                     args,
+                    args_ty: None,
                     ret_ty: None,
                     span,
                 }));
@@ -291,6 +329,7 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                 body.push(MIRStatement::FunctionCall(MIRFnCall {
                     source: MIRFnSource::Indirect(ptr),
                     args,
+                    args_ty: None,
                     ret_ty: None,
                     span,
                 }));
@@ -559,6 +598,7 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
                     to_span(location, name_data.as_span()),
                 ),
                 args,
+                args_ty: None,
                 ret_ty: None,
                 span: span.clone(),
             }))
@@ -574,6 +614,7 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
             MIRExpressionInner::FunctionCall(Box::new(MIRFnCall {
                 source: MIRFnSource::Indirect(ptr),
                 args,
+                args_ty: None,
                 ret_ty: None,
                 span: span.clone(),
             }))

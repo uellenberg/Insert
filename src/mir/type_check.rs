@@ -2,7 +2,7 @@ use crate::mir::function::get_fn_type;
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
-    MIRFunction, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRFunction, MIRFunctionArgs, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use crate::parser::span::Span;
 use ariadne::{ColorGenerator, Fmt, Label, Report, ReportKind};
@@ -226,11 +226,12 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::FunctionCall(MIRFnCall {
                     source,
                     args,
+                    args_ty,
                     ret_ty,
                     span,
                     ..
                 }) => {
-                    if !check_fn_call(ctx, Some(scope), source, args, ret_ty, span) {
+                    if !check_fn_call(ctx, Some(scope), source, args, args_ty, ret_ty, span) {
                         return false;
                     }
                 }
@@ -311,18 +312,39 @@ fn check_fn_call<'a>(
     scope: Option<&Scope<'a>>,
     source: &mut MIRFnSource<'a>,
     args: &mut Vec<MIRExpression<'a>>,
-    ret_ty: &mut Option<MIRType<'a>>,
+    out_args_ty: &mut Option<MIRFunctionArgs<'a>>,
+    out_ret_ty: &mut Option<MIRType<'a>>,
     span: &Span<'a>,
 ) -> bool {
+    // Add type information to arguments.
+    for arg in args.iter_mut() {
+        if check_expression(ctx, arg, scope).is_none() {
+            return false;
+        }
+    }
+
     let mut expected_ty = match source {
         MIRFnSource::Direct(name, _span) => {
-            let Some(fn_data) = ctx.program.functions.get(name) else {
-                // TODO: Function not found error.
-                eprintln!("Function not found: {name:?}");
+            let args_ty = args
+                .iter()
+                .map(|arg| {
+                    arg.ty
+                        .as_ref()
+                        .expect("Function argument didn't have type info!")
+                        .ty
+                        .clone()
+                })
+                .collect::<Vec<_>>();
+
+            // Ensure there's no ambiguity in which overloaded function we're trying to call.
+            // This makes it possible for new functions to be breaking changes, but that's more
+            // predictable than picking one at random.
+            let Some(candidate) = get_fn_candidate(ctx, name, &args_ty) else {
+                // Error already printed by get_fn_candidate.
                 return false;
             };
 
-            get_fn_type(fn_data)
+            get_fn_type(candidate)
         }
         MIRFnSource::Indirect(expr) => {
             let Some(ty) = check_expression(ctx, expr, scope) else {
@@ -332,13 +354,6 @@ fn check_fn_call<'a>(
             ty.clone()
         }
     };
-
-    // Add type information to arguments.
-    for arg in args.iter_mut() {
-        if check_expression(ctx, arg, scope).is_none() {
-            return false;
-        }
-    }
 
     let mut actual_args = args
         .iter()
@@ -351,7 +366,7 @@ fn check_fn_call<'a>(
 
     let mut actual_ty = MIRType {
         ty: MIRTypeInner::FunctionPtr(
-            actual_args.iter().map(|arg| arg.ty.clone()).collect(),
+            MIRFunctionArgs(actual_args.iter().map(|arg| arg.ty.clone()).collect()),
             // Default to unit type for error messages
             // when unmatched function, since we only
             // know the return type once we have a valid
@@ -366,6 +381,7 @@ fn check_fn_call<'a>(
         print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
         return false;
     };
+    let mut expected_args = expected_args.clone();
     let expected_ret_ty = (**expected_ret_ty).clone();
 
     // Give actual_ty the correct return type.
@@ -378,14 +394,14 @@ fn check_fn_call<'a>(
 
     // Ensure that both function types have the
     // same arg length.
-    if actual_args.len() != expected_args.len() {
+    if actual_args.len() != expected_args.0.len() {
         print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
         return false;
     }
 
     // Ensure that individual arg types match,
     // for more granular errors.
-    for (actual, expected) in actual_args.iter_mut().zip(expected_args.iter_mut()) {
+    for (actual, expected) in actual_args.iter_mut().zip(expected_args.0.iter_mut()) {
         if !types_equal_inner(&mut actual.ty, expected) {
             print_unexpected_expr_ty(
                 ctx,
@@ -406,11 +422,12 @@ fn check_fn_call<'a>(
         return false;
     }
 
-    // Store the computed return type.
-    *ret_ty = Some(MIRType {
+    // Store the computed types.
+    *out_ret_ty = Some(MIRType {
         ty: expected_ret_ty,
         span: expected_ty.span,
     });
+    *out_args_ty = Some(expected_args);
 
     true
 }
@@ -489,7 +506,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
         }
         // Recursive types need special handling to fully resolve.
         (MIRTypeInner::FunctionPtr(args1, ret1), MIRTypeInner::FunctionPtr(args2, ret2)) => {
-            if args1.len() != args2.len() {
+            if args1.0.len() != args2.0.len() {
                 return false;
             }
 
@@ -505,7 +522,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
             let mut new_args1 = args1.clone();
             let mut new_args2 = args2.clone();
 
-            for (arg1, arg2) in new_args1.iter_mut().zip(new_args2.iter_mut()) {
+            for (arg1, arg2) in new_args1.0.iter_mut().zip(new_args2.0.iter_mut()) {
                 if !types_equal_inner(arg1, arg2) {
                     return false;
                 }
@@ -522,6 +539,55 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
         }
         _ => false,
     }
+}
+
+/// Tries to find a function that matches the given name and arguments.
+/// If none exists or it's ambiguous, it prints out an error and returns None.
+fn get_fn_candidate<'a, 'b>(
+    ctx: &'b MIRContext<'a>,
+    name: &Cow<'a, str>,
+    args: &[MIRTypeInner<'a>],
+) -> Option<&'b MIRFunction<'a>> {
+    let mut res = ctx.program.functions.by_name(name).filter(|func| {
+        if args.len() != func.args.len() {
+            return false;
+        }
+
+        for (arg1, arg2) in args.iter().zip(func.args_ty.0.iter()) {
+            if arg1 == arg2 {
+                continue;
+            }
+
+            match (arg1, arg2) {
+                // Allow unknown numbers to resolve, but only if there's
+                // no ambiguity (we'll check that below).
+                (MIRTypeInner::UnknownNumber, MIRTypeInner::I32 | MIRTypeInner::U32)
+                | (MIRTypeInner::I32 | MIRTypeInner::U32, MIRTypeInner::UnknownNumber) => continue,
+                _ => return false,
+            }
+        }
+
+        true
+    });
+
+    let Some(candidate) = res.next() else {
+        // No candidates.
+        // TODO: No function found error.
+        eprintln!("No function found with name {name:?}");
+        return None;
+    };
+
+    if res.next().is_some() {
+        // Multiple candidates = ambiguity!
+        // TODO: Multiple functions found error.
+        eprintln!(
+            "Multiple functions found with name {name:?}. Disambiguate arguments with type annotations."
+        );
+        return None;
+    }
+
+    // Only one candidate found.
+    Some(candidate)
 }
 
 /// Checks whether the expression is valid,
@@ -656,7 +722,7 @@ fn check_expression<'a, 'b>(
                     return Some(var.ty.clone());
                 }
 
-                if ctx.program.functions.get(name).is_some() {
+                if ctx.program.functions.by_name(name).next().is_some() {
                     eprintln!(
                         "Cannot directly access function as value (use a reference): {expr:?}"
                     );
@@ -672,6 +738,7 @@ fn check_expression<'a, 'b>(
                     scope,
                     &mut fn_data.source,
                     &mut fn_data.args,
+                    &mut fn_data.args_ty,
                     &mut fn_data.ret_ty,
                     &fn_data.span,
                 ) {

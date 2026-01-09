@@ -15,8 +15,9 @@ use crate::mir::interpreter::Interpreter;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
-use indexmap::IndexMap;
+use indexmap::{Equivalent, IndexMap};
 use std::borrow::Cow;
+use std::ops::{Deref, DerefMut};
 
 /// Context that can be used
 /// throughout the MIR processing.
@@ -78,6 +79,11 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // TODO: Add a pass to remove unit variables (probably part of SSA -> function scope var generation).
 
+    // TODO: Add a pass to mangle functions (both for size optimization and to rename overloaded functions).
+
+    // TODO: Add a pass to mangle variables (locals and statics), both for size optimization and to
+    //       fix invalid variable names.
+
     export_helpers(ctx);
 
     // Helper functions are now exported when needed.
@@ -104,8 +110,51 @@ pub struct MIRProgram<'a> {
     pub statics: IndexMap<Cow<'a, str>, MIRStatic<'a>>,
 
     /// A list of functions in the program.
-    /// Name -> Function data.
-    pub functions: IndexMap<Cow<'a, str>, MIRFunction<'a>>,
+    /// Name -> Args -> Function data.
+    pub functions: MIRFunctions<'a>,
+}
+
+/// Uniquely identifies a function.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MIRFunctionKey<'a>(pub Cow<'a, str>, pub MIRFunctionArgs<'a>);
+
+// Hash always operates on values, so these are valid.
+// This allows us to use &(name, args) and &(&name, &args) for lookups.
+
+impl<'a> Equivalent<MIRFunctionKey<'a>> for (Cow<'a, str>, MIRFunctionArgs<'a>) {
+    fn equivalent(&self, key: &MIRFunctionKey<'a>) -> bool {
+        self.0 == key.0 && self.1 == key.1
+    }
+}
+
+impl<'a> Equivalent<MIRFunctionKey<'a>> for (&Cow<'a, str>, &MIRFunctionArgs<'a>) {
+    fn equivalent(&self, key: &MIRFunctionKey<'a>) -> bool {
+        self.0 == &key.0 && self.1 == &key.1
+    }
+}
+
+/// All the functions in a program.
+#[derive(Debug, Default, Clone)]
+pub struct MIRFunctions<'a>(pub IndexMap<MIRFunctionKey<'a>, MIRFunction<'a>>);
+
+impl<'a> Deref for MIRFunctions<'a> {
+    type Target = IndexMap<MIRFunctionKey<'a>, MIRFunction<'a>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> DerefMut for MIRFunctions<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<'a> MIRFunctions<'a> {
+    pub fn by_name(&self, name: &Cow<'a, str>) -> impl Iterator<Item = &MIRFunction<'a>> {
+        self.0.values().filter(move |f| f.name == *name)
+    }
 }
 
 /// A constant variable.
@@ -175,6 +224,12 @@ pub struct MIRFunction<'a> {
     /// A list of the arguments that
     /// the function takes in.
     pub args: Vec<MIRVariable<'a>>,
+
+    /// The types for each of the function's arguments.
+    /// These will always be fully resolved and can be
+    /// used alongside its name to uniquely identify this
+    /// function.
+    pub args_ty: MIRFunctionArgs<'a>,
 
     /// A list of statements
     /// that will be executed
@@ -435,7 +490,7 @@ pub struct MIRType<'a> {
 }
 
 /// The type of data a variable represents.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum MIRTypeInner<'a> {
     /// A currently unresolved number.
     /// This is eliminated during type checking, and defaults
@@ -458,11 +513,16 @@ pub enum MIRTypeInner<'a> {
     String,
 
     /// A function pointer, args -> return value.
-    FunctionPtr(Vec<MIRTypeInner<'a>>, Box<MIRTypeInner<'a>>),
+    FunctionPtr(MIRFunctionArgs<'a>, Box<MIRTypeInner<'a>>),
 
     /// A named type (struct).
     Named(Cow<'a, str>),
 }
+
+/// The type signature of a function, which along with its name, uniquely identifies it.
+/// These types are always fully resolved.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MIRFunctionArgs<'a>(pub Vec<MIRTypeInner<'a>>);
 
 impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
     fn from(value: MIRTypeInner<'a>) -> Self {
@@ -475,7 +535,8 @@ impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
             MIRTypeInner::String => Cow::Borrowed("string"),
             MIRTypeInner::FunctionPtr(args, ret) => Cow::Owned(format!(
                 "fn({}) -> {}",
-                args.iter()
+                args.0
+                    .iter()
                     .cloned()
                     .map(|v| v.into())
                     .intersperse(Cow::Borrowed(", "))
@@ -495,6 +556,10 @@ pub struct MIRFnCall<'a> {
 
     /// The function's arguments.
     pub args: Vec<MIRExpression<'a>>,
+
+    /// The function's arguments' types.
+    /// Available after type checking.
+    pub args_ty: Option<MIRFunctionArgs<'a>>,
 
     /// The function's return type,
     /// if known at the time.

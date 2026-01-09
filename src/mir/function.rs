@@ -2,7 +2,7 @@ use crate::mir::expr::{explore_expr, explore_expr_mut, find_exprs, find_exprs_mu
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
-    MIRFunctionType, MIRStatement, MIRType, MIRTypeInner, MIRVariable,
+    MIRFunctionKey, MIRFunctionType, MIRStatement, MIRType, MIRTypeInner, MIRVariable,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -103,10 +103,7 @@ fn resolve_expr_fn_to_vars<'a>(
 /// Gets the type for a function as a function pointer.
 pub fn get_fn_type<'a>(fn_data: &MIRFunction<'a>) -> MIRType<'a> {
     MIRType {
-        ty: MIRTypeInner::FunctionPtr(
-            fn_data.args.iter().map(|arg| arg.ty.ty.clone()).collect(),
-            Box::new(fn_data.ret_ty.ty.clone()),
-        ),
+        ty: MIRTypeInner::FunctionPtr(fn_data.args_ty.clone(), Box::new(fn_data.ret_ty.ty.clone())),
         span: Some(fn_data.span.clone()),
     }
 }
@@ -155,7 +152,11 @@ pub fn export_helpers(ctx: &mut MIRContext<'_>) {
 
 /// Recursively tracks all functions that are called from
 /// the given function.
-fn mark_visited<'a>(ctx: &MIRContext<'a>, func: Cow<'a, str>, visited: &mut HashSet<Cow<'a, str>>) {
+fn mark_visited<'a>(
+    ctx: &MIRContext<'a>,
+    func: MIRFunctionKey<'a>,
+    visited: &mut HashSet<MIRFunctionKey<'a>>,
+) {
     if visited.contains(&func) {
         return;
     }
@@ -164,21 +165,39 @@ fn mark_visited<'a>(ctx: &MIRContext<'a>, func: Cow<'a, str>, visited: &mut Hash
     for statement in &ctx.program.functions[&func].body {
         if let MIRStatement::FunctionCall(MIRFnCall {
             source: MIRFnSource::Direct(name, ..),
+            args_ty,
             ..
         }) = statement
         {
             // Statement call.
-            mark_visited(ctx, name.clone(), visited);
+            mark_visited(
+                ctx,
+                MIRFunctionKey(
+                    name.clone(),
+                    // args_ty must be resolved from type checking.
+                    args_ty.clone().expect("Functions args type didn't exist!"),
+                ),
+                visited,
+            );
         } else {
             // TODO: Visit function pointers in expressions.
             find_exprs(statement, &mut |expr| {
                 explore_expr(expr, &mut |expr| {
-                    if let MIRExpressionInner::FunctionCall(box MIRFnCall { source, .. }) =
-                        &expr.inner
+                    if let MIRExpressionInner::FunctionCall(box MIRFnCall {
+                        source, args_ty, ..
+                    }) = &expr.inner
                     {
                         if let MIRFnSource::Direct(name, ..) = source {
                             // Expression call.
-                            mark_visited(ctx, name.clone(), visited);
+                            mark_visited(
+                                ctx,
+                                MIRFunctionKey(
+                                    name.clone(),
+                                    // args_ty must be resolved from type checking.
+                                    args_ty.clone().expect("Functions args type didn't exist!"),
+                                ),
+                                visited,
+                            );
                         }
                     }
 
@@ -220,8 +239,8 @@ pub fn inline_functions(ctx: &mut MIRContext<'_>) -> bool {
 /// inline_var_idx must maintain its state across the whole compiler pipeline.
 fn inline_function<'a>(
     ctx: &mut MIRContext<'a>,
-    func: Cow<'a, str>,
-    visited: &mut HashSet<Cow<'a, str>>,
+    func: MIRFunctionKey<'a>,
+    visited: &mut HashSet<MIRFunctionKey<'a>>,
     inline_var_idx: &mut u32,
 ) -> bool {
     if visited.contains(&func) {
@@ -244,12 +263,18 @@ fn inline_function<'a>(
                     if let MIRExpressionInner::FunctionCall(box MIRFnCall {
                         source: MIRFnSource::Direct(name, ..),
                         args,
+                        args_ty,
                         ..
                     }) = expr.inner.clone()
                     {
-                        if ctx.program.functions[&name].fn_type == MIRFunctionType::Inline {
+                        // args_ty must be resolved from type checking.
+                        let key = MIRFunctionKey(
+                            name,
+                            args_ty.expect("Functions args type didn't exist!"),
+                        );
+                        if ctx.program.functions[&key].fn_type == MIRFunctionType::Inline {
                             let Ok(mut res) =
-                                rewrite_inline_function(ctx, name, &args, visited, inline_var_idx)
+                                rewrite_inline_function(ctx, key, &args, visited, inline_var_idx)
                             else {
                                 return false;
                             };
@@ -271,12 +296,15 @@ fn inline_function<'a>(
             if let MIRStatement::FunctionCall(MIRFnCall {
                 source: MIRFnSource::Direct(name, ..),
                 args,
+                args_ty,
                 ..
             }) = statement.clone()
             {
-                if ctx.program.functions[&name].fn_type == MIRFunctionType::Inline {
+                // args_ty must be resolved from type checking.
+                let key = MIRFunctionKey(name, args_ty.expect("Functions args type didn't exist!"));
+                if ctx.program.functions[&key].fn_type == MIRFunctionType::Inline {
                     let Ok(mut res) =
-                        rewrite_inline_function(ctx, name, &args, visited, inline_var_idx)
+                        rewrite_inline_function(ctx, key, &args, visited, inline_var_idx)
                     else {
                         return false;
                     };
@@ -313,9 +341,9 @@ fn inline_function<'a>(
 /// Returns Err on failure.
 fn rewrite_inline_function<'a>(
     ctx: &mut MIRContext<'a>,
-    func: Cow<'a, str>,
+    func: MIRFunctionKey<'a>,
     args: &[MIRExpression<'a>],
-    visited: &mut HashSet<Cow<'a, str>>,
+    visited: &mut HashSet<MIRFunctionKey<'a>>,
     inline_var_idx: &mut u32,
 ) -> Result<(Vec<MIRStatement<'a>>, Cow<'a, str>), ()> {
     // We need to ensure that we're fully resolved first, before inlining ourselves
