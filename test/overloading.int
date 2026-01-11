@@ -22,7 +22,7 @@ helper function h(value: i32) -> i32 {
     return -10;
 }
 
-static value: i32 = g(10i32);
+static sValue: i32 = g(10i32);
 
 function main() {
     f(10u32);

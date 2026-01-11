@@ -51,7 +51,7 @@ createVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ ";" }
 
 createSetVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";" }
 
-setVariable = { identifier ~ "=" ~ expression ~ ";" }
+setVariable = { placeExpr ~ "=" ~ expression ~ ";" }
 
 functionCallDirect = { identifier ~ "(" ~ functionCallArgs? ~ ")"  }
 functionCallDirectStmt = _{ functionCallDirect ~ ";" }
@@ -119,8 +119,22 @@ multiplication = {
 }
 
 primary = {
-    number | string | functionCallDirect | functionCallIndirect | boolLiteral | identifier | "(" ~ expression ~ ")"
+    number | string | functionCallDirect | functionCallIndirect | boolLiteral | placeExpr | "(" ~ expression ~ ")"
 }
+
+placeExpr = {
+    identifier ~ placePostfix*
+    | "(" ~ placeExpr ~ ")" ~ placePostfix*
+    | placePrefix ~ placeExpr
+}
+
+placePrefix = { "*" | "&" }
+placePostfix = {
+    memberAccess | indexAccess
+}
+
+memberAccess = { "." ~ identifier }
+indexAccess = { "[" ~ expression ~ "]" }
 
 logicalOp = { "&&" | "||" }
 
@@ -149,7 +163,7 @@ stringEscape = ${ "\\" ~ (stringNormal | stringUnicode) }
 stringNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
 stringUnicode = ${ "u" ~ ASCII_HEX_DIGIT{4} }
 
-boolLiteral = { "true" | "false" }
+boolLiteral = { true_ | false_ }
 
 space = _{ WHITESPACE* }
 
@@ -167,8 +181,10 @@ break_ = _{ "break" }
 continue_ = _{ "continue" }
 inline = _{ "inline" }
 helper = _{ "helper" }
+true_ = _{ "true" }
+false_ = _{ "false" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ }

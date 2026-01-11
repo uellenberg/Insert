@@ -1,3 +1,4 @@
+use crate::mir::expr::explore_outer_place;
 use crate::mir::function::get_fn_type;
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
@@ -168,7 +169,6 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
         &|statement, scope| {
             match statement {
                 // No expressions.
-                MIRStatement::CreateVariable { value: None, .. } => {}
                 MIRStatement::DropVariable(..) => {}
                 MIRStatement::Goto { .. } => {}
                 MIRStatement::Label { .. } => {}
@@ -177,47 +177,75 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::LoopStatement { .. } => {}
 
                 MIRStatement::CreateVariable {
-                    var,
-                    value: Some(value),
-                    ..
+                    var, value, arg, ..
                 } => {
-                    let Some(ty) = check_expression(ctx, value, Some(scope)) else {
+                    // Disallow shadowing.
+                    // (Phantom) arg variables shouldn't get checked against locals, since
+                    // they might be added to the scope automatically.
+                    if (!*arg && scope.get_variable(&var.name).is_some())
+                        || ctx.program.statics.contains_key(&var.name)
+                        || ctx.program.constants.contains_key(&var.name)
+                    {
+                        eprintln!("Cannot shadow existing variable {}", var.name);
                         return false;
-                    };
+                    }
 
-                    if !types_equal(ty, &mut var.ty) {
-                        print_unexpected_expr_ty(
-                            ctx,
-                            var.ty.clone(),
-                            ty.clone(),
-                            value.span.clone(),
-                        );
+                    if let Some(value) = value {
+                        let Some(ty) = check_expression(ctx, value, Some(scope)) else {
+                            return false;
+                        };
 
-                        return false;
+                        if !types_equal(ty, &mut var.ty) {
+                            print_unexpected_expr_ty(
+                                ctx,
+                                var.ty.clone(),
+                                ty.clone(),
+                                value.span.clone(),
+                            );
+
+                            return false;
+                        }
                     }
                 }
 
-                MIRStatement::SetVariable { value, name, span } => {
-                    let mut var_ty;
+                MIRStatement::SetVariable { value, place, .. } => {
+                    // Make sure we aren't trying to modify a const.
+                    // If a const appears inside a place expression (e.g., a[const]), then
+                    // we aren't modifying the const.
+                    // If it appears outside (e.g., const[a]), then we are, so should error.
+                    if !explore_outer_place(&place, &mut |expr| {
+                        match &expr.inner {
+                            MIRExpressionInner::Variable(var) => {
+                                if ctx.program.constants.contains_key(var) {
+                                    eprintln!("Cannot set constants!");
+                                    return false;
+                                }
+                            }
+                            _ => {}
+                        }
 
-                    if let Some(var) = scope.get_variable(name) {
-                        var_ty = var.ty.clone();
-                    } else if let Some(var) = ctx.program.statics.get(name) {
-                        var_ty = var.ty.clone();
-                    } else if let Some(_var) = ctx.program.constants.get(name) {
-                        eprintln!("Cannot set constants!");
-                        return false;
-                    } else {
-                        print_var_does_not_exist(ctx, name.clone(), span.clone());
+                        true
+                    }) {
                         return false;
                     }
+
+                    // This will handle the types of locals/statics the same way as normal expressions,
+                    // which works for our purposes here.
+                    let Some(var_ty) = check_expression(ctx, place, Some(scope)) else {
+                        return false;
+                    };
 
                     let Some(ty) = check_expression(ctx, value, Some(scope)) else {
                         return false;
                     };
 
-                    if !types_equal(ty, &mut var_ty) {
-                        print_unexpected_expr_ty(ctx, var_ty, ty.clone(), value.span.clone());
+                    if !types_equal(ty, var_ty) {
+                        print_unexpected_expr_ty(
+                            ctx,
+                            var_ty.clone(),
+                            ty.clone(),
+                            value.span.clone(),
+                        );
 
                         return false;
                     }
@@ -782,6 +810,12 @@ fn check_expression<'a, 'b>(
                 // Span is added after.
                 span: None,
             }),
+
+            // TODO: Implement type checking for place expressions.
+            MIRExpressionInner::Ref(_)
+            | MIRExpressionInner::Deref(_)
+            | MIRExpressionInner::Member(_, _)
+            | MIRExpressionInner::Index(_, _) => todo!(),
         }
     })()?;
 

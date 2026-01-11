@@ -286,8 +286,9 @@ pub enum MIRStatement<'a> {
 
     /// Sets a variable to a certain value.
     SetVariable {
-        /// Is the variable's name.
-        name: Cow<'a, str>,
+        /// Is a place expression that resolves
+        /// to the variable.
+        place: MIRExpression<'a>,
 
         /// Is the expression to set it to.
         value: MIRExpression<'a>,
@@ -472,6 +473,18 @@ pub enum MIRExpressionInner<'a> {
 
     /// Function call (using return value).
     FunctionCall(Box<MIRFnCall<'a>>),
+
+    /// Reference (address-of).
+    Ref(Box<MIRExpression<'a>>),
+
+    /// Dereference.
+    Deref(Box<MIRExpression<'a>>),
+
+    /// Member access (a.b).
+    Member(Box<MIRExpression<'a>>, Cow<'a, str>),
+
+    /// Index access (a[b]).
+    Index(Box<MIRExpression<'a>>, Box<MIRExpression<'a>>),
 }
 
 /// A type written out as text.

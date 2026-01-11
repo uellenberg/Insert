@@ -289,14 +289,10 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
             Rule::setVariable => {
                 let mut data = pair.into_inner();
 
-                let identifier = data.next().unwrap().as_str();
+                let place = parse_place_expr(location, data.next().unwrap());
                 let value = parse_expression(location, data.next().unwrap());
 
-                body.push(MIRStatement::SetVariable {
-                    name: Cow::Borrowed(identifier),
-                    value,
-                    span,
-                });
+                body.push(MIRStatement::SetVariable { place, value, span });
             }
             Rule::functionCallDirect => {
                 let mut data = pair.into_inner();
@@ -619,7 +615,9 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
                 span: span.clone(),
             }))
         }
-        Rule::identifier => MIRExpressionInner::Variable(Cow::Borrowed(data.as_str())),
+        Rule::placeExpr => {
+            return parse_place_expr(location, data);
+        }
         Rule::boolLiteral => MIRExpressionInner::Bool(data.as_str() == "true"),
         Rule::expression => {
             // Expand expression span to include parenthases.
@@ -639,6 +637,90 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
         }),
         span,
     }
+}
+
+fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+    assert_eq!(value.as_rule(), Rule::placeExpr);
+
+    let span_orig = value.as_span();
+    let span = to_span(location, span_orig);
+    let mut data = value.into_inner();
+
+    let first = data.next().unwrap();
+
+    // Prefix expression (*expr or &expr).
+    // This is handled left-to-right in the grammar, so the left-most expression
+    // is at the top of the tree (evaluates last).
+    if first.as_rule() == Rule::placePrefix {
+        let inner = parse_place_expr(location, data.next().unwrap());
+        let expr = match first.as_str() {
+            "*" => MIRExpressionInner::Deref(Box::new(inner)),
+            "&" => MIRExpressionInner::Ref(Box::new(inner)),
+            _ => unreachable!(),
+        };
+
+        return MIRExpression {
+            inner: expr,
+            ty: None,
+            span,
+        };
+    }
+
+    // Otherwise, we have a base (identifier or parenthesized placeExpr) followed by postfixes.
+    let mut current = match first.as_rule() {
+        Rule::identifier => MIRExpression {
+            inner: MIRExpressionInner::Variable(Cow::Borrowed(first.as_str())),
+            ty: None,
+            span: to_span(location, first.as_span()),
+        },
+        Rule::placeExpr => parse_place_expr(location, first),
+        _ => unreachable!(),
+    };
+
+    // The MIR should have the right-most postfix at the top of the tree (evaluate it last),
+    // so we need to build it up from left-to-right.
+    for postfix in data {
+        assert_eq!(postfix.as_rule(), Rule::placePostfix);
+        let postfix_span = to_span(
+            location,
+            // We need to construct a span of the full expression, which
+            // starts from the placeExpr and ends at this postfix.
+            //
+            // For example, if we're looking at:
+            // a.x[y].z
+            //    ^^^
+            // We want the span to be "a.x[y]", not "[y]".
+            pest::Span::new(
+                span_orig.get_input(),
+                span_orig.start(),
+                postfix.as_span().end(),
+            )
+            .unwrap(),
+        );
+        let inner = postfix.into_inner().next().unwrap();
+
+        current = match inner.as_rule() {
+            Rule::memberAccess => {
+                let field = inner.into_inner().next().unwrap().as_str();
+                MIRExpression {
+                    inner: MIRExpressionInner::Member(Box::new(current), Cow::Borrowed(field)),
+                    ty: None,
+                    span: postfix_span,
+                }
+            }
+            Rule::indexAccess => {
+                let index_expr = parse_expression(location, inner.into_inner().next().unwrap());
+                MIRExpression {
+                    inner: MIRExpressionInner::Index(Box::new(current), Box::new(index_expr)),
+                    ty: None,
+                    span: postfix_span,
+                }
+            }
+            _ => unreachable!(),
+        };
+    }
+
+    current
 }
 
 fn parse_string<'a>(value: Pair<'a, Rule>) -> String {

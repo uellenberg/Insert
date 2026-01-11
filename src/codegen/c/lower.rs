@@ -114,11 +114,12 @@ impl Codegen for CLowerer {
                 }
             }
 
-            MIRStatement::SetVariable { name, value, .. } => {
+            MIRStatement::SetVariable { place, value, .. } => {
+                let place = self.lower_expression(place, info);
                 let expr = self.lower_expression(value, info);
 
                 Some(spread![
-                    Token::new(name.clone()),
+                    ...place,
                     Token::new("=".into()),
                     ...expr,
                     SEMI,
@@ -237,6 +238,13 @@ impl Codegen for CLowerer {
             }};
         }
 
+        macro_rules! lower_unary {
+            ($op:tt, $expr:expr) => {{
+                let value = self.lower_wrap_expression($expr, expr, info);
+                spread![Token::new($op.into()), ...value]
+            }};
+        }
+
         match &expr.inner {
             MIRExpressionInner::Add(left, right) => lower_binary!(left, "+", right),
             MIRExpressionInner::Sub(left, right) => lower_binary!(left, "-", right),
@@ -250,6 +258,9 @@ impl Codegen for CLowerer {
             MIRExpressionInner::GreaterEq(left, right) => lower_binary!(left, ">=", right),
             MIRExpressionInner::BoolAnd(left, right) => lower_binary!(left, "&&", right),
             MIRExpressionInner::BoolOr(left, right) => lower_binary!(left, "||", right),
+            MIRExpressionInner::Ref(inner) => lower_unary!("&", inner),
+            MIRExpressionInner::Deref(inner) => lower_unary!("*", inner),
+
             MIRExpressionInner::Number(num) => spread![Token::new(num.to_string().into())],
             // This MUST be a single token, as we cannot insert spaces between the quotes and the string content.
             MIRExpressionInner::String(val) => spread![Token::new(
@@ -275,6 +286,16 @@ impl Codegen for CLowerer {
                 let src = self.lower_fn_source(&call.source, info);
 
                 spread![...src, LEFT_PAREN, ...args, RIGHT_PAREN]
+            }
+            MIRExpressionInner::Member(base, field) => {
+                let base = self.lower_wrap_expression(base, expr, info);
+                spread![...base, Token::new(".".into()), Token::new(field.clone())]
+            }
+            MIRExpressionInner::Index(base, index) => {
+                let base = self.lower_wrap_expression(base, expr, info);
+                // Already wrapped by [], so no need to wrap it again.
+                let index = self.lower_expression(index, info);
+                spread![...base, Token::new("[".into()), ...index, Token::new("]".into())]
             }
         }
     }
@@ -353,6 +374,10 @@ impl Codegen for CLowerer {
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Unit
             | MIRExpressionInner::FunctionCall(_) => None,
+
+            MIRExpressionInner::Member(..) | MIRExpressionInner::Index(..) => Some(1),
+
+            MIRExpressionInner::Ref(..) | MIRExpressionInner::Deref(..) => Some(2),
 
             MIRExpressionInner::Mul(..) | MIRExpressionInner::Div(..) => Some(3),
 

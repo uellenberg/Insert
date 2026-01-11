@@ -453,10 +453,16 @@ fn rewrite_inline_function<'a>(
                         }
                     }
                 }
-                MIRStatement::SetVariable { name, .. } => {
-                    if let Some(new_name) = var_map.get(name) {
-                        *name = new_name.clone();
-                    }
+                MIRStatement::SetVariable { place, .. } => {
+                    explore_expr_mut(place, &mut |expr| {
+                        if let MIRExpressionInner::Variable(name) = &mut expr.inner {
+                            if let Some(new_name) = var_map.get(name) {
+                                *name = new_name.clone();
+                            }
+                        }
+
+                        true
+                    });
                 }
                 MIRStatement::DropVariable(name, ..) => {
                     if let Some(new_name) = var_map.get(name) {

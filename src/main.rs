@@ -16,7 +16,7 @@ fn main() {
 
     let mut mir_ctx = MIRContext::default();
 
-    if !parse_file("./test/overloading.int".as_ref(), &mut mir_ctx) {
+    if !parse_file("./test/place.int".as_ref(), &mut mir_ctx) {
         return;
     }
 

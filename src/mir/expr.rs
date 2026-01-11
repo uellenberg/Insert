@@ -153,12 +153,19 @@ fn reduce_expr<'a>(
 
             MIRExpressionInner::Variable(name) => get_const(name.clone()).map(|v| v.inner),
 
-            // Already fully simplified.
-            MIRExpressionInner::Number(_)
+            // TODO: Implement member access reduction for const structs.
+            MIRExpressionInner::Member(_, _) => None,
+
+            // TODO: Implement ref/deref reduction.
+            MIRExpressionInner::Ref(_) | MIRExpressionInner::Deref(_) => None,
+
+            // Already fully simplified (recursion handled by explore_expr_mut).
+            MIRExpressionInner::Index(_, _)
+            | MIRExpressionInner::FunctionCall(_)
+            | MIRExpressionInner::Number(_)
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
-            | MIRExpressionInner::Unit
-            | MIRExpressionInner::FunctionCall(_) => None,
+            | MIRExpressionInner::Unit => None,
         })();
 
         if let Some(new_expr) = new_expr {
@@ -183,6 +190,7 @@ macro_rules! explore_expr_body {
         }
 
         match $inner_expr_ref {
+            // Binary expressions.
             MIRExpressionInner::Add(left, right) => binary_recurse!(left, right),
             MIRExpressionInner::Sub(left, right) => binary_recurse!(left, right),
             MIRExpressionInner::Mul(left, right) => binary_recurse!(left, right),
@@ -195,6 +203,16 @@ macro_rules! explore_expr_body {
             MIRExpressionInner::LessEq(left, right) => binary_recurse!(left, right),
             MIRExpressionInner::BoolAnd(left, right) => binary_recurse!(left, right),
             MIRExpressionInner::BoolOr(left, right) => binary_recurse!(left, right),
+            MIRExpressionInner::Index(base, index) => binary_recurse!(base, index),
+
+            // Unary expressions.
+            MIRExpressionInner::Ref(inner)
+            | MIRExpressionInner::Deref(inner)
+            | MIRExpressionInner::Member(inner, _) => {
+                if !$recurse(inner, $visit) {
+                    return false;
+                }
+            }
 
             MIRExpressionInner::FunctionCall($fn_data) => {
                 if let MIRFnSource::Indirect(expr) = $fn_source {
@@ -250,6 +268,54 @@ pub fn explore_expr_mut<'a>(
     rewrite: &mut impl FnMut(&mut MIRExpression<'a>) -> bool,
 ) -> bool {
     explore_expr_body!(explore_expr_mut, expr, &mut expr.inner, fn_data => (&mut fn_data.source, &mut fn_data.args), rewrite)
+}
+
+/// This functions the same as [explore_expr], but it only explores
+/// the outermost part of a place expression. In other words, the boundary
+/// where a place expression stops being strictly a place expression.
+/// This is used to differentiate between the part of the place expression
+/// which refers to an area to modify, and the part that's supplemental towards that.
+///
+/// For example, in this expression:
+/// *a[b + 1]
+///
+/// The b + 1 part is considered an inner part, so isn't returned.
+pub fn explore_outer_place<'a>(
+    expr: &MIRExpression<'a>,
+    visit: &mut impl FnMut(&MIRExpression<'a>) -> bool,
+) -> bool {
+    let mut should_visit = false;
+
+    match &expr.inner {
+        MIRExpressionInner::Ref(inner)
+        | MIRExpressionInner::Deref(inner)
+        | MIRExpressionInner::Member(inner, _)
+        // The index part of the expression crosses the boundary into non-place expressions, so
+        // isn't returned.
+        | MIRExpressionInner::Index(inner, _) => {
+            if !explore_outer_place(inner, visit) {
+                return false;
+            }
+
+            should_visit = true;
+        }
+
+        MIRExpressionInner::Variable(_) => {
+            should_visit = true;
+        }
+
+        // No need to explore non-place expressions, because we've
+        // already crossed the boundary.
+        _ => {}
+    }
+
+    if should_visit {
+        if !visit(expr) {
+            return false;
+        }
+    }
+
+    true
 }
 
 macro_rules! extract_expr_body {

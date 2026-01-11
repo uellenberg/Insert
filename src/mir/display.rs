@@ -119,9 +119,9 @@ impl<'a> Display for MIRStatement<'a> {
                 }
             }
             MIRStatement::SetVariable {
-                name, value, span, ..
+                place, value, span, ..
             } => {
-                write!(f, "{} = {};", name, value)?;
+                write!(f, "{} = {};", place, value)?;
 
                 if f.alternate() {
                     writeln!(f, " /* {span} */")?;
@@ -257,6 +257,10 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::Unit => write!(f, "()"),
             MIRExpressionInner::Variable(name) => write!(f, "{}", name),
             MIRExpressionInner::FunctionCall(fn_call) => (**fn_call).fmt(f),
+            MIRExpressionInner::Ref(inner) => write!(f, "(&{})", inner),
+            MIRExpressionInner::Deref(inner) => write!(f, "(*{})", inner),
+            MIRExpressionInner::Member(base, field) => write!(f, "({}.{})", base, field),
+            MIRExpressionInner::Index(base, index) => write!(f, "({}[{}])", base, index),
         }
     }
 }

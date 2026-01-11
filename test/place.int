@@ -1,0 +1,11 @@
+function test(in: u32) -> u32 {
+    in = in + 1;
+    (in) = (in) + 2;
+
+    let val: u32;
+    val = in + 3;
+
+    return val;
+}
+
+static testValue: u32 = test(4u32);

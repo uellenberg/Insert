@@ -10,6 +10,7 @@ use crate::mir::{
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 mod if_statement;
 mod label;
@@ -19,7 +20,7 @@ mod loop_statement;
 pub struct Interpreter<'a> {
     ctx: MIRContext<'a>,
     constants: RefCell<HashMap<Cow<'a, str>, InterpreterData<'a>>>,
-    statics: RefCell<HashMap<Cow<'a, str>, InterpreterData<'a>>>,
+    statics: RefCell<HashMap<Cow<'a, str>, Rc<RefCell<Option<InterpreterData<'a>>>>>>,
     /// Tracks static / constant evaluations to detect a cycle.
     /// We can't do the same for functions, since recursion can be
     /// useful there.
@@ -35,6 +36,18 @@ pub enum InterpreterData<'a> {
     Unit(()),
     String(Cow<'a, str>),
     FunctionPtr(Cow<'a, str>),
+    /// A reference to a variable (either directly or to a field / array element).
+    /// If the value behind the RefCell is None, that means the data hasn't been
+    /// initialized yet.
+    ///
+    /// This also contains the original expression which produced this ref.
+    /// This is to allow us to convert the ref back to an expression form.
+    /// This means that the interpreter can't optimize refs very well, but that's okay,
+    /// because the const_optimize_expr pass can handle that.
+    Ref(
+        Rc<RefCell<Option<InterpreterData<'a>>>>,
+        Box<MIRExpression<'a>>,
+    ),
 }
 
 /// Contains information about the function currently being called
@@ -44,7 +57,7 @@ pub enum InterpreterData<'a> {
 #[derive(Default)]
 pub struct InterpreterScope<'a> {
     /// The variables currently in scope.
-    variables: HashMap<Cow<'a, str>, Option<InterpreterData<'a>>>,
+    variables: HashMap<Cow<'a, str>, Rc<RefCell<Option<InterpreterData<'a>>>>>,
 
     /// The index of the next statement to execute.
     next_idx: Option<usize>,
@@ -130,7 +143,7 @@ impl<'a> Interpreter<'a> {
             current_evals.insert(name.clone());
         }
 
-        let expr_data = self.eval_expr(&constant.value, &InterpreterScope::default())?;
+        let expr_data = self.eval_expr(&constant.value, &InterpreterScope::default(), false)?;
 
         self.constants
             .borrow_mut()
@@ -145,7 +158,7 @@ impl<'a> Interpreter<'a> {
     /// If an error occurs, returns None.
     pub fn eval_static(&self, name: &Cow<'a, str>) -> Result<InterpreterData<'a>, ()> {
         if let Some(static_data) = self.statics.borrow().get(name) {
-            return Ok(static_data.clone());
+            return Ok(static_data.borrow().clone().expect("Uninitialized static"));
         }
 
         let Some(static_def) = self.ctx.program.statics.get(name) else {
@@ -161,11 +174,11 @@ impl<'a> Interpreter<'a> {
             current_evals.insert(name.clone());
         }
 
-        let expr_data = self.eval_expr(&static_def.value, &InterpreterScope::default())?;
+        let expr_data = self.eval_expr(&static_def.value, &InterpreterScope::default(), false)?;
 
         self.statics
             .borrow_mut()
-            .insert(name.clone(), expr_data.clone());
+            .insert(name.clone(), Rc::new(RefCell::new(Some(expr_data.clone()))));
 
         self.current_evals.borrow_mut().remove(name);
 
@@ -175,18 +188,25 @@ impl<'a> Interpreter<'a> {
     /// Evaluates an expression.
     /// This expression MUST exist inside this interpreter's context.
     /// If an error occurs, returns None.
+    ///
+    /// place determines whether to evaluate in place mode, which means
+    /// that variables return references instead of copying the values
+    /// of variables.
+    /// This should be used when place mode is needed (e.g., when writing
+    /// into a place) or recursively when reaching a reference.
     pub fn eval_expr(
         &self,
         expr: &MIRExpression<'a>,
         scope: &InterpreterScope<'a>,
+        place: bool,
     ) -> Result<InterpreterData<'a>, ()> {
         macro_rules! simple_binary {
             ($left:expr, $right:expr, $($red_i:path > $red_o:path)|+, $op:tt, $ret:path) => {{
                 use InterpreterData::*;
 
                 // None here means an error.
-                let left = self.eval_expr($left, scope)?;
-                let right = self.eval_expr($right, scope)?;
+                let left = self.eval_expr($left, scope, place)?;
+                let right = self.eval_expr($right, scope, place)?;
 
                 $(if let $red_i(left, ..) = &left {
                     if let $red_i(right, ..) = &right {
@@ -259,16 +279,45 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::Bool(val) => Ok(InterpreterData::Bool(*val)),
             MIRExpressionInner::Unit => Ok(InterpreterData::Unit(())),
             MIRExpressionInner::Variable(name) => {
-                if let Some(data) = scope.variables.get(name) {
-                    return Ok(data.as_ref().expect("Variable has not been set!").clone());
-                };
+                if place {
+                    if let Some(data) = scope.variables.get(name) {
+                        return Ok(InterpreterData::Ref(
+                            Rc::clone(data),
+                            Box::new(expr.clone()),
+                        ));
+                    }
 
-                if self.ctx.program.constants.contains_key(name) {
-                    return self.eval_const(name);
-                }
+                    if self.ctx.program.statics.contains_key(name) {
+                        // Ensure the static exists.
+                        self.eval_static(name)?;
 
-                if self.ctx.program.statics.contains_key(name) {
-                    return self.eval_static(name);
+                        return Ok(InterpreterData::Ref(
+                            Rc::clone(&self.statics.borrow()[name]),
+                            Box::new(expr.clone()),
+                        ));
+                    }
+
+                    if self.ctx.program.constants.contains_key(name) {
+                        unreachable!(
+                            "Tried to evaluate constant variable in place mode (should have been caught by type checker)"
+                        )
+                    }
+                } else {
+                    if let Some(data) = scope.variables.get(name) {
+                        return Ok(data
+                            .borrow()
+                            .as_ref()
+                            .expect("Variable has not been set!")
+                            .clone());
+                    };
+
+                    if self.ctx.program.constants.contains_key(name) {
+                        return self.eval_const(name);
+                    }
+
+                    if self.ctx.program.statics.contains_key(name) {
+                        return self.eval_static(name);
+                    }
                 }
 
                 panic!("Variable not found in scope!");
@@ -280,13 +329,14 @@ impl<'a> Interpreter<'a> {
                         .args
                         .iter()
                         .map(|arg| {
-                            self.eval_expr(arg, scope)
+                            self.eval_expr(arg, scope, place)
                                 .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
                         })
                         .collect::<Result<Vec<_>, ()>>()?,
                 ),
                 MIRFnSource::Indirect(fn_name) => {
-                    let InterpreterData::FunctionPtr(source) = self.eval_expr(&fn_name, scope)?
+                    let InterpreterData::FunctionPtr(source) =
+                        self.eval_expr(&fn_name, scope, place)?
                     else {
                         panic!("Wrong indirect function call type!");
                     };
@@ -297,13 +347,35 @@ impl<'a> Interpreter<'a> {
                             .args
                             .iter()
                             .map(|arg| {
-                                self.eval_expr(arg, scope)
+                                self.eval_expr(arg, scope, place)
                                     .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
                             })
                             .collect::<Result<Vec<_>, ()>>()?,
                     )
                 }
             },
+
+            MIRExpressionInner::Ref(inner) => {
+                // We need to go into place mode to capture a reference to
+                // the inner expression.
+                // When we switch into place mode, that by itself adds a level
+                // of indirection, so we don't need to directly add a reference.
+                // However, if we're already in place mode, then we do need to
+                // add a level of indirection.
+                todo!()
+            }
+            MIRExpressionInner::Deref(inner) => {
+                todo!()
+            }
+            MIRExpressionInner::Member(base, name) => {
+                todo!()
+            }
+            MIRExpressionInner::Index(base, index) => {
+                // Index crosses the place expression boundary,
+                // so place = false when evaluating it, no matter if
+                // we're current in place mode.
+                todo!()
+            }
         }
     }
 
@@ -323,7 +395,9 @@ impl<'a> Interpreter<'a> {
 
         let mut scope = InterpreterScope::default();
         for ((data, _ty), arg) in args.into_iter().zip(fn_data.args.iter()) {
-            scope.variables.insert(arg.name.clone(), Some(data));
+            scope
+                .variables
+                .insert(arg.name.clone(), Rc::new(RefCell::new(Some(data))));
         }
 
         let mut ret: Option<InterpreterData<'a>> = None;
@@ -370,16 +444,21 @@ impl<'a> Interpreter<'a> {
                 }
 
                 let value = match value {
-                    Some(value) => Some(self.eval_expr(value, scope)?),
+                    Some(value) => Some(self.eval_expr(value, scope, false)?),
                     None => None,
                 };
 
-                scope.variables.insert(var.name.clone(), value);
+                scope
+                    .variables
+                    .insert(var.name.clone(), Rc::new(RefCell::new(value)));
             }
-            MIRStatement::SetVariable { name, value, .. } => {
-                let value = Some(self.eval_expr(value, scope)?);
+            MIRStatement::SetVariable { place, value, .. } => {
+                let InterpreterData::Ref(place, _) = self.eval_expr(place, scope, true)? else {
+                    panic!("SetVariable place is not a reference!");
+                };
+                let value = Some(self.eval_expr(value, scope, false)?);
 
-                scope.variables.insert(name.clone(), value);
+                *place.borrow_mut() = value;
             }
             MIRStatement::DropVariable(_, _) => {
                 // Dropping has no effect on the interpreter.
@@ -392,14 +471,15 @@ impl<'a> Interpreter<'a> {
                             .args
                             .iter()
                             .map(|arg| {
-                                self.eval_expr(arg, scope)
+                                self.eval_expr(arg, scope, false)
                                     .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
                             })
                             .collect::<Result<Vec<_>, ()>>()?,
                     )?;
                 }
                 MIRFnSource::Indirect(fn_name) => {
-                    let InterpreterData::FunctionPtr(source) = self.eval_expr(&fn_name, scope)?
+                    let InterpreterData::FunctionPtr(source) =
+                        self.eval_expr(&fn_name, scope, false)?
                     else {
                         panic!("Wrong indirect function call type!");
                     };
@@ -410,7 +490,7 @@ impl<'a> Interpreter<'a> {
                             .args
                             .iter()
                             .map(|arg| {
-                                self.eval_expr(arg, scope)
+                                self.eval_expr(arg, scope, false)
                                     .map(|v| (v, arg.ty.as_ref().unwrap().ty.clone()))
                             })
                             .collect::<Result<Vec<_>, ()>>()?,
@@ -422,7 +502,7 @@ impl<'a> Interpreter<'a> {
                     return Ok(Some(InterpreterData::Unit(())));
                 };
 
-                return Ok(Some(self.eval_expr(expr, scope)?));
+                return Ok(Some(self.eval_expr(expr, scope, false)?));
             }
             MIRStatement::Label { .. } => {
                 // Labels are handled by pre-run passes.
@@ -433,7 +513,8 @@ impl<'a> Interpreter<'a> {
             MIRStatement::GotoNotEqual {
                 index, condition, ..
             } => {
-                let InterpreterData::Bool(condition) = self.eval_expr(condition, scope)? else {
+                let InterpreterData::Bool(condition) = self.eval_expr(condition, scope, false)?
+                else {
                     panic!("GotoNotEqual condition is not a boolean!");
                 };
 
@@ -462,6 +543,7 @@ impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
             InterpreterData::Unit(_) => todo!("Add a unit expression to support this"),
             InterpreterData::String(v) => MIRExpressionInner::String(v),
             InterpreterData::FunctionPtr(v) => MIRExpressionInner::Variable(v),
+            InterpreterData::Ref(_, expr) => expr.inner.clone(),
         }
     }
 }
