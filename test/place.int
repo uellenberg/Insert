@@ -3,9 +3,10 @@ function test(in: u32) -> u32 {
     (in) = (in) + 2;
 
     let val: u32;
+    // val = val;
     val = in + 3;
 
     return val;
 }
 
-static testValue: u32 = test(4);
+static staticValue: u32 = test(4);

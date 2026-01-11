@@ -145,7 +145,10 @@ additionOp = { "+" | "-" }
 multiplicationOp = { "*" | "/" }
 
 identifier = @{
-    !keyword ~
+    // Exclude identifiers that are just keywords.
+    // If we have a keyword followed by a non-identifier
+    // character, then the identifier is just a keyword.
+    !(keyword ~ !(ASCII_ALPHA | ASCII_DIGIT | "_")) ~
     (ASCII_ALPHA | "_") ~
     (ASCII_ALPHA | ASCII_DIGIT | "_")*
 }
@@ -168,6 +171,9 @@ boolLiteral = { true_ | false_ }
 space = _{ WHITESPACE* }
 
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{ multiLineComment | singleLineComment }
+multiLineComment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+singleLineComment = _{ "//" ~ (!"\n" ~ ANY)* }
 
 static_ = _{ "static" }
 const_ = _{ "const" }
