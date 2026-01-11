@@ -8,4 +8,4 @@ function test(in: u32) -> u32 {
     return val;
 }
 
-static testValue: u32 = test(4u32);
+static testValue: u32 = test(4);

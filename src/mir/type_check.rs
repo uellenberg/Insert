@@ -383,11 +383,14 @@ fn check_fn_call<'a>(
         }
     };
 
+    // This needs to be a reference to the real type stored
+    // in the expression to ensure that any updates are properly
+    // saved.
     let mut actual_args = args
-        .iter()
+        .iter_mut()
         .map(|arg| {
             arg.ty
-                .clone()
+                .as_mut()
                 .expect("Function argument didn't have type info!")
         })
         .collect::<Vec<_>>();
