@@ -3,7 +3,7 @@ use crate::mir::function::get_fn_type;
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
-    MIRFunction, MIRFunctionArgs, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use crate::parser::span::Span;
 use ariadne::{ColorGenerator, Fmt, Label, Report, ReportKind};
@@ -183,8 +183,8 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                     // (Phantom) arg variables shouldn't get checked against locals, since
                     // they might be added to the scope automatically.
                     if (!*arg && scope.get_variable(&var.name).is_some())
-                        || ctx.program.statics.contains_key(&var.name)
-                        || ctx.program.constants.contains_key(&var.name)
+                        || ctx.program.static_names.contains_key(&var.name)
+                        || ctx.program.const_names.contains_key(&var.name)
                     {
                         eprintln!("Cannot shadow existing variable {}", var.name);
                         return false;
@@ -216,7 +216,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                     if !explore_outer_place(&place, &mut |expr| {
                         match &expr.inner {
                             MIRExpressionInner::Variable(var) => {
-                                if ctx.program.constants.contains_key(var) {
+                                if ctx.program.const_names.contains_key(var) {
                                     eprintln!("Cannot set constants!");
                                     return false;
                                 }
@@ -372,7 +372,7 @@ fn check_fn_call<'a>(
                 return false;
             };
 
-            get_fn_type(candidate)
+            get_fn_type(&ctx.program.functions[candidate])
         }
         MIRFnSource::Indirect(expr) => {
             let Some(ty) = check_expression(ctx, expr, scope) else {
@@ -578,28 +578,39 @@ fn get_fn_candidate<'a, 'b>(
     ctx: &'b MIRContext<'a>,
     name: &Cow<'a, str>,
     args: &[MIRTypeInner<'a>],
-) -> Option<&'b MIRFunction<'a>> {
-    let mut res = ctx.program.functions.by_name(name).filter(|func| {
-        if args.len() != func.args.len() {
-            return false;
-        }
+) -> Option<MIRFunctionKey> {
+    let mut res = ctx
+        .program
+        .function_names
+        .get(name)
+        .into_iter()
+        .map(|v| v.values())
+        .flatten()
+        .filter(|func| {
+            let func = &ctx.program.functions[**func];
 
-        for (arg1, arg2) in args.iter().zip(func.args_ty.0.iter()) {
-            if arg1 == arg2 {
-                continue;
+            if args.len() != func.args.len() {
+                return false;
             }
 
-            match (arg1, arg2) {
-                // Allow unknown numbers to resolve, but only if there's
-                // no ambiguity (we'll check that below).
-                (MIRTypeInner::UnknownNumber, MIRTypeInner::I32 | MIRTypeInner::U32)
-                | (MIRTypeInner::I32 | MIRTypeInner::U32, MIRTypeInner::UnknownNumber) => continue,
-                _ => return false,
-            }
-        }
+            for (arg1, arg2) in args.iter().zip(func.args_ty.0.iter()) {
+                if arg1 == arg2 {
+                    continue;
+                }
 
-        true
-    });
+                match (arg1, arg2) {
+                    // Allow unknown numbers to resolve, but only if there's
+                    // no ambiguity (we'll check that below).
+                    (MIRTypeInner::UnknownNumber, MIRTypeInner::I32 | MIRTypeInner::U32)
+                    | (MIRTypeInner::I32 | MIRTypeInner::U32, MIRTypeInner::UnknownNumber) => {
+                        continue;
+                    }
+                    _ => return false,
+                }
+            }
+
+            true
+        });
 
     let Some(candidate) = res.next() else {
         // No candidates.
@@ -618,7 +629,7 @@ fn get_fn_candidate<'a, 'b>(
     }
 
     // Only one candidate found.
-    Some(candidate)
+    Some(*candidate)
 }
 
 /// Checks whether the expression is valid,
@@ -745,15 +756,20 @@ fn check_expression<'a, 'b>(
                     return Some(var.ty.clone());
                 }
 
-                if let Some(var) = ctx.program.constants.get(name) {
-                    return Some(var.ty.clone());
+                if let Some(var) = ctx.program.const_names.get(name) {
+                    return Some(ctx.program.constants[*var].ty.clone());
                 }
 
-                if let Some(var) = ctx.program.statics.get(name) {
-                    return Some(var.ty.clone());
+                if let Some(var) = ctx.program.static_names.get(name) {
+                    return Some(ctx.program.statics[*var].ty.clone());
                 }
 
-                if ctx.program.functions.by_name(name).next().is_some() {
+                if ctx
+                    .program
+                    .function_names
+                    .get(name)
+                    .is_some_and(|v| !v.is_empty())
+                {
                     eprintln!(
                         "Cannot directly access function as value (use a reference): {expr:?}"
                     );

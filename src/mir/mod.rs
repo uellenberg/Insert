@@ -9,15 +9,15 @@ mod type_check;
 use crate::mir::drop::drop_at_scope_end;
 use crate::mir::expr::{const_eval, const_optimize_expr};
 use crate::mir::function::{
-    export_functions, export_helpers, inline_functions, insert_fn_arg_args, resolve_fns_to_vars,
+    export_helpers, inline_functions, insert_fn_arg_args, prune_functions, resolve_fns_to_vars,
 };
 use crate::mir::interpreter::Interpreter;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
-use indexmap::{Equivalent, IndexMap};
+use slotmap::{SlotMap, new_key_type};
 use std::borrow::Cow;
-use std::ops::{Deref, DerefMut};
+use std::collections::HashMap;
 
 /// Context that can be used
 /// throughout the MIR processing.
@@ -88,11 +88,25 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // Helper functions are now exported when needed.
 
-    export_functions(ctx);
+    prune_functions(ctx);
 
     // Non-export functions are now removed.
 
     true
+}
+
+new_key_type! {
+    pub struct MIRConstKey;
+    pub struct MIRStaticKey;
+    pub struct MIRFunctionKey;
+}
+
+/// A declaration (base-level statement).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MIRDeclarationKey {
+    Constant(MIRConstKey),
+    Static(MIRStaticKey),
+    Function(MIRFunctionKey),
 }
 
 /// An entire program.
@@ -101,59 +115,121 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 /// inside here.
 #[derive(Debug, Default, Clone)]
 pub struct MIRProgram<'a> {
+    /// All the declarations in the program, in order.
+    pub decls: Vec<MIRDeclarationKey>,
+
     /// A list of constants in the program.
-    /// Name -> Constant data.
-    pub constants: IndexMap<Cow<'a, str>, MIRConstant<'a>>,
+    pub constants: SlotMap<MIRConstKey, MIRConstant<'a>>,
 
     /// A list of statics in the program.
     /// Name -> Static data.
-    pub statics: IndexMap<Cow<'a, str>, MIRStatic<'a>>,
+    pub statics: SlotMap<MIRStaticKey, MIRStatic<'a>>,
 
     /// A list of functions in the program.
     /// Name -> Args -> Function data.
-    pub functions: MIRFunctions<'a>,
+    pub functions: SlotMap<MIRFunctionKey, MIRFunction<'a>>,
+
+    /// Name -> Constant.
+    pub const_names: HashMap<Cow<'a, str>, MIRConstKey>,
+
+    /// Name -> Static.
+    pub static_names: HashMap<Cow<'a, str>, MIRStaticKey>,
+
+    /// (Name, Args) -> Function.
+    pub function_names: HashMap<Cow<'a, str>, HashMap<MIRFunctionArgs<'a>, MIRFunctionKey>>,
 }
 
-/// Uniquely identifies a function.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MIRFunctionKey<'a>(pub Cow<'a, str>, pub MIRFunctionArgs<'a>);
+impl<'a> MIRProgram<'a> {
+    /// Tries to rename a declaration.
+    /// On failure, this leaves the state unchanged and returns false.
+    ///
+    /// This doesn't modify the usage site of this declaration, so just
+    /// calling this by itself will leave the program in an invalid state.
+    pub fn try_rename(&mut self, key: MIRDeclarationKey, name: Cow<'a, str>) -> bool {
+        if self.const_names.contains_key(&name)
+            || self.static_names.contains_key(&name)
+            // Functions can overload if there isn't already an exact match for the args.
+            || (!matches!(key, MIRDeclarationKey::Function(_))
+                && self.function_names.contains_key(&name))
+        {
+            return false;
+        }
 
-// Hash always operates on values, so these are valid.
-// This allows us to use &(name, args) and &(&name, &args) for lookups.
+        match key {
+            MIRDeclarationKey::Constant(key) => {
+                self.const_names.remove(&self.constants[key].name);
+                self.constants[key].name = name.clone();
+                self.const_names.insert(name, key);
+            }
+            MIRDeclarationKey::Static(key) => {
+                self.static_names.remove(&self.statics[key].name);
+                self.statics[key].name = name.clone();
+                self.static_names.insert(name, key);
+            }
+            MIRDeclarationKey::Function(key) => {
+                let args_ty = self.functions[key].args_ty.clone();
+                if self
+                    .function_names
+                    .get(&name)
+                    .is_some_and(|v| v.contains_key(&args_ty))
+                {
+                    // (name, arg) combo already exists.
+                    return false;
+                }
 
-impl<'a> Equivalent<MIRFunctionKey<'a>> for (Cow<'a, str>, MIRFunctionArgs<'a>) {
-    fn equivalent(&self, key: &MIRFunctionKey<'a>) -> bool {
-        self.0 == key.0 && self.1 == key.1
+                self.function_names
+                    .get_mut(&self.functions[key].name)
+                    .unwrap()
+                    .remove(&args_ty);
+                self.functions[key].name = name.clone();
+                self.function_names
+                    .entry(name)
+                    .or_default()
+                    .insert(args_ty, key);
+            }
+        }
+
+        true
     }
-}
 
-impl<'a> Equivalent<MIRFunctionKey<'a>> for (&Cow<'a, str>, &MIRFunctionArgs<'a>) {
-    fn equivalent(&self, key: &MIRFunctionKey<'a>) -> bool {
-        self.0 == &key.0 && self.1 == &key.1
-    }
-}
+    pub fn retain<T: FnMut(&Self, &MIRDeclarationKey) -> bool>(&mut self, mut func: T) {
+        for to_remove in self
+            .decls
+            .iter()
+            .filter(|v| !func(self, v))
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            match to_remove {
+                MIRDeclarationKey::Constant(key) => {
+                    let name = &self.constants[key].name;
 
-/// All the functions in a program.
-#[derive(Debug, Default, Clone)]
-pub struct MIRFunctions<'a>(pub IndexMap<MIRFunctionKey<'a>, MIRFunction<'a>>);
+                    self.const_names.remove(name);
+                    self.constants.remove(key);
+                    self.decls
+                        .retain(|val| val != &MIRDeclarationKey::Constant(key));
+                }
+                MIRDeclarationKey::Static(key) => {
+                    let name = &self.statics[key].name;
 
-impl<'a> Deref for MIRFunctions<'a> {
-    type Target = IndexMap<MIRFunctionKey<'a>, MIRFunction<'a>>;
+                    self.static_names.remove(name);
+                    self.statics.remove(key);
+                    self.decls
+                        .retain(|val| val != &MIRDeclarationKey::Static(key));
+                }
+                MIRDeclarationKey::Function(key) => {
+                    let name = &self.functions[key].name;
+                    let args_ty = &self.functions[key].args_ty;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> DerefMut for MIRFunctions<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<'a> MIRFunctions<'a> {
-    pub fn by_name(&self, name: &Cow<'a, str>) -> impl Iterator<Item = &MIRFunction<'a>> {
-        self.0.values().filter(move |f| f.name == *name)
+                    if let Some(inner) = self.function_names.get_mut(name) {
+                        inner.remove(args_ty);
+                    }
+                    self.functions.remove(key);
+                    self.decls
+                        .retain(|val| val != &MIRDeclarationKey::Function(key));
+                }
+            }
+        }
     }
 }
 

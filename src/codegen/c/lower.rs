@@ -5,8 +5,8 @@ use crate::codegen::c::token::{
 };
 use crate::codegen::token::{Token, TokenInfo, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
-    MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram, MIRStatement,
-    MIRStatic, MIRType, MIRTypeInner,
+    MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram,
+    MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use std::borrow::Cow;
 
@@ -26,12 +26,17 @@ impl Codegen for CLowerer {
         let info = CWriterInfo::default();
         let mut output = spread![];
 
-        for val in program.statics.values() {
-            output.extend(self.lower_static(val, info));
-        }
-
-        for val in program.functions.values() {
-            output.extend(self.lower_function(val, info));
+        for val in &program.decls {
+            match val {
+                MIRDeclarationKey::Static(val) => {
+                    output.extend(self.lower_static(&program.statics[*val], info))
+                }
+                MIRDeclarationKey::Function(val) => {
+                    output.extend(self.lower_function(&program.functions[*val], info))
+                }
+                // Constants are never exported.
+                MIRDeclarationKey::Constant(_) => {}
+            }
         }
 
         if !options.fancy {

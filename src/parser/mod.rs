@@ -2,9 +2,9 @@ pub mod file_cache;
 pub mod span;
 
 use crate::mir::{
-    MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
-    MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType, MIRStatement, MIRStatic,
-    MIRType, MIRTypeInner, MIRVariable,
+    MIRConstant, MIRContext, MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnCall,
+    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRStatement, MIRStatic, MIRType,
+    MIRTypeInner, MIRVariable,
 };
 use ariadne::{ColorGenerator, Label, Report, ReportKind};
 use pest::Parser;
@@ -45,9 +45,11 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
                     return false;
                 }
 
-                ctx.program
-                    .constants
-                    .insert(constant.name.clone(), constant);
+                let name = constant.name.clone();
+
+                let key = ctx.program.constants.insert(constant);
+                ctx.program.const_names.insert(name, key);
+                ctx.program.decls.push(MIRDeclarationKey::Constant(key));
             }
             Rule::staticDeclaration => {
                 let static_data = parse_static(location, pair);
@@ -55,9 +57,11 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
                     return false;
                 }
 
-                ctx.program
-                    .statics
-                    .insert(static_data.name.clone(), static_data);
+                let name = static_data.name.clone();
+
+                let key = ctx.program.statics.insert(static_data);
+                ctx.program.static_names.insert(name, key);
+                ctx.program.decls.push(MIRDeclarationKey::Static(key));
             }
             Rule::functionDeclaration => {
                 let function_data = parse_function(location, pair);
@@ -71,10 +75,16 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
                     return false;
                 }
 
-                ctx.program.functions.insert(
-                    MIRFunctionKey(function_data.name.clone(), function_data.args_ty.clone()),
-                    function_data,
-                );
+                let name = function_data.name.clone();
+                let args_ty = function_data.args_ty.clone();
+
+                let key = ctx.program.functions.insert(function_data);
+                ctx.program
+                    .function_names
+                    .entry(name)
+                    .or_default()
+                    .insert(args_ty, key);
+                ctx.program.decls.push(MIRDeclarationKey::Function(key));
             }
             Rule::EOI => {}
             _ => unreachable!(),
@@ -93,17 +103,26 @@ fn check_no_duplicates<'a>(
     span: &Span<'a>,
 ) -> bool {
     let defined_span;
-    if let Some(var) = ctx.program.statics.get(&name) {
-        defined_span = var.span.clone();
-    } else if let Some(var) = ctx.program.constants.get(&name) {
-        defined_span = var.span.clone();
+    if let Some(var) = ctx.program.static_names.get(&name) {
+        defined_span = ctx.program.statics[*var].span.clone();
+    } else if let Some(var) = ctx.program.const_names.get(&name) {
+        defined_span = ctx.program.constants[*var].span.clone();
     } else if let Some(args) = args {
         // We're trying to define a new function, and it hasn't conflicted
         // with anything else yet, as per the checks above.
 
         let mut found_duplicate = None;
 
-        for option in ctx.program.functions.by_name(&name) {
+        for option in ctx
+            .program
+            .function_names
+            .get(&name)
+            .into_iter()
+            .map(|v| v.values())
+            .flatten()
+        {
+            let option = &ctx.program.functions[*option];
+
             if &option.args_ty == args {
                 found_duplicate = Some(option.span.clone());
                 break;
@@ -117,9 +136,15 @@ fn check_no_duplicates<'a>(
             // This is just an overload, which is allowed.
             return true;
         }
-    } else if let Some(option) = ctx.program.functions.by_name(&name).next() {
+    } else if let Some(option) = ctx
+        .program
+        .function_names
+        .get(&name)
+        .map(|v| v.values().next())
+        .flatten()
+    {
         // We aren't trying to define a function, but a function with the same name already exists.
-        defined_span = option.span.clone();
+        defined_span = ctx.program.functions[*option].span.clone();
     } else {
         // No duplicates.
         return true;

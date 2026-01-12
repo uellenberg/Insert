@@ -1,8 +1,9 @@
 use crate::mir::expr::{explore_expr, explore_expr_mut, find_exprs, find_exprs_mut};
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
-    MIRFunctionKey, MIRFunctionType, MIRStatement, MIRType, MIRTypeInner, MIRVariable,
+    MIRContext, MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
+    MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType, MIRStatement, MIRType,
+    MIRTypeInner, MIRVariable,
 };
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -136,14 +137,14 @@ pub fn insert_fn_arg_args(ctx: &mut MIRContext<'_>) {
 /// from as many optimizations.
 pub fn export_helpers(ctx: &mut MIRContext<'_>) {
     let mut visited = HashSet::new();
-    for function in ctx.program.functions.keys().cloned() {
-        if ctx.program.functions[&function].fn_type == MIRFunctionType::Export {
+    for function in ctx.program.functions.keys() {
+        if ctx.program.functions[function].fn_type == MIRFunctionType::Export {
             mark_visited(ctx, function, &mut visited);
         }
     }
 
-    for name in visited {
-        let func = &mut ctx.program.functions[&name];
+    for key in visited {
+        let func = &mut ctx.program.functions[key];
         if func.fn_type == MIRFunctionType::Helper {
             func.fn_type = MIRFunctionType::Export;
         }
@@ -154,15 +155,15 @@ pub fn export_helpers(ctx: &mut MIRContext<'_>) {
 /// the given function.
 fn mark_visited<'a>(
     ctx: &MIRContext<'a>,
-    func: MIRFunctionKey<'a>,
-    visited: &mut HashSet<MIRFunctionKey<'a>>,
+    func: MIRFunctionKey,
+    visited: &mut HashSet<MIRFunctionKey>,
 ) {
     if visited.contains(&func) {
         return;
     }
     visited.insert(func.clone());
 
-    for statement in &ctx.program.functions[&func].body {
+    for statement in &ctx.program.functions[func].body {
         if let MIRStatement::FunctionCall(MIRFnCall {
             source: MIRFnSource::Direct(name, ..),
             args_ty,
@@ -170,15 +171,7 @@ fn mark_visited<'a>(
         }) = statement
         {
             // Statement call.
-            mark_visited(
-                ctx,
-                MIRFunctionKey(
-                    name.clone(),
-                    // args_ty must be resolved from type checking.
-                    args_ty.clone().expect("Functions args type didn't exist!"),
-                ),
-                visited,
-            );
+            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited);
         } else {
             // TODO: Visit function pointers in expressions.
             find_exprs(statement, &mut |expr| {
@@ -189,15 +182,7 @@ fn mark_visited<'a>(
                     {
                         if let MIRFnSource::Direct(name, ..) = source {
                             // Expression call.
-                            mark_visited(
-                                ctx,
-                                MIRFunctionKey(
-                                    name.clone(),
-                                    // args_ty must be resolved from type checking.
-                                    args_ty.clone().expect("Functions args type didn't exist!"),
-                                ),
-                                visited,
-                            );
+                            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited);
                         }
                     }
 
@@ -217,7 +202,7 @@ fn mark_visited<'a>(
 ///
 /// Returns true on success.
 pub fn inline_functions(ctx: &mut MIRContext<'_>) -> bool {
-    let function_names = ctx.program.functions.keys().cloned().collect::<Vec<_>>();
+    let function_names = ctx.program.functions.keys().collect::<Vec<_>>();
 
     let mut inline_var_idx = 0;
 
@@ -239,8 +224,8 @@ pub fn inline_functions(ctx: &mut MIRContext<'_>) -> bool {
 /// inline_var_idx must maintain its state across the whole compiler pipeline.
 fn inline_function<'a>(
     ctx: &mut MIRContext<'a>,
-    func: MIRFunctionKey<'a>,
-    visited: &mut HashSet<MIRFunctionKey<'a>>,
+    func: MIRFunctionKey,
+    visited: &mut HashSet<MIRFunctionKey>,
     inline_var_idx: &mut u32,
 ) -> bool {
     if visited.contains(&func) {
@@ -249,7 +234,7 @@ fn inline_function<'a>(
     }
     visited.insert(func.clone());
 
-    let mut new_statements = ctx.program.functions[&func].body.clone();
+    let mut new_statements = ctx.program.functions[func].body.clone();
     if !<StatementExplorer>::rewrite_block(
         &mut new_statements,
         &mut |mut statement, _scope, block| {
@@ -267,12 +252,8 @@ fn inline_function<'a>(
                         ..
                     }) = expr.inner.clone()
                     {
-                        // args_ty must be resolved from type checking.
-                        let key = MIRFunctionKey(
-                            name,
-                            args_ty.expect("Functions args type didn't exist!"),
-                        );
-                        if ctx.program.functions[&key].fn_type == MIRFunctionType::Inline {
+                        let key = get_fn_key(ctx, &name, &args_ty);
+                        if ctx.program.functions[key].fn_type == MIRFunctionType::Inline {
                             let Ok(mut res) =
                                 rewrite_inline_function(ctx, key, &args, visited, inline_var_idx)
                             else {
@@ -300,9 +281,8 @@ fn inline_function<'a>(
                 ..
             }) = statement.clone()
             {
-                // args_ty must be resolved from type checking.
-                let key = MIRFunctionKey(name, args_ty.expect("Functions args type didn't exist!"));
-                if ctx.program.functions[&key].fn_type == MIRFunctionType::Inline {
+                let key = get_fn_key(ctx, &name, &args_ty);
+                if ctx.program.functions[key].fn_type == MIRFunctionType::Inline {
                     let Ok(mut res) =
                         rewrite_inline_function(ctx, key, &args, visited, inline_var_idx)
                     else {
@@ -326,7 +306,7 @@ fn inline_function<'a>(
         panic!("inline_function rewrite returned false!");
     }
 
-    ctx.program.functions[&func].body = new_statements;
+    ctx.program.functions[func].body = new_statements;
 
     // Allow multiple calls of the same function.
     visited.remove(&func);
@@ -341,9 +321,9 @@ fn inline_function<'a>(
 /// Returns Err on failure.
 fn rewrite_inline_function<'a>(
     ctx: &mut MIRContext<'a>,
-    func: MIRFunctionKey<'a>,
+    func: MIRFunctionKey,
     args: &[MIRExpression<'a>],
-    visited: &mut HashSet<MIRFunctionKey<'a>>,
+    visited: &mut HashSet<MIRFunctionKey>,
     inline_var_idx: &mut u32,
 ) -> Result<(Vec<MIRStatement<'a>>, Cow<'a, str>), ()> {
     // We need to ensure that we're fully resolved first, before inlining ourselves
@@ -354,7 +334,7 @@ fn rewrite_inline_function<'a>(
 
     // Original var name -> new var name.
     let mut var_map: HashMap<Cow<'a, str>, Cow<'a, str>> = HashMap::new();
-    for arg in &ctx.program.functions[&func].args {
+    for arg in &ctx.program.functions[func].args {
         let new_name = format!("$inline_{}", inline_var_idx);
         *inline_var_idx += 1;
 
@@ -366,7 +346,7 @@ fn rewrite_inline_function<'a>(
     let mut header = vec![];
 
     // Arg variables.
-    for (arg_value, arg_info) in args.iter().zip(ctx.program.functions[&func].args.iter()) {
+    for (arg_value, arg_info) in args.iter().zip(ctx.program.functions[func].args.iter()) {
         let new_name = var_map[&arg_info.name].clone();
 
         header.push(MIRStatement::CreateVariable {
@@ -382,7 +362,7 @@ fn rewrite_inline_function<'a>(
     }
 
     // Main body.
-    let mut body = ctx.program.functions[&func].body.clone();
+    let mut body = ctx.program.functions[func].body.clone();
 
     // Output variable.
     let output_var = format!("$inline_{}", inline_var_idx);
@@ -392,8 +372,8 @@ fn rewrite_inline_function<'a>(
     // If there's no return there, then it's implicit.
     let output_var_info = MIRVariable {
         name: output_var.clone().into(),
-        ty: ctx.program.functions[&func].ret_ty.clone(),
-        span: ctx.program.functions[&func].span.clone(),
+        ty: ctx.program.functions[func].ret_ty.clone(),
+        span: ctx.program.functions[func].span.clone(),
     };
 
     if let Some(MIRStatement::Return { expr, span }) = body.last().cloned() {
@@ -411,7 +391,7 @@ fn rewrite_inline_function<'a>(
         body.push(MIRStatement::CreateVariable {
             value: Some(MIRExpression {
                 inner: MIRExpressionInner::Unit,
-                ty: Some(ctx.program.functions[&func].ret_ty.clone()),
+                ty: Some(ctx.program.functions[func].ret_ty.clone()),
                 span: output_var_info.span.clone(),
             }),
             arg: false,
@@ -505,9 +485,29 @@ fn rewrite_inline_function<'a>(
     Ok((header, output_var.into()))
 }
 
-/// Removes all functions that aren't marked as export.
-pub fn export_functions(ctx: &mut MIRContext<'_>) {
-    ctx.program
-        .functions
-        .retain(|_, func| func.fn_type == MIRFunctionType::Export);
+/// Removes all functions from the final output that aren't marked as export.
+pub fn prune_functions(ctx: &mut MIRContext<'_>) {
+    ctx.program.retain(|program, key| match key {
+        MIRDeclarationKey::Function(func) => {
+            program.functions[*func].fn_type == MIRFunctionType::Export
+        }
+        _ => true,
+    });
+}
+
+/// Gets the [MIRFunctionKey] for the given (name, args_ty) combo.
+/// Panics if the function doesn't exist.
+fn get_fn_key(
+    ctx: &MIRContext<'_>,
+    name: &str,
+    args_ty: &Option<MIRFunctionArgs>,
+) -> MIRFunctionKey {
+    *ctx.program
+        .function_names
+        .get(name)
+        // The function's existence must be verified in type checking.
+        .expect("Function name doesn't exist!")
+        // args_ty must be resolved from type checking.
+        .get(args_ty.as_ref().expect("Functions args type didn't exist!"))
+        .expect("Function doesn't exist!")
 }

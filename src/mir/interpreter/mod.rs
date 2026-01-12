@@ -130,9 +130,10 @@ impl<'a> Interpreter<'a> {
             return Ok(const_data.clone());
         }
 
-        let Some(constant) = self.ctx.program.constants.get(name) else {
+        let Some(constant) = self.ctx.program.const_names.get(name) else {
             panic!("Constant not found!");
         };
+        let constant = &self.ctx.program.constants[*constant];
 
         {
             let mut current_evals = self.current_evals.borrow_mut();
@@ -161,9 +162,10 @@ impl<'a> Interpreter<'a> {
             return Ok(static_data.borrow().clone().expect("Uninitialized static"));
         }
 
-        let Some(static_def) = self.ctx.program.statics.get(name) else {
+        let Some(static_def) = self.ctx.program.static_names.get(name) else {
             panic!("Static not found!");
         };
+        let static_def = &self.ctx.program.statics[*static_def];
 
         {
             let mut current_evals = self.current_evals.borrow_mut();
@@ -287,7 +289,7 @@ impl<'a> Interpreter<'a> {
                         ));
                     }
 
-                    if self.ctx.program.statics.contains_key(name) {
+                    if self.ctx.program.static_names.contains_key(name) {
                         // Ensure the static exists.
                         self.eval_static(name)?;
 
@@ -297,7 +299,7 @@ impl<'a> Interpreter<'a> {
                         ));
                     }
 
-                    if self.ctx.program.constants.contains_key(name) {
+                    if self.ctx.program.const_names.contains_key(name) {
                         unreachable!(
                             "Tried to evaluate constant variable in place mode (should have been caught by type checker)"
                         )
@@ -311,11 +313,11 @@ impl<'a> Interpreter<'a> {
                             .clone());
                     };
 
-                    if self.ctx.program.constants.contains_key(name) {
+                    if self.ctx.program.const_names.contains_key(name) {
                         return self.eval_const(name);
                     }
 
-                    if self.ctx.program.statics.contains_key(name) {
+                    if self.ctx.program.static_names.contains_key(name) {
                         return self.eval_static(name);
                     }
                 }
@@ -388,9 +390,18 @@ impl<'a> Interpreter<'a> {
     ) -> Result<InterpreterData<'a>, ()> {
         let args_ty = MIRFunctionArgs(args.iter().map(|(_, ty)| ty.clone()).collect());
 
-        let Some(fn_data) = self.ctx.program.functions.get(&(fn_name, &args_ty)) else {
+        let Some(fn_data) = self
+            .ctx
+            .program
+            .function_names
+            .get(fn_name)
+            .map(|v| v.get(&args_ty))
+            .flatten()
+        else {
             panic!("Function not found!");
         };
+        let fn_data = &self.ctx.program.functions[*fn_data];
+
         assert_eq!(fn_data.args.len(), args.len());
 
         let mut scope = InterpreterScope::default();

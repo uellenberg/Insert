@@ -1,39 +1,34 @@
 use crate::mir::interpreter::Interpreter;
 use crate::mir::scope::StatementExplorer;
 use crate::mir::{
-    MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
-    MIRStatement,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRStatement,
 };
-use indexmap::IndexMap;
 use std::borrow::Cow;
 
 /// Attempts to evaluate all constants and statics, returning
 /// whether it was successful.
 pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a>) -> bool {
-    let const_names = ctx.program.constants.keys().cloned().collect::<Vec<_>>();
-    let static_names = ctx.program.statics.keys().cloned().collect::<Vec<_>>();
-
-    for constant in const_names {
-        let Ok(value) = interpreter.eval_const(&constant) else {
+    for (const_name, const_key) in &ctx.program.const_names {
+        let Ok(value) = interpreter.eval_const(const_name) else {
             return false;
         };
 
         ctx.program
             .constants
-            .get_mut(&constant)
+            .get_mut(*const_key)
             .unwrap()
             .value
             .inner = value.into();
     }
 
-    for static_name in static_names {
+    for (static_name, static_key) in &ctx.program.static_names {
         let Ok(value) = interpreter.eval_static(&static_name) else {
             return false;
         };
 
         ctx.program
             .statics
-            .get_mut(&static_name)
+            .get_mut(*static_key)
             .unwrap()
             .value
             .inner = value.into();
@@ -52,7 +47,16 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
             &mut function.body,
             &|statement, _scope| {
                 find_exprs_mut(statement, &mut |expr| {
-                    reduce_expr_simple(&ctx.program.constants, expr);
+                    reduce_expr(expr, &mut |name| {
+                        // Ensure the constant exists.
+                        let key = ctx.program.const_names.get(&name)?;
+
+                        // Constants are guaranteed to already be evaluated.
+
+                        // No need to validate that this is a primitive here,
+                        // since eval_constant already does that.
+                        Some(ctx.program.constants[*key].value.clone())
+                    });
 
                     true
                 });
@@ -69,27 +73,6 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
     }
 
     true
-}
-
-/// Expression reduction that uses
-/// the values inside constants.
-/// This MUST be run after constant evaluation.
-fn reduce_expr_simple<'a>(
-    constants: &IndexMap<Cow<'a, str>, MIRConstant<'a>>,
-    expr: &mut MIRExpression<'a>,
-) {
-    reduce_expr(expr, &mut |name| {
-        // Ensure the constant exists.
-        if !constants.contains_key(&name) {
-            return None;
-        }
-
-        // Constants are guaranteed to already be evaluated.
-
-        // No need to validate that this is a primitive here,
-        // since eval_constant already does that.
-        Some(constants[&name].value.clone())
-    });
 }
 
 /// Attempts to reduce an expression

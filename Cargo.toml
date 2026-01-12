@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 ariadne = { version = "0.6.0", features = ["auto-color"] }
-indexmap = "2.12.1"
 num-traits = "0.2.19"
 parking_lot = "0.12.5"
 pest = "2.8.4"
 pest_derive = "2.8.4"
+slotmap = "1.1.1"
 smallvec = { version = "2.0.0-alpha.1", features = ["specialization"] }

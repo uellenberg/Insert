@@ -1,3 +1,5 @@
+static staticValue: u32 = test(4);
+
 function test(in: u32) -> u32 {
     in = in + 1;
     (in) = (in) + 2;
@@ -8,5 +10,3 @@ function test(in: u32) -> u32 {
 
     return val;
 }
-
-static staticValue: u32 = test(4);
