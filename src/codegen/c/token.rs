@@ -1,5 +1,5 @@
 use crate::codegen::c::CLowerer;
-use crate::codegen::token::{Token, TokenInfo, TokenStyle};
+use crate::codegen::token::{Token, TokenInfo};
 use std::borrow::Cow;
 
 pub const LEFT_PAREN: Token<'static> = Token::new(Cow::Borrowed("("));
@@ -10,22 +10,6 @@ pub const SEMI: Token<'static> = Token::new(Cow::Borrowed(";"));
 
 pub const INDENT: Token<'static> = Token::new_fancy(Cow::Borrowed("    "));
 pub const NEWLINE: Token<'static> = Token::new_fancy(Cow::Borrowed("\n"));
-
-impl<'a> Token<'a> {
-    pub const fn new(text: Cow<'a, str>) -> Self {
-        Self {
-            text: Some(text),
-            style: TokenStyle::Required,
-        }
-    }
-
-    pub const fn new_fancy(text: Cow<'a, str>) -> Self {
-        Self {
-            text: Some(text),
-            style: TokenStyle::Fancy,
-        }
-    }
-}
 
 impl TokenInfo for CLowerer {
     fn needs_space_between<'a>(&self, left: &Token<'a>, right: &Token<'a>) -> bool {

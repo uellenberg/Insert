@@ -1,4 +1,4 @@
 mod lower;
 mod token;
 
-pub(crate) use lower::CLowerer;
+pub(crate) use lower::{C, CLowerer};

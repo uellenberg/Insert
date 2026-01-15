@@ -6,6 +6,7 @@ mod interpreter;
 mod scope;
 mod type_check;
 
+use crate::codegen::Codegen;
 use crate::mir::drop::drop_at_scope_end;
 use crate::mir::expr::{const_eval, const_optimize_expr};
 use crate::mir::function::{
@@ -15,6 +16,7 @@ use crate::mir::interpreter::Interpreter;
 use crate::mir::type_check::type_check;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
+use crate::targets::Target;
 use ariadne::{ColorGenerator, Label, Report, ReportKind};
 use slotmap::{SlotMap, new_key_type};
 use std::borrow::Cow;
@@ -22,13 +24,30 @@ use std::collections::HashMap;
 
 /// Context that can be used
 /// throughout the MIR processing.
-#[derive(Debug, Default, Clone)]
 pub struct MIRContext<'a> {
     /// The current program.
     pub program: MIRProgram<'a>,
 
+    /// The target we're compiling for.
+    pub target: &'static dyn Target,
+
+    /// An instance of the lowerer for the target
+    /// we're compiling for.
+    pub lowerer: Box<dyn Codegen>,
+
     /// A cache of files that have been loaded.
     pub file_cache: FileCache,
+}
+
+impl<'a> Clone for MIRContext<'a> {
+    fn clone(&self) -> Self {
+        Self {
+            program: self.program.clone(),
+            target: self.target,
+            lowerer: self.target.lowerer().new(),
+            file_cache: self.file_cache.clone(),
+        }
+    }
 }
 
 /// Applies all MIR phases and

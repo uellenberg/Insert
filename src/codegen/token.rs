@@ -31,6 +31,22 @@ pub struct Token<'a> {
     pub style: TokenStyle,
 }
 
+impl<'a> Token<'a> {
+    pub const fn new(text: Cow<'a, str>) -> Self {
+        Self {
+            text: Some(text),
+            style: TokenStyle::Required,
+        }
+    }
+
+    pub const fn new_fancy(text: Cow<'a, str>) -> Self {
+        Self {
+            text: Some(text),
+            style: TokenStyle::Fancy,
+        }
+    }
+}
+
 /// The style represents why the token exists, and is used to strip out
 /// unneeded tokens when different compiler flags are passed.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

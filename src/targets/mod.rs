@@ -1,22 +1,25 @@
+use crate::codegen;
 use crate::codegen::Codegen;
-use crate::codegen::c::CLowerer;
-use crate::codegen::token::TokenInfo;
 
 /// Contains information about a target language.
 pub trait Target {
-    /// The type used to lower from MIR to the target language.
-    type Lowerer: Codegen + TokenInfo;
-
     /// Gets an instance of the lowerer for this target.
-    fn lowerer(&self) -> Self::Lowerer;
+    fn lowerer(&self) -> &'static dyn Codegen;
+
+    /// The name of this target.
+    /// This is used as the specified in target blocks
+    /// and the CLI, so shouldn't change.
+    fn name(&self) -> &'static str;
 }
 
 pub struct C;
 
 impl Target for C {
-    type Lowerer = CLowerer;
+    fn lowerer(&self) -> &'static dyn Codegen {
+        codegen::c::C
+    }
 
-    fn lowerer(&self) -> Self::Lowerer {
-        CLowerer
+    fn name(&self) -> &'static str {
+        "C"
     }
 }

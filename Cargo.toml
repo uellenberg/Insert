@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 ariadne = { version = "0.6.0", features = ["auto-color"] }
+clap = { version = "4.5.54", features = ["derive"] }
 num-traits = "0.2.19"
 parking_lot = "0.12.5"
 pest = "2.8.4"
