@@ -1,7 +1,15 @@
 program = _{
     SOI ~
-    (staticDeclaration | constDeclaration | functionDeclaration)* ~
+    declarations ~
     EOI
+}
+
+declarations = { declaration* }
+
+declaration = _{
+    staticDeclaration
+    | constDeclaration
+    | functionDeclaration
 }
 
 staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }

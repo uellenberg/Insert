@@ -2,9 +2,9 @@ pub mod file_cache;
 pub mod span;
 
 use crate::mir::{
-    MIRConstant, MIRContext, MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnCall,
-    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRStatement, MIRStatic, MIRType,
-    MIRTypeInner, MIRVariable,
+    MIRConstant, MIRContext, MIRDeclaration, MIRDeclarationKey, MIRExpression, MIRExpressionInner,
+    MIRFnCall, MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRStatement, MIRStatic,
+    MIRType, MIRTypeInner, MIRVariable,
 };
 use ariadne::{ColorGenerator, Label, Report, ReportKind};
 use pest::Parser;
@@ -39,52 +39,15 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
 
     for pair in ast {
         match pair.as_rule() {
-            Rule::constDeclaration => {
-                let constant = parse_constant(location, pair);
-                if !check_no_duplicates(ctx, constant.name.clone(), None, &constant.span) {
-                    return false;
+            Rule::declarations => {
+                for decl in parse_declarations(location, pair) {
+                    let Some(key) = ctx.register(decl) else {
+                        // Registration failed (duplicate identifier).
+                        // Any error was already printed.
+                        return false;
+                    };
+                    ctx.program.decls.push(key);
                 }
-
-                let name = constant.name.clone();
-
-                let key = ctx.program.constants.insert(constant);
-                ctx.program.const_names.insert(name, key);
-                ctx.program.decls.push(MIRDeclarationKey::Constant(key));
-            }
-            Rule::staticDeclaration => {
-                let static_data = parse_static(location, pair);
-                if !check_no_duplicates(ctx, static_data.name.clone(), None, &static_data.span) {
-                    return false;
-                }
-
-                let name = static_data.name.clone();
-
-                let key = ctx.program.statics.insert(static_data);
-                ctx.program.static_names.insert(name, key);
-                ctx.program.decls.push(MIRDeclarationKey::Static(key));
-            }
-            Rule::functionDeclaration => {
-                let function_data = parse_function(location, pair);
-
-                if !check_no_duplicates(
-                    ctx,
-                    function_data.name.clone(),
-                    Some(&function_data.args_ty),
-                    &function_data.span,
-                ) {
-                    return false;
-                }
-
-                let name = function_data.name.clone();
-                let args_ty = function_data.args_ty.clone();
-
-                let key = ctx.program.functions.insert(function_data);
-                ctx.program
-                    .function_names
-                    .entry(name)
-                    .or_default()
-                    .insert(args_ty, key);
-                ctx.program.decls.push(MIRDeclarationKey::Function(key));
             }
             Rule::EOI => {}
             _ => unreachable!(),
@@ -94,84 +57,27 @@ fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -
     true
 }
 
-/// If the input is a function, args should be specified.
-/// If it's a const/static, None should be given instead.
-fn check_no_duplicates<'a>(
-    ctx: &MIRContext<'a>,
-    name: Cow<'a, str>,
-    args: Option<&MIRFunctionArgs<'a>>,
-    span: &Span<'a>,
-) -> bool {
-    let defined_span;
-    if let Some(var) = ctx.program.static_names.get(&name) {
-        defined_span = ctx.program.statics[*var].span.clone();
-    } else if let Some(var) = ctx.program.const_names.get(&name) {
-        defined_span = ctx.program.constants[*var].span.clone();
-    } else if let Some(args) = args {
-        // We're trying to define a new function, and it hasn't conflicted
-        // with anything else yet, as per the checks above.
+fn parse_declarations<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRDeclaration<'a>> {
+    assert_eq!(value.as_rule(), Rule::declarations);
 
-        let mut found_duplicate = None;
+    let mut res = vec![];
 
-        for option in ctx
-            .program
-            .function_names
-            .get(&name)
-            .into_iter()
-            .map(|v| v.values())
-            .flatten()
-        {
-            let option = &ctx.program.functions[*option];
-
-            if &option.args_ty == args {
-                found_duplicate = Some(option.span.clone());
-                break;
+    for pair in value.into_inner() {
+        match pair.as_rule() {
+            Rule::constDeclaration => {
+                res.push(MIRDeclaration::Constant(parse_constant(location, pair)));
             }
+            Rule::staticDeclaration => {
+                res.push(MIRDeclaration::Static(parse_static(location, pair)));
+            }
+            Rule::functionDeclaration => {
+                res.push(MIRDeclaration::Function(parse_function(location, pair)));
+            }
+            _ => unreachable!(),
         }
-
-        if let Some(found_duplicate) = found_duplicate {
-            // Two conflicting functions (same name, same args).
-            defined_span = found_duplicate;
-        } else {
-            // This is just an overload, which is allowed.
-            return true;
-        }
-    } else if let Some(option) = ctx
-        .program
-        .function_names
-        .get(&name)
-        .map(|v| v.values().next())
-        .flatten()
-    {
-        // We aren't trying to define a function, but a function with the same name already exists.
-        defined_span = ctx.program.functions[*option].span.clone();
-    } else {
-        // No duplicates.
-        return true;
     }
 
-    let mut colors = ColorGenerator::new();
-
-    let prev = colors.next();
-    let cur = colors.next();
-
-    Report::build(ReportKind::Error, span.clone())
-        .with_message("Duplicate identifier".to_string())
-        .with_label(
-            Label::new(defined_span)
-                .with_message(format!("Item with name {name} previously defined here"))
-                .with_color(prev),
-        )
-        .with_label(
-            Label::new(span.clone())
-                .with_message("Redeclaration here".to_string())
-                .with_color(cur),
-        )
-        .finish()
-        .eprint(ctx.file_cache.clone())
-        .unwrap();
-
-    false
+    res
 }
 
 fn parse_static<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRStatic<'a> {

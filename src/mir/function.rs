@@ -487,9 +487,9 @@ fn rewrite_inline_function<'a>(
 
 /// Removes all functions from the final output that aren't marked as export.
 pub fn prune_functions(ctx: &mut MIRContext<'_>) {
-    ctx.program.retain(|program, key| match key {
+    ctx.retain(|ctx, key| match key {
         MIRDeclarationKey::Function(func) => {
-            program.functions[*func].fn_type == MIRFunctionType::Export
+            ctx.program.functions[*func].fn_type == MIRFunctionType::Export
         }
         _ => true,
     });
