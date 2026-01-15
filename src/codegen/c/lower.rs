@@ -44,7 +44,6 @@ impl Codegen for CLowerer {
             strip_fancy_tokens(&mut output);
         }
         self.merge_tokens(&mut output);
-        println!("{:#?}", output);
 
         let mut output_str = String::new();
         let mut iter = output.iter().peekable();

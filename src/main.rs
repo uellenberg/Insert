@@ -32,6 +32,17 @@ struct Args {
     #[clap(short, long, default_value = "false")]
     fancy: bool,
 
+    /// The output stage to use (how far down the compile process).
+    #[clap(
+        short,
+        long,
+        default_value = "target",
+        value_parser = clap::builder::PossibleValuesParser::new(
+            ["parse", "opt", "target"]
+        ),
+    )]
+    stage: String,
+
     /// The input file to compile.
     input: String,
 }
@@ -60,13 +71,19 @@ fn main() {
         return;
     }
 
-    println!("{}", mir_ctx.program);
+    if args.stage == "parse" {
+        println!("{}", mir_ctx.program);
+        return;
+    }
 
     if !visit_mir(&mut mir_ctx) {
         return;
     }
 
-    println!("{:#}", mir_ctx.program);
+    if args.stage == "opt" {
+        println!("{}", mir_ctx.program);
+        return;
+    }
 
     let c = target
         .lowerer()
