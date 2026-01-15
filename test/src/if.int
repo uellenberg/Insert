@@ -1,3 +1,5 @@
+//@check
+
 function main() {
     let g: u32;
     let h: bool = true;

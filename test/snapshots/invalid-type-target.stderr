@@ -1,0 +1,10 @@
+Error: Expected type i32, found u32
+   ╭─[ /home/user/IdeaProjects/Insert/test/src/invalid-type.int:6:12 ]
+   │
+ 5 │ function testFunction() -> i32 {
+   │                            ─┬─  
+   │                             ╰─── Expected i32 because of this
+ 6 │     return test;
+   │            ──┬─  
+   │              ╰─── This expression returns u32
+───╯

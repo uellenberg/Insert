@@ -1,3 +1,5 @@
+//@check
+
 function main() {
     let val: u32 = used();
     val = addOne(val);

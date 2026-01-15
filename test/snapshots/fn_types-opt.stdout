@@ -1,0 +1,41 @@
+// Constants: 
+
+// Statics: 
+
+// Functions: 
+
+function main() : () {
+    let val: u32 = used();
+    let $inline_0: u32 = val;
+    let $inline_0: u32;
+    let $inline_1: u32 = ($inline_0 + 1);
+    val = $inline_1;
+    let $inline_2: u32 = 15;
+    let $inline_2: u32;
+    let $inline_3: u32 = ($inline_2 + 1);
+    used()
+    let $inline_4: u32 = val;
+    let $inline_4: u32;
+    let $inline_5: u32 = ($inline_4 + 1);
+    let $inline_6: u32 = $inline_5;
+    let $inline_6: u32;
+    let $inline_7: u32 = ($inline_6 + 1);
+    let res: u32 = $inline_7;
+    drop res;
+    drop $inline_7;
+    drop $inline_6;
+    drop $inline_6;
+    drop $inline_5;
+    drop $inline_4;
+    drop $inline_4;
+    drop $inline_3;
+    drop $inline_2;
+    drop $inline_2;
+    drop $inline_1;
+    drop $inline_0;
+    drop $inline_0;
+    drop val;
+}
+function used() : u32 {
+    return 10;
+}

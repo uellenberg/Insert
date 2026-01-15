@@ -1,3 +1,5 @@
+//@check
+
 const max: u32 = 10;
 static sum: u32 = 0;
 

@@ -1,0 +1,27 @@
+// Constants: 
+
+// Statics: 
+
+static sValue: i32 = -10;
+
+// Functions: 
+
+function f(value: u32) : u32 {
+    let value: u32;
+    return 10;
+    drop value;
+}
+function f(value: i32) : i32 {
+    let value: i32;
+    return -10;
+    drop value;
+}
+function h(value: u32) : u32 {
+    let value: u32;
+    return 10;
+    drop value;
+}
+function main() : () {
+    f(10)
+    h(10)
+}

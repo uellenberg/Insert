@@ -1,0 +1,7 @@
+//@error
+
+const test: u32 = 10 - 2;
+
+function testFunction() -> i32 {
+    return test;
+}

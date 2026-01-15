@@ -1,3 +1,5 @@
+//@check
+
 function fib(v: u32) -> u32 {
     let test: string = "my test string\u0000";
 

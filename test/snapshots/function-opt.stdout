@@ -1,0 +1,49 @@
+// Constants: 
+
+// Statics: 
+
+// Functions: 
+
+function main() : () {
+    other(10, 11, 12, 13, 14, 15)
+    let my_val: bool = bools(true, false, false, false, false, bools(true, false, false, false, false, false));
+    drop my_val;
+}
+function other(test: u32, a1: u32, b1: u32, c1: u32, d1: u32, e1: u32) : () {
+    let test: u32;
+    let a1: u32;
+    let b1: u32;
+    let c1: u32;
+    let d1: u32;
+    let e1: u32;
+    let ret: u32 = (test + 10);
+    let other_v: u32 = e1;
+    drop other_v;
+    drop ret;
+    drop e1;
+    drop d1;
+    drop c1;
+    drop b1;
+    drop a1;
+    drop test;
+}
+function bools(a: bool, b: bool, c: bool, d: bool, e: bool, f: bool) : bool {
+    let a: bool;
+    let b: bool;
+    let c: bool;
+    let d: bool;
+    let e: bool;
+    let f: bool;
+    let val: bool = f;
+    return val;
+    drop val;
+    drop f;
+    drop e;
+    drop d;
+    drop c;
+    drop b;
+    drop a;
+}
+function one() : u32 {
+    return 1;
+}

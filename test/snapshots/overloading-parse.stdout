@@ -1,0 +1,30 @@
+// Constants: 
+
+// Statics: 
+
+static sValue: i32 = g(10);
+
+// Functions: 
+
+function f(value: u32) : u32 {
+    return 10;
+}
+function f(value: i32) : i32 {
+    return -10;
+}
+inline function g(value: u32) : u32 {
+    return 10;
+}
+inline function g(value: i32) : i32 {
+    return -10;
+}
+helper function h(value: u32) : u32 {
+    return 10;
+}
+helper function h(value: i32) : i32 {
+    return -10;
+}
+function main() : () {
+    f(10)
+    h(10)
+}

@@ -1,0 +1,27 @@
+// Constants: 
+
+// Statics: 
+
+// Functions: 
+
+function main() : () {
+    let g: u32;
+    let h: bool = true;
+    if h {
+        g = 10;
+    } else {
+        if (h == false) {
+            g = 20;
+        } else {
+            g = 30;
+        }
+    }
+    loop {
+        if (g == 0) {
+            break;
+        }
+        g = (g - 1);
+    }
+    drop h;
+    drop g;
+}

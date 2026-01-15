@@ -1,0 +1,22 @@
+// Constants: 
+
+const val1: u32 = 10;
+const val2: u32 = 15;
+
+// Statics: 
+
+static test: u32 = 21;
+
+// Functions: 
+
+function main() : () {
+    let v: u32;
+    v = 5;
+    let g: u32;
+    g = (5 * v);
+    let h: bool;
+    h = (v != g);
+    drop h;
+    drop g;
+    drop v;
+}

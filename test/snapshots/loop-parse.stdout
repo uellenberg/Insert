@@ -1,0 +1,22 @@
+// Constants: 
+
+const max: u32 = 10;
+
+// Statics: 
+
+static sum: u32 = 0;
+
+// Functions: 
+
+function main() : () {
+    let acc: u32 = 0;
+    let i: u32 = 0;
+    loop {
+        if (i > max) {
+            break;
+        }
+        acc = (acc + i);
+        i = (i + 1);
+    }
+    sum = acc;
+}
