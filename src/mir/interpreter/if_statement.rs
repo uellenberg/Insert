@@ -23,7 +23,7 @@ pub fn flatten_ifs(ctx: &mut MIRContext) {
                             format!("$if_{}", { label_idx.fetch_add(1, Ordering::Relaxed) });
 
                         // Optimized output for no else branch.
-                        if on_false.len() == 0 {
+                        if on_false.is_empty() {
                             block.push(MIRStatement::GotoNotEqual {
                                 name: Cow::Owned(label_if_end.clone()),
                                 index: None,
@@ -78,7 +78,7 @@ pub fn flatten_ifs(ctx: &mut MIRContext) {
                 }
             },
             &mut |_, _| true,
-            &mut |_, _, _| true,
+            &|_, _, _| true,
         ) {
             panic!("flatten_ifs returned false!");
         }

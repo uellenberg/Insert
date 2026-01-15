@@ -161,7 +161,7 @@ fn mark_visited<'a>(
     if visited.contains(&func) {
         return;
     }
-    visited.insert(func.clone());
+    visited.insert(func);
 
     for statement in &ctx.program.functions[func].body {
         if let MIRStatement::FunctionCall(MIRFnCall {
@@ -179,11 +179,10 @@ fn mark_visited<'a>(
                     if let MIRExpressionInner::FunctionCall(box MIRFnCall {
                         source, args_ty, ..
                     }) = &expr.inner
+                        && let MIRFnSource::Direct(name, ..) = source
                     {
-                        if let MIRFnSource::Direct(name, ..) = source {
-                            // Expression call.
-                            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited);
-                        }
+                        // Expression call.
+                        mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited);
                     }
 
                     true
@@ -232,7 +231,7 @@ fn inline_function<'a>(
         eprintln!("Inline cycle detected: {:?}", visited);
         return false;
     }
-    visited.insert(func.clone());
+    visited.insert(func);
 
     let mut new_statements = ctx.program.functions[func].body.clone();
     if !<StatementExplorer>::rewrite_block(
@@ -328,7 +327,7 @@ fn rewrite_inline_function<'a>(
 ) -> Result<(Vec<MIRStatement<'a>>, Cow<'a, str>), ()> {
     // We need to ensure that we're fully resolved first, before inlining ourselves
     // into a parent function.
-    if !inline_function(ctx, func.clone(), visited, inline_var_idx) {
+    if !inline_function(ctx, func, visited, inline_var_idx) {
         return Err(());
     }
 
@@ -435,10 +434,10 @@ fn rewrite_inline_function<'a>(
                 }
                 MIRStatement::SetVariable { place, .. } => {
                     explore_expr_mut(place, &mut |expr| {
-                        if let MIRExpressionInner::Variable(name) = &mut expr.inner {
-                            if let Some(new_name) = var_map.get(name) {
-                                *name = new_name.clone();
-                            }
+                        if let MIRExpressionInner::Variable(name) = &mut expr.inner
+                            && let Some(new_name) = var_map.get(name)
+                        {
+                            *name = new_name.clone();
                         }
 
                         true
@@ -455,10 +454,10 @@ fn rewrite_inline_function<'a>(
 
             if !find_exprs_mut(&mut statement, &mut |expr| {
                 explore_expr_mut(expr, &mut |expr| {
-                    if let MIRExpressionInner::Variable(name) = &mut expr.inner {
-                        if let Some(new_name) = var_map.get(name) {
-                            *name = new_name.clone();
-                        }
+                    if let MIRExpressionInner::Variable(name) = &mut expr.inner
+                        && let Some(new_name) = var_map.get(name)
+                    {
+                        *name = new_name.clone();
                     }
 
                     true

@@ -213,15 +213,12 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                     // If a const appears inside a place expression (e.g., a[const]), then
                     // we aren't modifying the const.
                     // If it appears outside (e.g., const[a]), then we are, so should error.
-                    if !explore_outer_place(&place, &mut |expr| {
-                        match &expr.inner {
-                            MIRExpressionInner::Variable(var) => {
-                                if ctx.program.const_names.contains_key(var) {
-                                    eprintln!("Cannot set constants!");
-                                    return false;
-                                }
-                            }
-                            _ => {}
+                    if !explore_outer_place(place, &mut |expr| {
+                        if let MIRExpressionInner::Variable(var) = &expr.inner
+                            && ctx.program.const_names.contains_key(var)
+                        {
+                            eprintln!("Cannot set constants!");
+                            return false;
                         }
 
                         true
@@ -574,9 +571,9 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
 
 /// Tries to find a function that matches the given name and arguments.
 /// If none exists or it's ambiguous, it prints out an error and returns None.
-fn get_fn_candidate<'a, 'b>(
-    ctx: &'b MIRContext<'a>,
-    name: &Cow<'a, str>,
+fn get_fn_candidate<'a>(
+    ctx: &MIRContext<'a>,
+    name: &str,
     args: &[MIRTypeInner<'a>],
 ) -> Option<MIRFunctionKey> {
     let mut res = ctx
@@ -584,8 +581,7 @@ fn get_fn_candidate<'a, 'b>(
         .function_names
         .get(name)
         .into_iter()
-        .map(|v| v.values())
-        .flatten()
+        .flat_map(|v| v.values())
         .filter(|func| {
             let func = &ctx.program.functions[**func];
 
@@ -845,11 +841,11 @@ fn check_expression<'a, 'b>(
     // If the expression already has a type, it cannot disagree with itself.
     // This is used for, e.g., throwing an error if "-10u32" is written, and
     // propagating the explicitly written type if it is valid.
-    if let Some(existing_ty) = &mut expr.ty {
-        if !types_equal(existing_ty, &mut ty) {
-            print_unexpected_expr_ty(ctx, existing_ty.clone(), ty.clone(), expr.span.clone());
-            return None;
-        }
+    if let Some(existing_ty) = &mut expr.ty
+        && !types_equal(existing_ty, &mut ty)
+    {
+        print_unexpected_expr_ty(ctx, existing_ty.clone(), ty.clone(), expr.span.clone());
+        return None;
     }
 
     // Save the type for later
@@ -858,5 +854,5 @@ fn check_expression<'a, 'b>(
 
     // Ensure that we return a type
     // whose span covers the entire expression.
-    (&mut expr.ty).as_mut()
+    expr.ty.as_mut()
 }

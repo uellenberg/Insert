@@ -22,7 +22,7 @@ pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a
     }
 
     for (static_name, static_key) in &ctx.program.static_names {
-        let Ok(value) = interpreter.eval_static(&static_name) else {
+        let Ok(value) = interpreter.eval_static(static_name) else {
             return false;
         };
 
@@ -292,10 +292,8 @@ pub fn explore_outer_place<'a>(
         _ => {}
     }
 
-    if should_visit {
-        if !visit(expr) {
-            return false;
-        }
+    if should_visit && !visit(expr) {
+        return false;
     }
 
     true

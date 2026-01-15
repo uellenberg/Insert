@@ -358,10 +358,7 @@ impl Codegen for CLowerer {
 
         let outer_precedence = self.precedence(&outer.inner);
         let inner_precedence = self.precedence(&expr.inner);
-        let needs_wrap = match (outer_precedence, inner_precedence) {
-            (Some(outer), Some(inner)) if inner > outer => true,
-            _ => false,
-        };
+        let needs_wrap = matches!((outer_precedence, inner_precedence), (Some(outer), Some(inner)) if inner > outer);
 
         if needs_wrap {
             spread![LEFT_PAREN, ...lowered, RIGHT_PAREN]

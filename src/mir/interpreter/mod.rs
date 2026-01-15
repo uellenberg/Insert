@@ -20,12 +20,16 @@ mod loop_statement;
 pub struct Interpreter<'a> {
     ctx: MIRContext<'a>,
     constants: RefCell<HashMap<Cow<'a, str>, InterpreterData<'a>>>,
-    statics: RefCell<HashMap<Cow<'a, str>, Rc<RefCell<Option<InterpreterData<'a>>>>>>,
+    statics: RefCell<HashMap<Cow<'a, str>, VariableData<'a>>>,
     /// Tracks static / constant evaluations to detect a cycle.
     /// We can't do the same for functions, since recursion can be
     /// useful there.
     current_evals: RefCell<HashSet<Cow<'a, str>>>,
 }
+
+/// Data stored in a variable.
+/// If this is None, then the variable is uninitialized.
+type VariableData<'a> = Rc<RefCell<Option<InterpreterData<'a>>>>;
 
 /// The underlying data contained behind a variable / return value.
 #[derive(Debug, Clone)]
@@ -44,10 +48,7 @@ pub enum InterpreterData<'a> {
     /// This is to allow us to convert the ref back to an expression form.
     /// This means that the interpreter can't optimize refs very well, but that's okay,
     /// because the const_optimize_expr pass can handle that.
-    Ref(
-        Rc<RefCell<Option<InterpreterData<'a>>>>,
-        Box<MIRExpression<'a>>,
-    ),
+    Ref(VariableData<'a>, Box<MIRExpression<'a>>),
 }
 
 /// Contains information about the function currently being called
@@ -57,7 +58,7 @@ pub enum InterpreterData<'a> {
 #[derive(Default)]
 pub struct InterpreterScope<'a> {
     /// The variables currently in scope.
-    variables: HashMap<Cow<'a, str>, Rc<RefCell<Option<InterpreterData<'a>>>>>,
+    variables: HashMap<Cow<'a, str>, VariableData<'a>>,
 
     /// The index of the next statement to execute.
     next_idx: Option<usize>,
@@ -326,7 +327,7 @@ impl<'a> Interpreter<'a> {
             }
             MIRExpressionInner::FunctionCall(fn_data) => match &fn_data.source {
                 MIRFnSource::Direct(fn_name, ..) => self.eval_function(
-                    &fn_name,
+                    fn_name,
                     fn_data
                         .args
                         .iter()
@@ -338,7 +339,7 @@ impl<'a> Interpreter<'a> {
                 ),
                 MIRFnSource::Indirect(fn_name) => {
                     let InterpreterData::FunctionPtr(source) =
-                        self.eval_expr(&fn_name, scope, place)?
+                        self.eval_expr(fn_name, scope, place)?
                     else {
                         panic!("Wrong indirect function call type!");
                     };
@@ -357,7 +358,7 @@ impl<'a> Interpreter<'a> {
                 }
             },
 
-            MIRExpressionInner::Ref(inner) => {
+            MIRExpressionInner::Ref(_inner) => {
                 // We need to go into place mode to capture a reference to
                 // the inner expression.
                 // When we switch into place mode, that by itself adds a level
@@ -366,13 +367,13 @@ impl<'a> Interpreter<'a> {
                 // add a level of indirection.
                 todo!()
             }
-            MIRExpressionInner::Deref(inner) => {
+            MIRExpressionInner::Deref(_inner) => {
                 todo!()
             }
-            MIRExpressionInner::Member(base, name) => {
+            MIRExpressionInner::Member(_base, _name) => {
                 todo!()
             }
-            MIRExpressionInner::Index(base, index) => {
+            MIRExpressionInner::Index(_base, _index) => {
                 // Index crosses the place expression boundary,
                 // so place = false when evaluating it, no matter if
                 // we're current in place mode.
@@ -395,8 +396,7 @@ impl<'a> Interpreter<'a> {
             .program
             .function_names
             .get(fn_name)
-            .map(|v| v.get(&args_ty))
-            .flatten()
+            .and_then(|v| v.get(&args_ty))
         else {
             panic!("Function not found!");
         };
@@ -490,7 +490,7 @@ impl<'a> Interpreter<'a> {
                 }
                 MIRFnSource::Indirect(fn_name) => {
                     let InterpreterData::FunctionPtr(source) =
-                        self.eval_expr(&fn_name, scope, false)?
+                        self.eval_expr(fn_name, scope, false)?
                     else {
                         panic!("Wrong indirect function call type!");
                     };

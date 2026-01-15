@@ -102,28 +102,23 @@ pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) {
                 }
             },
             &mut |_, _| true,
-            &mut |statement, scope, block| {
-                match statement {
-                    MIRStatement::LoopStatement { span, .. } => {
-                        let loop_id = label_idx.fetch_add(1, Ordering::Relaxed);
-                        let loop_label_head = format!("$loop_{}_head", loop_id);
-                        let loop_label_tail = format!("$loop_{}_tail", loop_id);
+            &|statement, scope, block| {
+                if let MIRStatement::LoopStatement { span, .. } = statement {
+                    let loop_id = label_idx.fetch_add(1, Ordering::Relaxed);
+                    let loop_label_head = format!("$loop_{}_head", loop_id);
+                    let loop_label_tail = format!("$loop_{}_tail", loop_id);
 
-                        scope.parent_data.loop_labels = Some((
-                            Cow::Owned(loop_label_head.clone()),
-                            Cow::Owned(loop_label_tail),
-                        ));
+                    scope.parent_data.loop_labels = Some((
+                        Cow::Owned(loop_label_head.clone()),
+                        Cow::Owned(loop_label_tail),
+                    ));
 
-                        // This runs before the child statements,
-                        // so insert a label so that we can go back to them.
-                        block.push(MIRStatement::Label {
-                            name: Cow::Owned(loop_label_head),
-                            span: span.clone(),
-                        })
-                    }
-
-                    // We only care about loops here.
-                    _ => {}
+                    // This runs before the child statements,
+                    // so insert a label so that we can go back to them.
+                    block.push(MIRStatement::Label {
+                        name: Cow::Owned(loop_label_head),
+                        span: span.clone(),
+                    })
                 }
 
                 true

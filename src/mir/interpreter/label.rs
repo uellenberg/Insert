@@ -10,11 +10,8 @@ pub fn label_to_index(ctx: &mut MIRContext) {
         let mut label_mapper = HashMap::new();
 
         for (idx, statement) in function.body.iter().enumerate() {
-            match statement {
-                MIRStatement::Label { name, .. } => {
-                    label_mapper.insert(name.clone(), idx);
-                }
-                _ => {}
+            if let MIRStatement::Label { name, .. } = statement {
+                label_mapper.insert(name.clone(), idx);
             }
         }
 

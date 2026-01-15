@@ -293,8 +293,7 @@ impl<'a> MIRContext<'a> {
             .program
             .function_names
             .get(name)
-            .map(|v| v.values().next())
-            .flatten()
+            .and_then(|v| v.values().next())
         {
             // We aren't trying to define a function, but a function with the same name already exists.
             defined_span = self.program.functions[*option].span.clone();

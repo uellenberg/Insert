@@ -2,15 +2,14 @@ pub mod file_cache;
 pub mod span;
 
 use crate::mir::{
-    MIRConstant, MIRContext, MIRDeclaration, MIRDeclarationKey, MIRExpression, MIRExpressionInner,
-    MIRFnCall, MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRStatement, MIRStatic,
-    MIRType, MIRTypeInner, MIRVariable,
+    MIRConstant, MIRContext, MIRDeclaration, MIRExpression, MIRExpressionInner, MIRFnCall,
+    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRStatement, MIRStatic, MIRType,
+    MIRTypeInner, MIRVariable,
 };
-use ariadne::{ColorGenerator, Label, Report, ReportKind};
 use pest::Parser;
 use pest::iterators::Pair;
 use pest_derive::Parser;
-use span::{Span, to_span};
+use span::to_span;
 use std::borrow::Cow;
 use std::path::Path;
 
