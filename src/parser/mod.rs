@@ -703,7 +703,6 @@ fn parse_string<'a>(value: Pair<'a, Rule>) -> String {
     assert_eq!(value.as_rule(), Rule::string);
 
     let mut output = String::new();
-    println!("{:?}", value);
     let parts = value.into_inner();
 
     for part in parts {

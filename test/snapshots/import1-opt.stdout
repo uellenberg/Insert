@@ -1,6 +1,3 @@
-Pair { rule: string, span: Span { str: "\"import2.int\"", start: 38, end: 51 }, inner: [Pair { rule: stringInner, span: Span { str: "import2.int", start: 39, end: 50 }, inner: [] }] }
-Pair { rule: string, span: Span { str: "\"import1.int\"", start: 89, end: 102 }, inner: [Pair { rule: stringInner, span: Span { str: "import1.int", start: 90, end: 101 }, inner: [] }] }
-Pair { rule: string, span: Span { str: "\"./import2.int\"", start: 60, end: 75 }, inner: [Pair { rule: stringInner, span: Span { str: "./import2.int", start: 61, end: 74 }, inner: [] }] }
 // Constants: 
 
 // Statics: 
