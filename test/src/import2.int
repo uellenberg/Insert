@@ -1,0 +1,7 @@
+// Not required to access items from import1,
+// since import1 imports this file.
+import "import1.int";
+
+function usesImport1() -> u32 {
+    return a + 2;
+}

@@ -1,0 +1,18 @@
+Pair { rule: string, span: Span { str: "\"import2.int\"", start: 38, end: 51 }, inner: [Pair { rule: stringInner, span: Span { str: "import2.int", start: 39, end: 50 }, inner: [] }] }
+Pair { rule: string, span: Span { str: "\"import1.int\"", start: 89, end: 102 }, inner: [Pair { rule: stringInner, span: Span { str: "import1.int", start: 90, end: 101 }, inner: [] }] }
+Pair { rule: string, span: Span { str: "\"./import2.int\"", start: 60, end: 75 }, inner: [Pair { rule: stringInner, span: Span { str: "./import2.int", start: 61, end: 74 }, inner: [] }] }
+// Constants: 
+
+// Statics: 
+
+static a: u32 = 10;
+static b: u32 = 13;
+
+// Functions: 
+
+function usesImport1() : u32 {
+    return (a + 2);
+}
+function usesImport2() : u32 {
+    return (usesImport1() + 1);
+}

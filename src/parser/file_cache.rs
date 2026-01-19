@@ -1,9 +1,9 @@
 use ariadne::{Cache, Source};
-use parking_lot::Mutex;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::rc::Rc;
 use std::{fs, io};
 
 /// Keeps track of files in memory.
@@ -12,16 +12,16 @@ use std::{fs, io};
 /// static cache.
 #[derive(Debug, Default, Clone)]
 pub struct FileCache {
-    files: Arc<Mutex<HashMap<PathBuf, &'static str>>>,
-    sources: Arc<Mutex<HashMap<PathBuf, &'static Source<&'static str>>>>,
+    files: Rc<RefCell<HashMap<PathBuf, &'static str>>>,
+    sources: Rc<RefCell<HashMap<PathBuf, &'static Source<&'static str>>>>,
 }
 
 impl FileCache {
     /// Gets the specified file, retrieving
     /// it from the disk if it doesn't exist.
     pub fn get(&self, file: &Path) -> io::Result<&'static str> {
-        let mut files = self.files.lock();
-        let mut sources = self.sources.lock();
+        let mut files = self.files.borrow_mut();
+        let mut sources = self.sources.borrow_mut();
 
         if let Some(file) = files.get(file) {
             return Ok(*file);
@@ -39,8 +39,8 @@ impl FileCache {
     /// Gets the specified file, retrieving
     /// it from the disk if it doesn't exist.
     pub fn get_source(&self, file: &Path) -> io::Result<&'static Source<&'static str>> {
-        let mut files = self.files.lock();
-        let mut sources = self.sources.lock();
+        let mut files = self.files.borrow_mut();
+        let mut sources = self.sources.borrow_mut();
 
         if let Some(file) = sources.get(file) {
             return Ok(*file);
@@ -53,6 +53,12 @@ impl FileCache {
         sources.insert(file.to_path_buf(), source);
 
         Ok(source)
+    }
+
+    /// Checks if the specified file exists in the cache.
+    /// This should be an absolute path.
+    pub fn exists(&self, file: &Path) -> bool {
+        self.files.borrow().contains_key(file)
     }
 }
 

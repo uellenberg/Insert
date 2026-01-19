@@ -1,0 +1,12 @@
+//@check
+
+static a: u32 = 10;
+
+import "import2.int";
+import "./import2.int";
+
+function usesImport2() -> u32 {
+    return usesImport1() + 1;
+}
+
+static b: u32 = usesImport2();

@@ -21,42 +21,56 @@ struct InsertParser;
 /// returning whether it was successful.
 pub fn parse_file<'a>(location: &'a Path, ctx: &mut MIRContext<'a>) -> bool {
     let data = ctx.file_cache.get(location).unwrap();
+    let Some(decls) = parse_data(location, data, ctx) else {
+        return false;
+    };
 
-    parse_data(location, data, ctx)
+    for decl in decls {
+        let Some(key) = ctx.register(decl) else {
+            // Registration failed (duplicate identifier).
+            // Any error was already printed.
+            return false;
+        };
+        ctx.program.decls.push(key);
+    }
+
+    true
 }
 
 /// Parses some data file into MIR,
 /// returning whether it was successful.
-fn parse_data<'a>(location: &'a Path, data: &'a str, ctx: &mut MIRContext<'a>) -> bool {
+fn parse_data<'a>(
+    location: &'a Path,
+    data: &'a str,
+    ctx: &MIRContext<'a>,
+) -> Option<Vec<MIRDeclaration<'a>>> {
     let ast = match InsertParser::parse(Rule::program, data) {
         Ok(ast) => ast,
         Err(err) => {
             eprintln!("{err}");
-            return false;
+            return None;
         }
     };
 
     for pair in ast {
         match pair.as_rule() {
             Rule::declarations => {
-                for decl in parse_declarations(location, pair) {
-                    let Some(key) = ctx.register(decl) else {
-                        // Registration failed (duplicate identifier).
-                        // Any error was already printed.
-                        return false;
-                    };
-                    ctx.program.decls.push(key);
-                }
+                return parse_declarations(location, pair, true, ctx);
             }
             Rule::EOI => {}
             _ => unreachable!(),
         }
     }
 
-    true
+    unreachable!("No declarations found!");
 }
 
-fn parse_declarations<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRDeclaration<'a>> {
+fn parse_declarations<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    allow_imports: bool,
+    ctx: &MIRContext<'a>,
+) -> Option<Vec<MIRDeclaration<'a>>> {
     assert_eq!(value.as_rule(), Rule::declarations);
 
     let mut res = vec![];
@@ -72,11 +86,20 @@ fn parse_declarations<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRD
             Rule::functionDeclaration => {
                 res.push(MIRDeclaration::Function(parse_function(location, pair)));
             }
+            Rule::importDeclaration => {
+                if !allow_imports {
+                    eprintln!("Import statements are not allowed here.");
+                    return None;
+                }
+
+                res.extend(parse_import(location, pair, ctx)?);
+            }
+            // TODO: Disallow imports within target declarations.
             _ => unreachable!(),
         }
     }
 
-    res
+    Some(res)
 }
 
 fn parse_static<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRStatic<'a> {
@@ -170,6 +193,29 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
 
     // No function body.
     unreachable!();
+}
+
+fn parse_import<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &MIRContext<'a>,
+) -> Option<Vec<MIRDeclaration<'a>>> {
+    assert_eq!(value.as_rule(), Rule::importDeclaration);
+
+    let value = parse_string(value.into_inner().next().unwrap());
+    let import_path = location
+        .parent()
+        .expect("File path had no parent!")
+        .join(value);
+
+    if ctx.file_cache.exists(&import_path) {
+        // We already imported this file, so return
+        // nothing here to avoid duplicating declarations.
+        return Some(vec![]);
+    }
+
+    let data = ctx.file_cache.get(&import_path).unwrap();
+    parse_data(location, data, ctx)
 }
 
 fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRStatement<'a>> {

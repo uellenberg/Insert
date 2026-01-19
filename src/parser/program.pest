@@ -10,6 +10,7 @@ declaration = _{
     staticDeclaration
     | constDeclaration
     | functionDeclaration
+    | importDeclaration
 }
 
 staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
@@ -28,6 +29,13 @@ functionDeclaration = {
     "{" ~
     functionBody ~
     "}"
+}
+
+importDeclaration = {
+    import ~
+    space ~
+    string ~
+    ";"
 }
 
 functionArgs = {
@@ -197,8 +205,9 @@ inline = _{ "inline" }
 helper = _{ "helper" }
 true_ = _{ "true" }
 false_ = _{ "false" }
+import = _{ "import" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import }
