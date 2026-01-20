@@ -1,0 +1,5 @@
+//@check
+
+static test: string = string(10u32);
+
+import "std/main.int";

@@ -1,0 +1,11 @@
+// Constants: 
+
+// Statics: 
+
+static test: string = string(10);
+
+// Functions: 
+
+helper function string(val: u32) : string {
+    return "TODO";
+}

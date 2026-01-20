@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
+#![feature(normalize_lexically)]
 
 use crate::codegen::LowerOptions;
 use crate::mir::{MIRContext, visit_mir};
@@ -58,7 +59,9 @@ fn main() {
 
     let input_path = env::current_dir()
         .map(|dir| dir.join(&args.input))
-        .unwrap_or(PathBuf::from(&args.input));
+        .unwrap_or(PathBuf::from(&args.input))
+        .normalize_lexically()
+        .expect("Failed to normalize input path!");
 
     let mut mir_ctx = MIRContext {
         lowerer: target.lowerer().new(),

@@ -11,7 +11,7 @@ use pest::iterators::Pair;
 use pest_derive::Parser;
 use span::to_span;
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[grammar = "parser/program.pest"]
@@ -202,11 +202,27 @@ fn parse_import<'a>(
 ) -> Option<Vec<MIRDeclaration<'a>>> {
     assert_eq!(value.as_rule(), Rule::importDeclaration);
 
-    let value = parse_string(value.into_inner().next().unwrap());
-    let import_path = location
-        .parent()
-        .expect("File path had no parent!")
-        .join(value);
+    let value = PathBuf::from(parse_string(value.into_inner().next().unwrap()));
+    let import_path = if value.starts_with("./") || value.starts_with("../") || value.is_absolute()
+    {
+        // Relative or absolute path.
+        // These are standard fs path imports, and should be imported relative to the
+        // current file.
+        location
+            .parent()
+            .expect("File path had no parent!")
+            .join(value)
+    } else {
+        // Module import path.
+        value
+    };
+
+    // Normalize the import, since join won't resolve "../" etc, and this
+    // could create duplicate declarations.
+    // We can't canonicalize the path, since we want to preserve "std/..." paths.
+    let import_path = import_path
+        .normalize_lexically()
+        .expect("Failed to normalize import path!");
 
     if ctx.file_cache.exists(&import_path) {
         // We already imported this file, so return
@@ -215,7 +231,8 @@ fn parse_import<'a>(
     }
 
     let data = ctx.file_cache.get(&import_path).unwrap();
-    parse_data(location, data, ctx)
+    // Leaking is okay here, since we only do it once per file.
+    parse_data(import_path.leak(), data, ctx)
 }
 
 fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRStatement<'a>> {

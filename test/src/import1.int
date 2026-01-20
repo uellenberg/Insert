@@ -2,7 +2,7 @@
 
 static a: u32 = 10;
 
-import "import2.int";
+import "./fake_path/../import2.int";
 import "./import2.int";
 
 function usesImport2() -> u32 {
