@@ -1,0 +1,15 @@
+//@check
+
+target "C" {
+    static x: i32 = 1;
+}
+
+target "JS" {
+    static x: i32 = 2;
+}
+
+function test() -> i32 {
+    return x * 2;
+}
+
+static val: i32 = test();

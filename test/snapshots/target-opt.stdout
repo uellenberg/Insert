@@ -1,0 +1,12 @@
+// Constants: 
+
+// Statics: 
+
+static x: i32 = 1;
+static val: i32 = 2;
+
+// Functions: 
+
+function test() : i32 {
+    return (x * 2);
+}

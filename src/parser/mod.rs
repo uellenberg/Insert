@@ -55,7 +55,7 @@ fn parse_data<'a>(
     for pair in ast {
         match pair.as_rule() {
             Rule::declarations => {
-                return parse_declarations(location, pair, true, ctx);
+                return parse_declarations(location, pair, ctx);
             }
             Rule::EOI => {}
             _ => unreachable!(),
@@ -68,7 +68,6 @@ fn parse_data<'a>(
 fn parse_declarations<'a>(
     location: &'a Path,
     value: Pair<'a, Rule>,
-    allow_imports: bool,
     ctx: &MIRContext<'a>,
 ) -> Option<Vec<MIRDeclaration<'a>>> {
     assert_eq!(value.as_rule(), Rule::declarations);
@@ -87,14 +86,11 @@ fn parse_declarations<'a>(
                 res.push(MIRDeclaration::Function(parse_function(location, pair)));
             }
             Rule::importDeclaration => {
-                if !allow_imports {
-                    eprintln!("Import statements are not allowed here.");
-                    return None;
-                }
-
                 res.extend(parse_import(location, pair, ctx)?);
             }
-            // TODO: Disallow imports within target declarations.
+            Rule::targetDeclaration => {
+                res.extend(parse_target(location, pair, ctx)?);
+            }
             _ => unreachable!(),
         }
     }
@@ -233,6 +229,24 @@ fn parse_import<'a>(
     let data = ctx.file_cache.get(&import_path).unwrap();
     // Leaking is okay here, since we only do it once per file.
     parse_data(import_path.leak(), data, ctx)
+}
+
+fn parse_target<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &MIRContext<'a>,
+) -> Option<Vec<MIRDeclaration<'a>>> {
+    assert_eq!(value.as_rule(), Rule::targetDeclaration);
+
+    let mut values = value.into_inner();
+
+    let name = parse_string(values.next().unwrap());
+    if name != ctx.target.name() {
+        // Not the right target.
+        return Some(vec![]);
+    }
+
+    parse_declarations(location, values.next().unwrap(), ctx)
 }
 
 fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRStatement<'a>> {

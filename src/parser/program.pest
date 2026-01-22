@@ -11,6 +11,7 @@ declaration = _{
     | constDeclaration
     | functionDeclaration
     | importDeclaration
+    | targetDeclaration
 }
 
 staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
@@ -36,6 +37,15 @@ importDeclaration = {
     space ~
     string ~
     ";"
+}
+
+targetDeclaration = {
+    target ~
+    space ~
+    string ~
+    "{" ~
+    declarations ~
+    "}"
 }
 
 functionArgs = {
@@ -206,8 +216,9 @@ helper = _{ "helper" }
 true_ = _{ "true" }
 false_ = _{ "false" }
 import = _{ "import" }
+target = _{ "target" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import | target }
