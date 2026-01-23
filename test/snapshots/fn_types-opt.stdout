@@ -39,3 +39,11 @@ function main() : () {
 function used() : u32 {
     return 10;
 }
+helper function unused() : u32 {
+    return 11;
+}
+inline function addOne(a: u32) : u32 {
+    let a: u32;
+    return (a + 1);
+    drop a;
+}

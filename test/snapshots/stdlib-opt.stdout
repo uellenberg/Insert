@@ -4,4 +4,10 @@
 
 static test: string = "TODO";
 
-// Functions:
+// Functions: 
+
+helper function string(val: u32) : string {
+    let val: u32;
+    return "TODO";
+    drop val;
+}

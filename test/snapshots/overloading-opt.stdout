@@ -16,9 +16,24 @@ function f(value: i32) : i32 {
     return -10;
     drop value;
 }
+inline function g(value: u32) : u32 {
+    let value: u32;
+    return 10;
+    drop value;
+}
+inline function g(value: i32) : i32 {
+    let value: i32;
+    return -10;
+    drop value;
+}
 function h(value: u32) : u32 {
     let value: u32;
     return 10;
+    drop value;
+}
+helper function h(value: i32) : i32 {
+    let value: i32;
+    return -10;
     drop value;
 }
 function main() : () {

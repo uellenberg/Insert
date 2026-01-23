@@ -355,7 +355,9 @@ impl<'a> MIRContext<'a> {
         true
     }
 
-    /// Removes all declarations that don't match the given predicate.
+    /// Removes all declarations that don't match the given predicate from the
+    /// final output.
+    /// This won't remove them from the MIR, just from the global list of declarations.
     pub fn retain<T: FnMut(&Self, &MIRDeclarationKey) -> bool>(&mut self, mut func: T) {
         for to_remove in self
             .program
@@ -367,30 +369,16 @@ impl<'a> MIRContext<'a> {
         {
             match to_remove {
                 MIRDeclarationKey::Constant(key) => {
-                    let name = &self.program.constants[key].name;
-
-                    self.program.const_names.remove(name);
-                    self.program.constants.remove(key);
                     self.program
                         .decls
                         .retain(|val| val != &MIRDeclarationKey::Constant(key));
                 }
                 MIRDeclarationKey::Static(key) => {
-                    let name = &self.program.statics[key].name;
-
-                    self.program.static_names.remove(name);
-                    self.program.statics.remove(key);
                     self.program
                         .decls
                         .retain(|val| val != &MIRDeclarationKey::Static(key));
                 }
                 MIRDeclarationKey::Function(key) => {
-                    let name = &self.program.functions[key].name;
-
-                    if let Some(overloads) = self.program.function_names.get_mut(name) {
-                        overloads.remove(key);
-                    }
-                    self.program.functions.remove(key);
                     self.program
                         .decls
                         .retain(|val| val != &MIRDeclarationKey::Function(key));
