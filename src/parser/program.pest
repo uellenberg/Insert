@@ -10,6 +10,7 @@ declaration = _{
     staticDeclaration
     | constDeclaration
     | functionDeclaration
+    | externFunctionDeclaration
     | importDeclaration
     | targetDeclaration
 }
@@ -31,6 +32,28 @@ functionDeclaration = {
     functionBody ~
     "}"
 }
+
+externFunctionDeclaration = {
+    extern_ ~
+    space ~
+    function ~
+    space ~
+    identifier ~
+    "(" ~
+    externFunctionArgs? ~
+    ")" ~
+    functionReturn? ~
+    from_ ~
+    string ~
+    ";"
+}
+
+externFunctionArgs = {
+    functionArg ~ ("," ~ functionArg)* ~ ("," ~ variadic)? ~ ","?
+    | variadic ~ ","?
+}
+
+variadic = { "..." }
 
 importDeclaration = {
     import ~
@@ -217,8 +240,10 @@ true_ = _{ "true" }
 false_ = _{ "false" }
 import = _{ "import" }
 target = _{ "target" }
+extern_ = _{ "extern" }
+from_ = _{ "from" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import | target }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ }

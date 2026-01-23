@@ -1,12 +1,13 @@
 use crate::codegen::Codegen;
 use crate::codegen::LowerOptions;
 use crate::codegen::c::token::{
-    INDENT, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, escape_string,
+    INDENT, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, NEWLINE_REQUIRED, RIGHT_PAREN, RIGHT_SQUIGGLE,
+    SEMI, escape_string,
 };
 use crate::codegen::token::{Token, TokenInfo, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
-    MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram,
-    MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction,
+    MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use std::borrow::Cow;
 
@@ -27,13 +28,18 @@ impl Codegen for CLowerer {
     fn lower_program(&mut self, program: &MIRProgram, options: LowerOptions) -> String {
         let mut output = spread![];
 
+        output.extend(self.lower_imports(&program.required_imports));
+
         for val in &program.decls {
             match val {
                 MIRDeclarationKey::Static(val) => {
                     output.extend(self.lower_static(&program.statics[*val]))
                 }
                 MIRDeclarationKey::Function(val) => {
-                    output.extend(self.lower_function(&program.functions[*val]))
+                    // Skip extern functions (they have no body to emit)
+                    if program.functions[*val].fn_type != MIRFunctionType::Extern {
+                        output.extend(self.lower_function(&program.functions[*val]))
+                    }
                 }
                 // Constants are never exported.
                 MIRDeclarationKey::Constant(_) => {}
@@ -388,6 +394,19 @@ impl Codegen for CLowerer {
 
             MIRExpressionInner::BoolOr(..) => Some(9),
         }
+    }
+
+    fn lower_imports<'a>(&mut self, imports: &[Cow<'a, str>]) -> Tokens<'a> {
+        imports
+            .iter()
+            .flat_map(|import| {
+                spread![
+                    Token::new("#include".into()),
+                    Token::new(import.clone()),
+                    NEWLINE_REQUIRED,
+                ]
+            })
+            .collect()
     }
 }
 

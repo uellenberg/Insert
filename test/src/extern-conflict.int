@@ -1,0 +1,7 @@
+//@error
+
+extern function test(val: i32, ...) from "a";
+extern function test(val: u32) from "a";
+
+extern function test2(val: i32, ...) from "b";
+extern function test2(val: i32, val2: u32, ...) from "b";

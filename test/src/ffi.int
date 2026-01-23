@@ -22,8 +22,8 @@ target "C" {
     }
 
     // This declares an external function asprintf, which takes in a string as its first argument
-    // and any other arguments following it, returns nothing, maps to the "asprintf" function in the target
-    // output, and requires importing with #import <stdio.h> (this last string can be omitted if it's available by default).
+    // and any other arguments following it, returns nothing, and requires importing with
+    // #include <stdio.h>.
     //
     // The compiler will keep track of imports and output them automatically, as small as it can make them.
     //
@@ -33,5 +33,5 @@ target "C" {
     // The "..." operator can only appear at the end of the argument list.
     //
     // This function can't have any attributes (inline/helper/nomangle) applied, as it's essentially an alias.
-    extern function asprintf(ptr: &string, ...) -> () from "asprintf", "<stdio.h>";
+    extern function asprintf(ptr: &string, ...) from "<stdio.h>";
 }

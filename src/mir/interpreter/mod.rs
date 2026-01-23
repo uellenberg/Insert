@@ -4,7 +4,7 @@ use crate::mir::interpreter::label::label_to_index;
 use crate::mir::interpreter::loop_statement::flatten_loops;
 use crate::mir::type_check::type_check;
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionArgs, MIRStatement,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionType, MIRStatement,
     MIRTypeInner,
 };
 use std::borrow::Cow;
@@ -389,18 +389,26 @@ impl<'a> Interpreter<'a> {
         fn_name: &Cow<'a, str>,
         args: Vec<(InterpreterData<'a>, MIRTypeInner<'a>)>,
     ) -> Result<InterpreterData<'a>, ()> {
-        let args_ty = MIRFunctionArgs(args.iter().map(|(_, ty)| ty.clone()).collect());
+        let call_args: Vec<_> = args.iter().map(|(_, ty)| ty.clone()).collect();
 
-        let Some(fn_data) = self
+        let Some(fn_key) = self
             .ctx
             .program
             .function_names
             .get(fn_name)
-            .and_then(|v| v.get(&args_ty))
+            .and_then(|v| v.find_compatible(&call_args))
         else {
             panic!("Function not found!");
         };
-        let fn_data = &self.ctx.program.functions[*fn_data];
+        let fn_data = &self.ctx.program.functions[fn_key];
+
+        if fn_data.fn_type == MIRFunctionType::Extern {
+            eprintln!(
+                "Function {} is extern and cannot be called at compile-time!",
+                fn_data.name
+            );
+            return Err(());
+        }
 
         assert_eq!(fn_data.args.len(), args.len());
 

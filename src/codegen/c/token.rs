@@ -7,6 +7,7 @@ pub const RIGHT_PAREN: Token<'static> = Token::new(Cow::Borrowed(")"));
 pub const LEFT_SQUIGGLE: Token<'static> = Token::new(Cow::Borrowed("{"));
 pub const RIGHT_SQUIGGLE: Token<'static> = Token::new(Cow::Borrowed("}"));
 pub const SEMI: Token<'static> = Token::new(Cow::Borrowed(";"));
+pub const NEWLINE_REQUIRED: Token<'static> = Token::new(Cow::Borrowed("\n"));
 
 pub const INDENT: Token<'static> = Token::new_fancy(Cow::Borrowed("    "));
 pub const NEWLINE: Token<'static> = Token::new_fancy(Cow::Borrowed("\n"));

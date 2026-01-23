@@ -72,6 +72,7 @@ impl<'a> Display for MIRFunction<'a> {
             MIRFunctionType::Export => {}
             MIRFunctionType::Inline => write!(f, "inline ")?,
             MIRFunctionType::Helper => write!(f, "helper ")?,
+            MIRFunctionType::Extern => write!(f, "extern ")?,
         }
 
         write!(f, "function {}(", &self.name)?;
@@ -81,14 +82,30 @@ impl<'a> Display for MIRFunction<'a> {
             }
             write!(f, "{}: {}", &arg.name, &arg.ty)?;
         }
-        writeln!(f, ") : {} {{", &self.ret_ty)?;
+        if self.args_ty.variadic {
+            if !self.args.is_empty() {
+                write!(f, ", ")?;
+            }
+            write!(f, "...")?;
+        }
+        write!(f, ") : {}", &self.ret_ty)?;
 
-        for stmt in &self.body {
-            write_indented(f, stmt, "    ")?;
-            writeln!(f)?;
+        if self.fn_type == MIRFunctionType::Extern {
+            if let Some(import) = &self.extern_import {
+                writeln!(f, " from {import:?};")?;
+            } else {
+                writeln!(f, ";")?;
+            }
+        } else {
+            writeln!(f, " {{")?;
+            for stmt in &self.body {
+                write_indented(f, stmt, "    ")?;
+                writeln!(f)?;
+            }
+            write!(f, "}}")?;
         }
 
-        write!(f, "}}")
+        Ok(())
     }
 }
 

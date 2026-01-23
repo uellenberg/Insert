@@ -1,0 +1,17 @@
+// Constants: 
+
+// Statics: 
+
+// Functions: 
+
+extern function printf(fmt: string, ...) : () from "<stdio.h>";
+
+function main() : i32 {
+    printf("No args
+    ")
+    printf("One arg: %d
+    ", 1)
+    printf("Two args: %d %d
+    ", 1, 2)
+    return 0;
+}

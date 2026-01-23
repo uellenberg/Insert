@@ -31,7 +31,8 @@ pub fn parse_file<'a>(location: &'a Path, ctx: &mut MIRContext<'a>) -> bool {
             // Any error was already printed.
             return false;
         };
-        ctx.program.decls.push(key);
+
+        ctx.push_decl(key);
     }
 
     true
@@ -84,6 +85,11 @@ fn parse_declarations<'a>(
             }
             Rule::functionDeclaration => {
                 res.push(MIRDeclaration::Function(parse_function(location, pair)));
+            }
+            Rule::externFunctionDeclaration => {
+                res.push(MIRDeclaration::Function(parse_extern_function(
+                    location, pair,
+                )));
             }
             Rule::importDeclaration => {
                 res.extend(parse_import(location, pair, ctx)?);
@@ -176,11 +182,15 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
                 return MIRFunction {
                     name: Cow::Borrowed(identifier),
                     fn_type,
-                    args_ty: MIRFunctionArgs(args.iter().map(|v| v.ty.ty.clone()).collect()),
+                    args_ty: MIRFunctionArgs {
+                        args: args.iter().map(|v| v.ty.ty.clone()).collect(),
+                        variadic: false,
+                    },
                     args,
                     ret_ty: ret,
                     body: parse_function_body(location, pair),
                     span,
+                    extern_import: None,
                 };
             }
             _ => unreachable!(),
@@ -189,6 +199,88 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
 
     // No function body.
     unreachable!();
+}
+
+fn parse_extern_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<'a> {
+    assert_eq!(value.as_rule(), Rule::externFunctionDeclaration);
+
+    let span = to_span(location, value.as_span());
+    let mut data = value.into_inner();
+
+    let identifier = data.next().unwrap().as_str();
+
+    let mut args = vec![];
+    let mut variadic = false;
+    let mut ret = MIRType {
+        ty: MIRTypeInner::Unit,
+        span: None,
+    };
+
+    for pair in data {
+        match pair.as_rule() {
+            Rule::externFunctionArgs => {
+                (args, variadic) = parse_extern_function_args(location, pair);
+            }
+            Rule::functionReturn => {
+                ret = parse_type(location, pair.into_inner().next().unwrap());
+            }
+            Rule::string => {
+                // Import path is the last item.
+                let import = parse_string(pair);
+
+                return MIRFunction {
+                    name: Cow::Borrowed(identifier),
+                    fn_type: MIRFunctionType::Extern,
+                    args_ty: MIRFunctionArgs {
+                        args: args.iter().map(|v| v.ty.ty.clone()).collect(),
+                        variadic,
+                    },
+                    args,
+                    ret_ty: ret,
+                    body: vec![],
+                    span,
+                    extern_import: Some(Cow::Owned(import)),
+                };
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    unreachable!();
+}
+
+fn parse_extern_function_args<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+) -> (Vec<MIRVariable<'a>>, bool) {
+    assert_eq!(value.as_rule(), Rule::externFunctionArgs);
+
+    let mut args = vec![];
+    let mut variadic = false;
+
+    for pair in value.into_inner() {
+        match pair.as_rule() {
+            Rule::functionArg => {
+                let span = to_span(location, pair.as_span());
+                let mut data = pair.into_inner();
+
+                let identifier = data.next().unwrap().as_str();
+                let ty = parse_type(location, data.next().unwrap());
+
+                args.push(MIRVariable {
+                    name: Cow::Borrowed(identifier),
+                    ty,
+                    span,
+                });
+            }
+            Rule::variadic => {
+                variadic = true;
+            }
+            _ => {}
+        }
+    }
+
+    (args, variadic)
 }
 
 fn parse_import<'a>(

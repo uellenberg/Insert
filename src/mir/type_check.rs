@@ -394,7 +394,10 @@ fn check_fn_call<'a>(
 
     let mut actual_ty = MIRType {
         ty: MIRTypeInner::FunctionPtr(
-            MIRFunctionArgs(actual_args.iter().map(|arg| arg.ty.clone()).collect()),
+            MIRFunctionArgs {
+                args: actual_args.iter().map(|arg| arg.ty.clone()).collect(),
+                variadic: false,
+            },
             // Default to unit type for error messages
             // when unmatched function, since we only
             // know the return type once we have a valid
@@ -420,16 +423,29 @@ fn check_fn_call<'a>(
     };
     **actual_ret_ty = expected_ret_ty.clone();
 
-    // Ensure that both function types have the
-    // same arg length.
-    if actual_args.len() != expected_args.0.len() {
-        print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
-        return false;
+    // Ensure that both function types have compatible arg lengths.
+    let fixed_arg_count = expected_args.args.len();
+    if expected_args.variadic {
+        // Variadic functions need at least as many args as fixed params.
+        if actual_args.len() < fixed_arg_count {
+            print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
+            return false;
+        }
+    } else {
+        // Non-variadic functions need exactly the right number of args.
+        if actual_args.len() != fixed_arg_count {
+            print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
+            return false;
+        }
     }
 
-    // Ensure that individual arg types match,
+    // Ensure that individual fixed arg types match,
     // for more granular errors.
-    for (actual, expected) in actual_args.iter_mut().zip(expected_args.0.iter_mut()) {
+    for (actual, expected) in actual_args
+        .iter_mut()
+        .take(fixed_arg_count)
+        .zip(expected_args.args.iter_mut())
+    {
         if !types_equal_inner(&mut actual.ty, expected) {
             print_unexpected_expr_ty(
                 ctx,
@@ -444,18 +460,17 @@ fn check_fn_call<'a>(
         }
     }
 
-    // Ensure that actual matches expected.
-    if !types_equal(&mut expected_ty, &mut actual_ty) {
-        print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
-        return false;
-    }
-
     // Store the computed types.
+    // For variadic calls, store the full arg list (including variadic args).
     *out_ret_ty = Some(MIRType {
         ty: expected_ret_ty,
         span: expected_ty.span,
     });
-    *out_args_ty = Some(expected_args);
+    *out_args_ty = Some(MIRFunctionArgs {
+        args: actual_args.iter().map(|arg| arg.ty.clone()).collect(),
+        // The call itself is not variadic, only the function signature is
+        variadic: false,
+    });
 
     true
 }
@@ -534,7 +549,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
         }
         // Recursive types need special handling to fully resolve.
         (MIRTypeInner::FunctionPtr(args1, ret1), MIRTypeInner::FunctionPtr(args2, ret2)) => {
-            if args1.0.len() != args2.0.len() {
+            if args1.args.len() != args2.args.len() || args1.variadic != args2.variadic {
                 return false;
             }
 
@@ -550,7 +565,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
             let mut new_args1 = args1.clone();
             let mut new_args2 = args2.clone();
 
-            for (arg1, arg2) in new_args1.0.iter_mut().zip(new_args2.0.iter_mut()) {
+            for (arg1, arg2) in new_args1.args.iter_mut().zip(new_args2.args.iter_mut()) {
                 if !types_equal_inner(arg1, arg2) {
                     return false;
                 }
@@ -569,6 +584,21 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
     }
 }
 
+/// Checks if two types could match (considering inference).
+pub fn types_could_match<'a>(a: &MIRTypeInner<'a>, b: &MIRTypeInner<'a>) -> bool {
+    a == b
+        || matches!(
+            (a, b),
+            (
+                MIRTypeInner::UnknownNumber,
+                MIRTypeInner::I32 | MIRTypeInner::U32
+            ) | (
+                MIRTypeInner::I32 | MIRTypeInner::U32,
+                MIRTypeInner::UnknownNumber
+            )
+        )
+}
+
 /// Tries to find a function that matches the given name and arguments.
 /// If none exists or it's ambiguous, it prints out an error and returns None.
 fn get_fn_candidate<'a>(
@@ -576,56 +606,30 @@ fn get_fn_candidate<'a>(
     name: &str,
     args: &[MIRTypeInner<'a>],
 ) -> Option<MIRFunctionKey> {
-    let mut res = ctx
-        .program
-        .function_names
-        .get(name)
-        .into_iter()
-        .flat_map(|v| v.values())
-        .filter(|func| {
-            let func = &ctx.program.functions[**func];
-
-            if args.len() != func.args.len() {
-                return false;
-            }
-
-            for (arg1, arg2) in args.iter().zip(func.args_ty.0.iter()) {
-                if arg1 == arg2 {
-                    continue;
-                }
-
-                match (arg1, arg2) {
-                    // Allow unknown numbers to resolve, but only if there's
-                    // no ambiguity (we'll check that below).
-                    (MIRTypeInner::UnknownNumber, MIRTypeInner::I32 | MIRTypeInner::U32)
-                    | (MIRTypeInner::I32 | MIRTypeInner::U32, MIRTypeInner::UnknownNumber) => {
-                        continue;
-                    }
-                    _ => return false,
-                }
-            }
-
-            true
-        });
-
-    let Some(candidate) = res.next() else {
-        // No candidates.
+    let Some(overloads) = ctx.program.function_names.get(name) else {
         // TODO: No function found error.
         eprintln!("No function found with name {name:?}");
         return None;
     };
 
-    if res.next().is_some() {
-        // Multiple candidates = ambiguity!
-        // TODO: Multiple functions found error.
-        eprintln!(
-            "Multiple functions found with name {name:?}. Disambiguate arguments with type annotations."
-        );
-        return None;
-    }
+    match overloads.find_compatible(args) {
+        Some(key) => Some(key),
+        None => {
+            // Could be no matches or ambiguous (multiple)
+            let count = overloads.count_compatible(args);
 
-    // Only one candidate found.
-    Some(*candidate)
+            if count == 0 {
+                // TODO: No function found error.
+                eprintln!("No function found with name {name:?}");
+            } else {
+                // TODO: Multiple functions found error.
+                eprintln!(
+                    "Multiple functions found with name {name:?}. Disambiguate arguments with type annotations."
+                );
+            }
+            None
+        }
+    }
 }
 
 /// Checks whether the expression is valid,

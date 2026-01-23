@@ -69,4 +69,7 @@ pub trait Codegen: TokenInfo {
     /// number is higher than outer's. If inner/outer has no precedence, then it
     /// needs no wrapping.
     fn precedence(&self, op: &MIRExpressionInner) -> Option<usize>;
+
+    /// Lowers required imports to the target language.
+    fn lower_imports<'a>(&mut self, imports: &[Cow<'a, str>]) -> Tokens<'a>;
 }

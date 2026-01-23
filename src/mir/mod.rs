@@ -10,10 +10,10 @@ use crate::codegen::Codegen;
 use crate::mir::drop::drop_at_scope_end;
 use crate::mir::expr::{const_eval, const_optimize_expr};
 use crate::mir::function::{
-    export_helpers, inline_functions, insert_fn_arg_args, prune_functions, resolve_fns_to_vars,
+    inline_functions, insert_fn_arg_args, mark_reachable, prune_functions, resolve_fns_to_vars,
 };
 use crate::mir::interpreter::Interpreter;
-use crate::mir::type_check::type_check;
+use crate::mir::type_check::{type_check, types_could_match};
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
 use crate::targets::Target;
@@ -104,7 +104,7 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     // TODO: Add a pass to mangle variables (locals and statics), both for size optimization and to
     //       fix invalid variable names.
 
-    export_helpers(ctx);
+    mark_reachable(ctx);
 
     // Helper functions are now exported when needed.
 
@@ -127,6 +127,139 @@ pub enum MIRDeclarationKey {
     Constant(MIRConstKey),
     Static(MIRStaticKey),
     Function(MIRFunctionKey),
+}
+
+/// A list of function overloads for a single function name.
+/// Stores args alongside keys to avoid slotmap lookups during search.
+#[derive(Debug, Default, Clone)]
+pub struct FunctionOverloads<'a>(Vec<(MIRFunctionArgs<'a>, MIRFunctionKey)>);
+
+impl<'a> FunctionOverloads<'a> {
+    /// Finds a function compatible with the given call arguments.
+    /// Returns None if no match or ambiguous.
+    pub fn find_compatible(&self, call_args: &[MIRTypeInner<'a>]) -> Option<MIRFunctionKey> {
+        let mut matches = self
+            .0
+            .iter()
+            .filter(|(args, _)| Self::args_compatible(args, call_args))
+            .map(|(_, key)| *key);
+
+        let first = matches.next()?;
+        if matches.next().is_some() {
+            // Ambiguous - multiple matches
+            None
+        } else {
+            Some(first)
+        }
+    }
+
+    /// Counts how many functions are compatible with the given call arguments.
+    pub fn count_compatible(&self, call_args: &[MIRTypeInner<'a>]) -> usize {
+        self.0
+            .iter()
+            .filter(|(args, _)| Self::args_compatible(args, call_args))
+            .count()
+    }
+
+    /// Checks if adding a function with these args would conflict with existing overloads.
+    /// Returns the conflicting key if so.
+    pub fn find_conflict(&self, new_args: &MIRFunctionArgs<'a>) -> Option<MIRFunctionKey> {
+        self.0
+            .iter()
+            .find(|(args, _)| Self::signatures_conflict(args, new_args))
+            .map(|(_, key)| *key)
+    }
+
+    /// Adds a function overload.
+    pub fn push(&mut self, args: MIRFunctionArgs<'a>, key: MIRFunctionKey) {
+        self.0.push((args, key));
+    }
+
+    /// Removes a function overload by key.
+    pub fn remove(&mut self, key: MIRFunctionKey) {
+        self.0.retain(|(_, k)| *k != key);
+    }
+
+    /// Returns an iterator over all keys.
+    pub fn keys(&self) -> impl Iterator<Item = MIRFunctionKey> + '_ {
+        self.0.iter().map(|(_, key)| *key)
+    }
+
+    /// Returns an iterator over all (args, key) pairs.
+    pub fn iter(&self) -> impl Iterator<Item = &(MIRFunctionArgs<'a>, MIRFunctionKey)> {
+        self.0.iter()
+    }
+
+    /// Returns true if empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Checks if call_args are compatible with func_args.
+    /// This is true if call_args can be used to call a function with func_args.
+    fn args_compatible(func_args: &MIRFunctionArgs<'a>, call_args: &[MIRTypeInner<'a>]) -> bool {
+        let fixed_count = func_args.args.len();
+
+        if func_args.variadic {
+            // Non-variadic (fixed) args must always be specified.
+            if call_args.len() < fixed_count {
+                return false;
+            }
+        } else {
+            // No variadic, so no room for going above the number
+            // of fixed args.
+            if call_args.len() != fixed_count {
+                return false;
+            }
+        }
+
+        func_args
+            .args
+            .iter()
+            .zip(call_args.iter())
+            .all(|(f, c)| types_could_match(f, c))
+    }
+
+    /// Checks if two function signatures could match the same call.
+    fn signatures_conflict(a: &MIRFunctionArgs<'a>, b: &MIRFunctionArgs<'a>) -> bool {
+        let a_fixed = a.args.len();
+        let b_fixed = b.args.len();
+
+        match (a.variadic, b.variadic) {
+            (false, false) => {
+                if a_fixed != b_fixed {
+                    // Incompatible counts, so cannot conflict.
+                    return false;
+                }
+            }
+            (true, false) => {
+                if b_fixed < a_fixed {
+                    // a requires more fixed args than b, so cannot conflict.
+                    // If a didn't (e.g., a = (i32, ...), b = (i32, i32)), then they could.
+                    return false;
+                }
+            }
+            (false, true) => {
+                if a_fixed < b_fixed {
+                    // b requires more fixed args than a, so cannot conflict.
+                    return false;
+                }
+            }
+            (true, true) => {
+                // If all the fixed args match (checked below), then
+                // this is a conflict, since one of the variadic ends will
+                // conflict with the remaining fixed args.
+            }
+        }
+
+        // This will only check up to the min length.
+        // The length checks above handle the cases where non-matching length
+        // means no conflict.
+        b.args
+            .iter()
+            .zip(a.args.iter())
+            .all(|(x, y)| types_could_match(x, y))
+    }
 }
 
 /// An entire program.
@@ -155,8 +288,11 @@ pub struct MIRProgram<'a> {
     /// Name -> Static.
     pub static_names: HashMap<Cow<'a, str>, MIRStaticKey>,
 
-    /// (Name, Args) -> Function.
-    pub function_names: HashMap<Cow<'a, str>, HashMap<MIRFunctionArgs<'a>, MIRFunctionKey>>,
+    /// Name -> Function overloads.
+    pub function_names: HashMap<Cow<'a, str>, FunctionOverloads<'a>>,
+
+    /// Imports required by used extern functions.
+    pub required_imports: Vec<Cow<'a, str>>,
 }
 
 impl<'a> MIRContext<'a> {
@@ -192,27 +328,27 @@ impl<'a> MIRContext<'a> {
             }
             MIRDeclarationKey::Function(key) => {
                 let args_ty = self.program.functions[key].args_ty.clone();
-                if self
-                    .program
-                    .function_names
-                    .get(&name)
-                    .is_some_and(|v| v.contains_key(&args_ty))
+
+                if let Some(overloads) = self.program.function_names.get(&name)
+                    && overloads.find_conflict(&args_ty).is_some()
                 {
-                    // (name, arg) combo already exists.
                     return false;
                 }
 
-                self.program
+                if let Some(overloads) = self
+                    .program
                     .function_names
                     .get_mut(&self.program.functions[key].name)
-                    .unwrap()
-                    .remove(&args_ty);
+                {
+                    overloads.remove(key);
+                }
+
                 self.program.functions[key].name = name.clone();
                 self.program
                     .function_names
                     .entry(name)
                     .or_default()
-                    .insert(args_ty, key);
+                    .push(args_ty, key);
             }
         }
 
@@ -250,10 +386,9 @@ impl<'a> MIRContext<'a> {
                 }
                 MIRDeclarationKey::Function(key) => {
                     let name = &self.program.functions[key].name;
-                    let args_ty = &self.program.functions[key].args_ty;
 
-                    if let Some(inner) = self.program.function_names.get_mut(name) {
-                        inner.remove(args_ty);
+                    if let Some(overloads) = self.program.function_names.get_mut(name) {
+                        overloads.remove(key);
                     }
                     self.program.functions.remove(key);
                     self.program
@@ -284,38 +419,26 @@ impl<'a> MIRContext<'a> {
             // We're trying to define a new function, and it hasn't conflicted
             // with anything else yet, as per the checks above.
 
-            let mut found_duplicate = None;
-
-            for option in self
-                .program
-                .function_names
-                .get(name)
-                .into_iter()
-                .flat_map(|v| v.values())
-            {
-                let option = &self.program.functions[*option];
-
-                if &option.args_ty == args {
-                    found_duplicate = Some(option.span.clone());
-                    break;
+            if let Some(overloads) = self.program.function_names.get(name) {
+                if let Some(conflict_key) = overloads.find_conflict(args) {
+                    // Two conflicting functions (same name, conflicting args).
+                    defined_span = self.program.functions[conflict_key].span.clone();
+                } else {
+                    // This is just an overload, which is allowed.
+                    return true;
                 }
-            }
-
-            if let Some(found_duplicate) = found_duplicate {
-                // Two conflicting functions (same name, same args).
-                defined_span = found_duplicate;
             } else {
-                // This is just an overload, which is allowed.
+                // No existing functions with this name.
                 return true;
             }
-        } else if let Some(option) = self
-            .program
-            .function_names
-            .get(name)
-            .and_then(|v| v.values().next())
-        {
-            // We aren't trying to define a function, but a function with the same name already exists.
-            defined_span = self.program.functions[*option].span.clone();
+        } else if let Some(overloads) = self.program.function_names.get(name) {
+            if let Some(key) = overloads.keys().next() {
+                // We aren't trying to define a function, but a function with the same name already exists.
+                defined_span = self.program.functions[key].span.clone();
+            } else {
+                // No duplicates.
+                return true;
+            }
         } else {
             // No duplicates.
             return true;
@@ -394,10 +517,30 @@ impl<'a> MIRContext<'a> {
                     .function_names
                     .entry(name)
                     .or_default()
-                    .insert(args_ty, key);
+                    .push(args_ty, key);
                 Some(MIRDeclarationKey::Function(key))
             }
         }
+    }
+
+    /// Pushes a declaration to the global list of declarations.
+    /// This means that it will be part of the final output.
+    ///
+    /// For certain cases, such as extern functions, this does
+    /// nothing.
+    pub fn push_decl(&mut self, decl: MIRDeclarationKey) {
+        if let MIRDeclarationKey::Function(key) = decl
+            && let Some(MIRFunction {
+                fn_type: MIRFunctionType::Extern,
+                ..
+            }) = self.program.functions.get(key)
+        {
+            // Extern functions already exist in the target, so shouldn't be pushed to the output.
+            // They'll still be used for type checking and to determine required imports.
+            return;
+        }
+
+        self.program.decls.push(decl);
     }
 }
 
@@ -459,6 +602,9 @@ pub enum MIRFunctionType {
 
     /// Exported only if called.
     Helper,
+
+    /// An external function with no body.
+    Extern,
 }
 
 /// A function.
@@ -491,6 +637,10 @@ pub struct MIRFunction<'a> {
     /// The code that created
     /// this item.
     pub span: Span<'a>,
+
+    /// Required import for extern functions (e.g., "<stdio.h>").
+    /// Only set when fn_type == Extern.
+    pub extern_import: Option<Cow<'a, str>>,
 }
 
 /// A variable inside a function.
@@ -787,7 +937,12 @@ pub enum MIRTypeInner<'a> {
 /// The type signature of a function, which along with its name, uniquely identifies it.
 /// These types are always fully resolved.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MIRFunctionArgs<'a>(pub Vec<MIRTypeInner<'a>>);
+pub struct MIRFunctionArgs<'a> {
+    /// The fixed argument types.
+    pub args: Vec<MIRTypeInner<'a>>,
+    /// Whether additional variadic arguments are accepted.
+    pub variadic: bool,
+}
 
 impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
     fn from(value: MIRTypeInner<'a>) -> Self {
@@ -799,13 +954,18 @@ impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
             MIRTypeInner::Bool => Cow::Borrowed("bool"),
             MIRTypeInner::String => Cow::Borrowed("string"),
             MIRTypeInner::FunctionPtr(args, ret) => Cow::Owned(format!(
-                "fn({}) -> {}",
-                args.0
+                "fn({}{}) -> {}",
+                args.args
                     .iter()
                     .cloned()
                     .map(|v| v.into())
                     .intersperse(Cow::Borrowed(", "))
                     .collect::<String>(),
+                if args.variadic {
+                    if args.args.is_empty() { "..." } else { ", ..." }
+                } else {
+                    ""
+                },
                 ret
             )),
             MIRTypeInner::Named(val) => val,

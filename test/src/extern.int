@@ -1,0 +1,10 @@
+//@check
+
+extern function printf(fmt: string, ...) from "<stdio.h>";
+
+function main() -> i32 {
+    printf("No args\n");
+    printf("One arg: %d\n", 1);
+    printf("Two args: %d %d\n", 1, 2);
+    return 0;
+}

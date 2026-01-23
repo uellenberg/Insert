@@ -128,20 +128,25 @@ pub fn insert_fn_arg_args(ctx: &mut MIRContext<'_>) {
     }
 }
 
-/// Turns all used helpers into export functions.
-/// A helper is considered used if there's some path between
-/// it and an exported function, so static/const initial values
-/// aren't counted.
+/// Marks all declarations reachable from exported functions:
+/// - Helper functions get exported.
+/// - Required imports get cataloged (and later emitted).
 ///
 /// Ideally, this should be used as early as possible, to benefit
 /// from as many optimizations.
-pub fn export_helpers(ctx: &mut MIRContext<'_>) {
+pub fn mark_reachable(ctx: &mut MIRContext<'_>) {
     let mut visited = HashSet::new();
+    let mut imports = HashSet::new();
+
+    // Visit all declarations.
+
     for function in ctx.program.functions.keys() {
         if ctx.program.functions[function].fn_type == MIRFunctionType::Export {
-            mark_visited(ctx, function, &mut visited);
+            mark_visited(ctx, function, &mut visited, &mut imports);
         }
     }
+
+    // Update the MIR based on what's reachable.
 
     for key in visited {
         let func = &mut ctx.program.functions[key];
@@ -149,21 +154,31 @@ pub fn export_helpers(ctx: &mut MIRContext<'_>) {
             func.fn_type = MIRFunctionType::Export;
         }
     }
+
+    ctx.program.required_imports.extend(imports);
 }
 
 /// Recursively tracks all functions that are called from
-/// the given function.
+/// the given function, collecting imports along the way.
 fn mark_visited<'a>(
     ctx: &MIRContext<'a>,
     func: MIRFunctionKey,
     visited: &mut HashSet<MIRFunctionKey>,
+    imports: &mut HashSet<Cow<'a, str>>,
 ) {
     if visited.contains(&func) {
         return;
     }
     visited.insert(func);
 
-    for statement in &ctx.program.functions[func].body {
+    let function = &ctx.program.functions[func];
+
+    if let Some(import) = &function.extern_import {
+        // This extern function is reachable, so we must import it.
+        imports.insert(import.clone());
+    }
+
+    for statement in &function.body {
         if let MIRStatement::FunctionCall(MIRFnCall {
             source: MIRFnSource::Direct(name, ..),
             args_ty,
@@ -171,7 +186,7 @@ fn mark_visited<'a>(
         }) = statement
         {
             // Statement call.
-            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited);
+            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
         } else {
             // TODO: Visit function pointers in expressions.
             find_exprs(statement, &mut |expr| {
@@ -182,7 +197,7 @@ fn mark_visited<'a>(
                         && let MIRFnSource::Direct(name, ..) = source
                     {
                         // Expression call.
-                        mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited);
+                        mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
                     }
 
                     true
@@ -501,12 +516,16 @@ fn get_fn_key(
     name: &str,
     args_ty: &Option<MIRFunctionArgs>,
 ) -> MIRFunctionKey {
-    *ctx.program
+    let call_args = &args_ty
+        .as_ref()
+        .expect("Function args type didn't exist!")
+        .args;
+
+    ctx.program
         .function_names
         .get(name)
         // The function's existence must be verified in type checking.
         .expect("Function name doesn't exist!")
-        // args_ty must be resolved from type checking.
-        .get(args_ty.as_ref().expect("Functions args type didn't exist!"))
-        .expect("Function doesn't exist!")
+        .find_compatible(call_args)
+        .expect("No matching function found (none or ambiguous)!")
 }

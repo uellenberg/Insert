@@ -1,0 +1,10 @@
+Error: Duplicate identifier
+   ╭─[ /home/user/IdeaProjects/Insert/test/src/extern-conflict.int:7:1 ]
+   │
+ 6 │ extern function test2(val: i32, ...) from "b";
+   │ ───────────────────────┬──────────────────────  
+   │                        ╰──────────────────────── Item with name test2 previously defined here
+ 7 │ extern function test2(val: i32, val2: u32, ...) from "b";
+   │ ────────────────────────────┬────────────────────────────  
+   │                             ╰────────────────────────────── Redeclaration here
+───╯
