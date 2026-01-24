@@ -1,5 +1,5 @@
 Error: Duplicate identifier
-   ╭─[ /home/user/IdeaProjects/Insert/test/src/extern-conflict.int:7:1 ]
+   ╭─[ ./test/src/extern-conflict.int:7:1 ]
    │
  6 │ extern function test2(val: i32, ...) from "b";
    │ ───────────────────────┬──────────────────────  

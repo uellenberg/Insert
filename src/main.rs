@@ -7,8 +7,7 @@ use crate::mir::{MIRContext, visit_mir};
 use crate::parser::parse_file;
 use crate::targets::Target;
 use clap::Parser;
-use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod codegen;
 mod mir;
@@ -57,11 +56,16 @@ fn main() {
         _ => unreachable!(),
     };
 
-    let input_path = env::current_dir()
-        .map(|dir| dir.join(&args.input))
-        .unwrap_or(PathBuf::from(&args.input))
+    let mut input_path = PathBuf::from(&args.input)
         .normalize_lexically()
         .expect("Failed to normalize input path!");
+
+    // Our path handling expects all imports to be relative or absolute, and doesn't
+    // like implicit relative paths (e.g., "test/file.int" -> "./test/file.int").
+    if input_path.is_relative() && !(input_path.starts_with("./") || input_path.starts_with("../"))
+    {
+        input_path = Path::new(".").join(input_path);
+    }
 
     let mut mir_ctx = MIRContext {
         lowerer: target.lowerer().new(),

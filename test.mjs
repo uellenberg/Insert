@@ -9,6 +9,7 @@ const USAGE = "Usage: node ./test.js [--bless | --test]";
 const __dirname = import.meta.dirname;
 const SNAPSHOTS = path.join(__dirname, "test", "snapshots");
 const SRC = path.join(__dirname, "test", "src");
+const SRC_RELATIVE = path.join(".", "test", "src");
 // Use debug so we get overflow checks.
 const BINARY = path.join(__dirname, "target", "debug", "Insert");
 const MANIFEST = path.join(__dirname, "Cargo.toml");
@@ -192,7 +193,8 @@ async function getOutputForTest(test, stage) {
 
     // Compile.
     // No warnings because they interfere with test output.
-    const [stdout, stderr] = await exec(`"${BINARY}" --stage ${fixedStage} ${stage === "target-fancy" ? "--fancy" : ""} "${path.join(SRC, test + ".int")}"`);
+    // Use relative paths for portable tests.
+    const [stdout, stderr] = await exec(`"${BINARY}" --stage ${fixedStage} ${stage === "target-fancy" ? "--fancy" : ""} "${path.join(SRC_RELATIVE, test + ".int")}"`);
 
     return [stdout, stderr];
 }
