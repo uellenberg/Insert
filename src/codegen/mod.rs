@@ -4,7 +4,7 @@ pub mod token;
 use crate::codegen::token::TokenInfo;
 use crate::mir::{
     MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction, MIRProgram, MIRStatement,
-    MIRStatic, MIRType,
+    MIRStatic, MIRType, MIRTypeInner,
 };
 use std::borrow::Cow;
 use token::Tokens;
@@ -50,7 +50,7 @@ pub trait Codegen: TokenInfo {
     /// Converts a datatype from MIR to the target language.
     /// Returns (prefix, postfix) where a variable can be constructed as:
     /// {PREFIX} name{POSTFIX}.
-    fn lower_datatype<'a>(&mut self, ty: &MIRType<'a>) -> (Tokens<'a>, Tokens<'a>);
+    fn lower_datatype<'a>(&mut self, ty: &MIRTypeInner<'a>) -> (Tokens<'a>, Tokens<'a>);
 
     /// Adds a datatype to a variable/function name.
     fn decorate_with_type<'a>(&mut self, name: Cow<'a, str>, ty: &MIRType<'a>) -> Tokens<'a>;

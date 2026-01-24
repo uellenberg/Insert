@@ -829,12 +829,44 @@ fn check_expression<'a, 'b>(
                 // Span is added after.
                 span: None,
             }),
+            MIRExpressionInner::Ref(expr) => {
+                if !matches!(
+                    expr.inner,
+                    MIRExpressionInner::Variable(..)
+                        | MIRExpressionInner::Index(..)
+                        | MIRExpressionInner::Member(..)
+                ) {
+                    // Some languages will inject temporaries.
+                    // Maybe we can do this automatically as well.
+                    eprintln!(
+                        "References can only be made to variables, array indexes, or member access: {expr:?}"
+                    );
+                    return None;
+                }
+
+                let mut inner_ty = check_expression(ctx, expr, scope)?.clone();
+
+                inner_ty.ty = MIRTypeInner::Ref(Box::new(inner_ty.ty));
+
+                Some(inner_ty)
+            }
+            MIRExpressionInner::Deref(expr) => {
+                let mut inner_ty = check_expression(ctx, expr, scope)?.clone();
+                match inner_ty.ty {
+                    MIRTypeInner::Ref(value) => {
+                        inner_ty.ty = *value;
+                    }
+                    _ => {
+                        eprintln!("Cannot dereference non-reference type: {expr:?}");
+                        return None;
+                    }
+                }
+
+                Some(inner_ty)
+            }
 
             // TODO: Implement type checking for place expressions.
-            MIRExpressionInner::Ref(_)
-            | MIRExpressionInner::Deref(_)
-            | MIRExpressionInner::Member(_, _)
-            | MIRExpressionInner::Index(_, _) => todo!(),
+            MIRExpressionInner::Member(_, _) | MIRExpressionInner::Index(_, _) => todo!(),
         }
     })()?;
 

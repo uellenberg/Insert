@@ -4,8 +4,8 @@ use crate::mir::interpreter::label::label_to_index;
 use crate::mir::interpreter::loop_statement::flatten_loops;
 use crate::mir::type_check::type_check;
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionType, MIRStatement,
-    MIRTypeInner,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionKey, MIRFunctionType,
+    MIRStatement, MIRTypeInner,
 };
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -39,7 +39,7 @@ pub enum InterpreterData<'a> {
     Bool(bool),
     Unit(()),
     String(Cow<'a, str>),
-    FunctionPtr(Cow<'a, str>),
+    FunctionPtr(MIRFunctionKey),
     /// A reference to a variable (either directly or to a field / array element).
     /// If the value behind the RefCell is None, that means the data hasn't been
     /// initialized yet.
@@ -344,8 +344,8 @@ impl<'a> Interpreter<'a> {
                         panic!("Wrong indirect function call type!");
                     };
 
-                    self.eval_function(
-                        &source,
+                    self.eval_function_key(
+                        source,
                         fn_data
                             .args
                             .iter()
@@ -357,18 +357,41 @@ impl<'a> Interpreter<'a> {
                     )
                 }
             },
-
-            MIRExpressionInner::Ref(_inner) => {
+            MIRExpressionInner::Ref(inner) => {
                 // We need to go into place mode to capture a reference to
                 // the inner expression.
+                let inner = self.eval_expr(inner, scope, true)?;
+
                 // When we switch into place mode, that by itself adds a level
                 // of indirection, so we don't need to directly add a reference.
                 // However, if we're already in place mode, then we do need to
                 // add a level of indirection.
-                todo!()
+                if place {
+                    unreachable!(
+                        "Cannot create references in place mode (type check should have caught this)!"
+                    );
+                } else {
+                    Ok(inner)
+                }
             }
-            MIRExpressionInner::Deref(_inner) => {
-                todo!()
+            MIRExpressionInner::Deref(inner) => {
+                let InterpreterData::Ref(inner, _) = self.eval_expr(inner, scope, place)? else {
+                    unreachable!("Inner data for dereference wasn't a reference!");
+                };
+
+                // In place mode, we want a reference to the data behind the reference.
+                // Place mode by default already has one layer of indirection, so if a: &i32
+                // and we write *a, we'll see Ref<Ref<i32>>, where the inner ref represents the
+                // variable a is pointing to, and the outer ref represents a.
+                // Our job is to strip that away.
+                //
+                // In non-place mode, we'll just see Ref<i32>, then strip it to i32.
+                //
+                // So in both cases, we strip away the outer Ref.
+                Ok(inner
+                    .borrow()
+                    .clone()
+                    .expect("Dereferenced uninitialized reference"))
             }
             MIRExpressionInner::Member(_base, _name) => {
                 todo!()
@@ -382,7 +405,7 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    /// Evaluates a function call.
+    /// Evaluates a function call, performing function lookup by name.
     /// If an error occurs, returns Err.
     pub fn eval_function(
         &self,
@@ -400,6 +423,17 @@ impl<'a> Interpreter<'a> {
         else {
             panic!("Function not found!");
         };
+
+        self.eval_function_key(fn_key, args)
+    }
+
+    /// Evaluates a function call, using the function's key directly.
+    /// If an error occurs, returns Err.
+    pub fn eval_function_key(
+        &self,
+        fn_key: MIRFunctionKey,
+        args: Vec<(InterpreterData<'a>, MIRTypeInner<'a>)>,
+    ) -> Result<InterpreterData<'a>, ()> {
         let fn_data = &self.ctx.program.functions[fn_key];
 
         if fn_data.fn_type == MIRFunctionType::Extern {
@@ -503,8 +537,8 @@ impl<'a> Interpreter<'a> {
                         panic!("Wrong indirect function call type!");
                     };
 
-                    self.eval_function(
-                        &source,
+                    self.eval_function_key(
+                        source,
                         fn_data
                             .args
                             .iter()
@@ -561,8 +595,10 @@ impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
             InterpreterData::Bool(v) => MIRExpressionInner::Bool(v),
             InterpreterData::Unit(_) => todo!("Add a unit expression to support this"),
             InterpreterData::String(v) => MIRExpressionInner::String(v),
-            InterpreterData::FunctionPtr(v) => MIRExpressionInner::Variable(v),
-            InterpreterData::Ref(_, expr) => expr.inner.clone(),
+            InterpreterData::FunctionPtr(_v) => {
+                todo!("Figure out how to handle function pointers to overloaded functions")
+            }
+            InterpreterData::Ref(_, expr) => MIRExpressionInner::Ref(expr),
         }
     }
 }

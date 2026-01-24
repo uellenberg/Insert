@@ -18,7 +18,7 @@ pub type Tokens<'a> = smallvec::SmallVec<Token<'a>, 8>;
 ///
 /// A valid program is produced if all tokens are separated by a space,
 /// excluding edge cases like preprocessor macros (which require newlines).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token<'a> {
     /// The raw text of the token.
     ///

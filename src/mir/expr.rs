@@ -139,16 +139,17 @@ fn reduce_expr<'a>(
             // TODO: Implement member access reduction for const structs.
             MIRExpressionInner::Member(_, _) => None,
 
-            // TODO: Implement ref/deref reduction.
-            MIRExpressionInner::Ref(_) | MIRExpressionInner::Deref(_) => None,
-
             // Already fully simplified (recursion handled by explore_expr_mut).
             MIRExpressionInner::Index(_, _)
             | MIRExpressionInner::FunctionCall(_)
             | MIRExpressionInner::Number(_)
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
-            | MIRExpressionInner::Unit => None,
+            | MIRExpressionInner::Unit
+            // We could implement ref/deref reduction (&*val -> val), but in some languages
+            // there's a real reason to leave it unsimplified.
+            | MIRExpressionInner::Ref(_)
+            | MIRExpressionInner::Deref(_) => None,
         })();
 
         if let Some(new_expr) = new_expr {

@@ -1,0 +1,29 @@
+// Constants: 
+
+// Statics: 
+
+static testVal: i32 = 8;
+static testVal2: &i32 = (&testVal);
+
+// Functions: 
+
+function mul(a: &i32, b: i32) : () {
+    let a: &i32;
+    let b: i32;
+    (*a) = ((*a) * b);
+    drop b;
+    drop a;
+}
+function test(val: i32) : i32 {
+    let val: i32;
+    let val1: &i32 = (&val);
+    let val2: i32 = (val + 1);
+    let val3: &i32 = (&val2);
+    mul(val1, 2)
+    mul(val3, 3)
+    return ((*val1) + (*val3));
+    drop val3;
+    drop val2;
+    drop val1;
+    drop val;
+}

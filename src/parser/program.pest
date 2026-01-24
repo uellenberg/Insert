@@ -143,7 +143,17 @@ breakStatement = { break_ ~ ";" }
 
 continueStatement = { continue_ ~ ";" }
 
-variableType = { "i32" | "u32" | "bool" | "()" | "string" }
+variableType = { "i32" | "u32" | "bool" | "()" | "string" | refType | arrayType | fixedArrayType | fnType | "(" ~ variableType ~ ")" }
+
+refType = { "&" ~ variableType }
+arrayType = { "&" ~ "[" ~ variableType ~ "]" }
+fixedArrayType = { "[" ~ variableType ~ ";" ~ number ~ "]" }
+fnType = { fn_ ~ "(" ~ fnArgsType? ~ ")" ~ "->" ~ variableType }
+
+fnArgsType = {
+    variableType ~ ("," ~ variableType)* ~ ("," ~ variadic)? ~ ","?
+    | variadic ~ ","?
+}
 
 expression = { logical }
 
@@ -242,8 +252,9 @@ import = _{ "import" }
 target = _{ "target" }
 extern_ = _{ "extern" }
 from_ = _{ "from" }
+fn_ = _{ "fn" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ | fn_ }

@@ -1,0 +1,19 @@
+//@check
+
+function mul(a: &i32, b: i32) {
+    *a = *a * b;
+}
+
+function test(val: i32) -> i32 {
+    let val1: &i32 = &val;
+    let val2: i32 = val + 1;
+    let val3: &i32 = &val2;
+
+    mul(val1, 2);
+    mul(val3, 3);
+
+    return *val1 + *val3;
+}
+
+static testVal: i32 = test(1);
+static testVal2: &i32 = &testVal;

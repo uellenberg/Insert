@@ -1,8 +1,8 @@
 use crate::codegen::Codegen;
 use crate::codegen::LowerOptions;
 use crate::codegen::c::token::{
-    INDENT, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, NEWLINE_REQUIRED, RIGHT_PAREN, RIGHT_SQUIGGLE,
-    SEMI, escape_string,
+    INDENT, LEFT_BRACKET, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, NEWLINE_REQUIRED, RIGHT_BRACKET,
+    RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, escape_string,
 };
 use crate::codegen::token::{Token, TokenInfo, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
@@ -323,8 +323,8 @@ impl Codegen for CLowerer {
         }
     }
 
-    fn lower_datatype<'a>(&mut self, ty: &MIRType<'a>) -> (Tokens<'a>, Tokens<'a>) {
-        match &ty.ty {
+    fn lower_datatype<'a>(&mut self, ty: &MIRTypeInner<'a>) -> (Tokens<'a>, Tokens<'a>) {
+        match ty {
             MIRTypeInner::UnknownNumber => unreachable!(),
             MIRTypeInner::I32 => (spread![Token::new("int".into())], [].into()),
             MIRTypeInner::U32 => (
@@ -337,13 +337,77 @@ impl Codegen for CLowerer {
             ),
             MIRTypeInner::Bool => (spread![Token::new("bool".into())], [].into()),
             MIRTypeInner::Unit => (spread![Token::new("void".into())], [].into()),
-            MIRTypeInner::FunctionPtr(_args, _ret) => todo!(),
             MIRTypeInner::Named(name) => (spread![Token::new(name.clone())], [].into()),
+            // Array is essentially just a ref in C, no reason to handle it differently.
+            MIRTypeInner::Ref(box inner) | MIRTypeInner::Array(box inner) => {
+                let (mut left, right) = self.lower_datatype(inner);
+
+                // Only wrap parentheses if we haven't already.
+                let needs_parens = right.first().map(|t| t != &RIGHT_PAREN).unwrap_or(false);
+
+                if needs_parens {
+                    // Need parens to protect * from postfix operators (like [])
+                    left.push(LEFT_PAREN);
+                    left.push(Token::new("*".into()));
+                    (left, spread![RIGHT_PAREN, ...right])
+                } else {
+                    // The rightmost (innermost) part is what applies first.
+                    // If we went with the leftmost part, we'd be injecting a reference
+                    // too far down.
+                    if let Some(paren_idx) = left.iter().rposition(|t| t == &LEFT_PAREN) {
+                        left.insert(paren_idx + 1, Token::new("*".into()));
+                    } else {
+                        left.push(Token::new("*".into()));
+                    }
+                    (left, right)
+                }
+            }
+            MIRTypeInner::ArrayFixed(box inner, size) => {
+                let (left, right) = self.lower_datatype(inner);
+                // Prepend [size] to right
+                (
+                    left,
+                    spread![LEFT_BRACKET, Token::new(size.to_string().into()), RIGHT_BRACKET, ...right],
+                )
+            }
+            MIRTypeInner::FunctionPtr(func_args, box ret) => {
+                let (mut left, right) = self.lower_datatype(ret);
+
+                // Build parameter list as tokens
+                let mut params: Tokens<'a> = func_args
+                    .args
+                    .iter()
+                    .map(|arg| {
+                        let (left, right) = self.lower_datatype(arg);
+                        spread![...left, ...right]
+                    })
+                    .intersperse(spread![Token::new(",".into())])
+                    .flatten()
+                    .collect();
+
+                if func_args.variadic {
+                    if !params.is_empty() {
+                        params.push(Token::new(",".into()));
+                    }
+                    params.push(Token::new("...".into()));
+                } else if params.is_empty() {
+                    params.push(Token::new("void".into()));
+                }
+
+                // Example:
+                // Ret: ["int*", "[10]"] -> "int(*(*NAME)(void))[10]"
+                left.push(LEFT_PAREN);
+                left.push(Token::new("*".into()));
+                (
+                    left,
+                    spread![RIGHT_PAREN, LEFT_PAREN, ...params, RIGHT_PAREN, ...right],
+                )
+            }
         }
     }
 
     fn decorate_with_type<'a>(&mut self, name: Cow<'a, str>, ty: &MIRType<'a>) -> Tokens<'a> {
-        let (prefix, postfix) = self.lower_datatype(ty);
+        let (prefix, postfix) = self.lower_datatype(&ty.ty);
         spread![...prefix, Token::new(name), ...postfix]
     }
 

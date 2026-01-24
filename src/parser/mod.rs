@@ -871,19 +871,77 @@ fn parse_string<'a>(value: Pair<'a, Rule>) -> String {
 fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {
     assert_eq!(value.as_rule(), Rule::variableType);
 
-    let ty = match value.as_str() {
-        "i32" => MIRTypeInner::I32,
-        "u32" => MIRTypeInner::U32,
-        "bool" => MIRTypeInner::Bool,
-        "()" => MIRTypeInner::Unit,
-        "string" => MIRTypeInner::String,
-        _ => unreachable!(),
+    let ty_str = value.as_str();
+    let span = Some(to_span(location, value.as_span()));
+
+    let ty = if let Some(inner) = value.into_inner().next() {
+        match inner.as_rule() {
+            Rule::refType => MIRTypeInner::Ref(Box::new(
+                parse_type(location, inner.into_inner().next().unwrap()).ty,
+            )),
+            Rule::arrayType => MIRTypeInner::Array(Box::new(
+                parse_type(location, inner.into_inner().next().unwrap()).ty,
+            )),
+            Rule::fixedArrayType => {
+                let mut inner = inner.into_inner();
+                let inner_ty = parse_type(location, inner.next().unwrap()).ty;
+                let array_size = parse_number(inner.next().unwrap()).0;
+
+                MIRTypeInner::ArrayFixed(Box::new(inner_ty), array_size as usize)
+            }
+            Rule::fnType => {
+                let inner = inner.into_inner();
+
+                let mut variadic = false;
+                let mut args = vec![];
+                let mut ret = None;
+
+                // Optional args, then a return type.
+                for v in inner {
+                    match v.as_rule() {
+                        Rule::fnArgsType => {
+                            // Zero or more args, then an optional variadic.
+                            args = v
+                                .into_inner()
+                                .filter(|v| {
+                                    if v.as_rule() == Rule::variadic {
+                                        variadic = true;
+                                        false
+                                    } else {
+                                        true
+                                    }
+                                })
+                                .map(|v| parse_type(location, v).ty)
+                                .collect::<Vec<_>>();
+                        }
+                        Rule::variableType => {
+                            // Return type.
+                            ret = Some(parse_type(location, v).ty);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+
+                MIRTypeInner::FunctionPtr(
+                    MIRFunctionArgs { args, variadic },
+                    Box::new(ret.unwrap()),
+                )
+            }
+            Rule::variableType => parse_type(location, inner).ty,
+            _ => unreachable!(),
+        }
+    } else {
+        match ty_str {
+            "i32" => MIRTypeInner::I32,
+            "u32" => MIRTypeInner::U32,
+            "bool" => MIRTypeInner::Bool,
+            "()" => MIRTypeInner::Unit,
+            "string" => MIRTypeInner::String,
+            _ => unreachable!(),
+        }
     };
 
-    MIRType {
-        ty,
-        span: Some(to_span(location, value.as_span())),
-    }
+    MIRType { ty, span }
 }
 
 /// Parses a number, including type ascription.

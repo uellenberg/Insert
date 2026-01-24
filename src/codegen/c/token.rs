@@ -6,6 +6,8 @@ pub const LEFT_PAREN: Token<'static> = Token::new(Cow::Borrowed("("));
 pub const RIGHT_PAREN: Token<'static> = Token::new(Cow::Borrowed(")"));
 pub const LEFT_SQUIGGLE: Token<'static> = Token::new(Cow::Borrowed("{"));
 pub const RIGHT_SQUIGGLE: Token<'static> = Token::new(Cow::Borrowed("}"));
+pub const LEFT_BRACKET: Token<'static> = Token::new(Cow::Borrowed("["));
+pub const RIGHT_BRACKET: Token<'static> = Token::new(Cow::Borrowed("]"));
 pub const SEMI: Token<'static> = Token::new(Cow::Borrowed(";"));
 pub const NEWLINE_REQUIRED: Token<'static> = Token::new(Cow::Borrowed("\n"));
 

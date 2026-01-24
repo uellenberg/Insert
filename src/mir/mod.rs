@@ -920,6 +920,19 @@ pub enum MIRTypeInner<'a> {
 
     /// A named type (struct).
     Named(Cow<'a, str>),
+
+    /// A reference to a piece of data with type equal to the inner type.
+    Ref(Box<MIRTypeInner<'a>>),
+
+    /// An array of elements of the given type.
+    /// This is essentially the same as a ref for C, but should be
+    /// used where possible.
+    /// This is passed by reference.
+    Array(Box<MIRTypeInner<'a>>),
+
+    /// An array of a fixed size.
+    /// This is passed by value.
+    ArrayFixed(Box<MIRTypeInner<'a>>, usize),
 }
 
 /// The type signature of a function, which along with its name, uniquely identifies it.
@@ -957,6 +970,9 @@ impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
                 ret
             )),
             MIRTypeInner::Named(val) => val,
+            MIRTypeInner::Ref(inner) => format!("&{}", inner).into(),
+            MIRTypeInner::Array(inner) => format!("&[{}]", inner).into(),
+            MIRTypeInner::ArrayFixed(inner, size) => format!("[{}; {}]", inner, size).into(),
         }
     }
 }
