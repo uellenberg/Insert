@@ -7,7 +7,7 @@ int f(int value){
 unsigned int h(unsigned int value){
     return 10;
 }
-static int sValue= -10;void main(){
+static int sValue=-10;void main(){
     f(10);
     h(10);
 }

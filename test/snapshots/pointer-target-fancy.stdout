@@ -1,12 +1,12 @@
 void mul(int*a,int b){
-    *a= *a*b;
+    *a=*a*b;
 }
 int test(int val){
-    int*val1= &val;
+    int*val1=&val;
     int val2=val+1;
-    int*val3= &val2;
+    int*val3=&val2;
     mul(val1,2);
     mul(val3,3);
     return*val1+ *val3;
 }
-static int testVal=8;static int*testVal2= &testVal;
+static int testVal=8;static int*testVal2=&testVal;

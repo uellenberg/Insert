@@ -27,18 +27,21 @@ impl TokenInfo for CLowerer {
             return false;
         }
 
-        let last_char = left.chars().last().unwrap();
-        let first_char = right.chars().next().unwrap();
+        let left_char = left.chars().last().unwrap();
+        let right_char = right.chars().next().unwrap();
 
         // Words must be separated.
         // For example, int main, return 0, variable1 variable2, 123 456
-        if is_ident_char(last_char) && is_ident_char(first_char) {
+        if is_ident_char(left_char) && is_ident_char(right_char) {
             return true;
         }
 
         // Spaces are already allowed between operators,
         // and excluding a space here creates a different meaning.
-        if is_punct_char(last_char) && is_punct_char(first_char) {
+        if is_punct_char(left_char) && is_punct_char(right_char)
+            // Special case: = on the left only binds with = on the right.
+            && (left_char != '=' || right_char == '=')
+        {
             return true;
         }
 

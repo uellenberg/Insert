@@ -1,1 +1,1 @@
-unsigned int f(unsigned int value){return 10;}int f(int value){return-10;}unsigned int h(unsigned int value){return 10;}static int sValue= -10;void main(){f(10);h(10);}
+unsigned int f(unsigned int value){return 10;}int f(int value){return-10;}unsigned int h(unsigned int value){return 10;}static int sValue=-10;void main(){f(10);h(10);}
