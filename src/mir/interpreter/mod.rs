@@ -93,7 +93,9 @@ impl<'a> Interpreter<'a> {
 
         // Type information now exists.
 
-        flatten_loops(&mut ctx);
+        if !flatten_loops(&mut ctx) {
+            return Err(());
+        }
 
         // Loops no longer exist
         // in MIR.
@@ -101,7 +103,9 @@ impl<'a> Interpreter<'a> {
         // This needs to happen after
         // scope drop is added because
         // it erases scope.
-        flatten_ifs(&mut ctx);
+        if !flatten_ifs(&mut ctx) {
+            return Err(());
+        }
 
         // If statements no longer exist
         // in MIR.

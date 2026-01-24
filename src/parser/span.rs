@@ -1,3 +1,5 @@
+use crate::mir::MIRContext;
+use ariadne::{Label, Report, ReportKind};
 use std::fmt::Display;
 use std::ops::Range;
 use std::path::Path;
@@ -31,3 +33,28 @@ impl<'a> Display for Span<'a> {
         write!(f, "{}", self.2)
     }
 }
+
+pub fn print_with_span<'a>(file_cache: &FileCache, span: Option<Span<'a>>, msg: &str) {
+    let Some(span) = span else {
+        eprintln!("{msg}");
+        return;
+    };
+
+    Report::build(ReportKind::Error, span.clone())
+        .with_message(msg)
+        .with_label(Label::new(span).with_message("The error occurred here"))
+        .finish()
+        .eprint(file_cache.clone())
+        .unwrap();
+}
+
+/// Prints a message alongside the given span.
+/// Pass the span as an option.
+macro_rules! eprintln_span {
+    ($ctx:expr, $span:expr, $($arg:tt)*) => {
+        $crate::parser::span::print_with_span(&$ctx.file_cache, $span, &format!($($arg)*));
+    };
+}
+
+use crate::parser::file_cache::FileCache;
+pub(crate) use eprintln_span;

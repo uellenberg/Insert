@@ -92,7 +92,9 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     // Expressions no longer contain references
     // to constants.
 
-    drop_at_scope_end(ctx);
+    if !drop_at_scope_end(ctx) {
+        return false;
+    }
 
     // All variables are now dropped, including
     // arg variables.

@@ -5,6 +5,7 @@ use crate::mir::{
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType, MIRStatement, MIRType,
     MIRTypeInner, MIRVariable,
 };
+use crate::parser::span::eprintln_span;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -243,7 +244,12 @@ fn inline_function<'a>(
     inline_var_idx: &mut u32,
 ) -> bool {
     if visited.contains(&func) {
-        eprintln!("Inline cycle detected: {:?}", visited);
+        eprintln_span!(
+            ctx,
+            Some(ctx.program.functions[func].span.clone()),
+            "Inline cycle detected: {:?}",
+            visited
+        );
         return false;
     }
     visited.insert(func);
@@ -317,7 +323,7 @@ fn inline_function<'a>(
         &mut |_, _| true,
         &|_, _, _| true,
     ) {
-        panic!("inline_function rewrite returned false!");
+        return false;
     }
 
     ctx.program.functions[func].body = new_statements;
@@ -422,8 +428,12 @@ fn rewrite_inline_function<'a>(
                 // There shouldn't be any returns anymore.
                 // If so, they're invalid, since we can't properly inline functions
                 // with complex control flow.
-                MIRStatement::Return { .. } => {
-                    eprintln!("Return statement found in inline function body!");
+                MIRStatement::Return { span, .. } => {
+                    eprintln_span!(
+                        ctx,
+                        Some(span.clone()),
+                        "Return statement found in inline function body!"
+                    );
                     return false;
                 }
 

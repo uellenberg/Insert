@@ -5,7 +5,7 @@ use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
-use crate::parser::span::Span;
+use crate::parser::span::{Span, eprintln_span};
 use ariadne::{ColorGenerator, Fmt, Label, Report, ReportKind};
 use std::borrow::Cow;
 
@@ -177,7 +177,11 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::LoopStatement { .. } => {}
 
                 MIRStatement::CreateVariable {
-                    var, value, arg, ..
+                    var,
+                    value,
+                    arg,
+                    span,
+                    ..
                 } => {
                     // Disallow shadowing.
                     // (Phantom) arg variables shouldn't get checked against locals, since
@@ -186,7 +190,12 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         || ctx.program.static_names.contains_key(&var.name)
                         || ctx.program.const_names.contains_key(&var.name)
                     {
-                        eprintln!("Cannot shadow existing variable {}", var.name);
+                        eprintln_span!(
+                            ctx,
+                            Some(span.clone()),
+                            "Cannot shadow existing variable {}",
+                            var.name
+                        );
                         return false;
                     }
 
@@ -217,7 +226,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         if let MIRExpressionInner::Variable(var) = &expr.inner
                             && ctx.program.const_names.contains_key(var)
                         {
-                            eprintln!("Cannot set constants!");
+                            eprintln_span!(ctx, Some(expr.span.clone()), "Cannot set constants!");
                             return false;
                         }
 
@@ -349,7 +358,7 @@ fn check_fn_call<'a>(
     }
 
     let mut expected_ty = match source {
-        MIRFnSource::Direct(name, _span) => {
+        MIRFnSource::Direct(name, span) => {
             let args_ty = args
                 .iter()
                 .map(|arg| {
@@ -364,7 +373,7 @@ fn check_fn_call<'a>(
             // Ensure there's no ambiguity in which overloaded function we're trying to call.
             // This makes it possible for new functions to be breaking changes, but that's more
             // predictable than picking one at random.
-            let Some(candidate) = get_fn_candidate(ctx, name, &args_ty) else {
+            let Some(candidate) = get_fn_candidate(ctx, name, &args_ty, Some(&span)) else {
                 // Error already printed by get_fn_candidate.
                 return false;
             };
@@ -605,10 +614,15 @@ fn get_fn_candidate<'a>(
     ctx: &MIRContext<'a>,
     name: &str,
     args: &[MIRTypeInner<'a>],
+    caller_span: Option<&Span<'a>>,
 ) -> Option<MIRFunctionKey> {
     let Some(overloads) = ctx.program.function_names.get(name) else {
         // TODO: No function found error.
-        eprintln!("No function found with name {name:?}");
+        eprintln_span!(
+            ctx,
+            caller_span.cloned(),
+            "No function found with name {name:?}"
+        );
         return None;
     };
 
@@ -620,10 +634,16 @@ fn get_fn_candidate<'a>(
 
             if count == 0 {
                 // TODO: No function found error.
-                eprintln!("No function found with name {name:?}");
+                eprintln_span!(
+                    ctx,
+                    caller_span.cloned(),
+                    "No function found with name {name:?}"
+                );
             } else {
                 // TODO: Multiple functions found error.
-                eprintln!(
+                eprintln_span!(
+                    ctx,
+                    caller_span.cloned(),
                     "Multiple functions found with name {name:?}. Disambiguate arguments with type annotations."
                 );
             }
@@ -770,7 +790,9 @@ fn check_expression<'a, 'b>(
                     .get(name)
                     .is_some_and(|v| !v.is_empty())
                 {
-                    eprintln!(
+                    eprintln_span!(
+                        ctx,
+                        Some(expr.span.clone()),
                         "Cannot directly access function as value (use a reference): {expr:?}"
                     );
                     return None;
@@ -838,7 +860,9 @@ fn check_expression<'a, 'b>(
                 ) {
                     // Some languages will inject temporaries.
                     // Maybe we can do this automatically as well.
-                    eprintln!(
+                    eprintln_span!(
+                        ctx,
+                        Some(expr.span.clone()),
                         "References can only be made to variables, array indexes, or member access: {expr:?}"
                     );
                     return None;
@@ -857,7 +881,11 @@ fn check_expression<'a, 'b>(
                         inner_ty.ty = *value;
                     }
                     _ => {
-                        eprintln!("Cannot dereference non-reference type: {expr:?}");
+                        eprintln_span!(
+                            ctx,
+                            Some(expr.span.clone()),
+                            "Cannot dereference non-reference type: {expr:?}"
+                        );
                         return None;
                     }
                 }

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Converts every if statement into
 /// labels and gotos.
-pub fn flatten_ifs(ctx: &mut MIRContext) {
+pub fn flatten_ifs(ctx: &mut MIRContext) -> bool {
     for function in ctx.program.functions.values_mut() {
         let label_idx = AtomicU32::new(0);
 
@@ -80,7 +80,9 @@ pub fn flatten_ifs(ctx: &mut MIRContext) {
             &mut |_, _| true,
             &|_, _, _| true,
         ) {
-            panic!("flatten_ifs returned false!");
+            return false;
         }
     }
+
+    true
 }

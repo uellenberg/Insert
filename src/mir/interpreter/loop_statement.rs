@@ -1,5 +1,6 @@
 use crate::mir::scope::StatementExplorer;
 use crate::mir::{MIRContext, MIRStatement};
+use crate::parser::span::eprintln_span;
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -14,7 +15,7 @@ struct LoopData<'a> {
 
 /// Converts every loop statement into
 /// labels and gotos.
-pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) {
+pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) -> bool {
     for function in ctx.program.functions.values_mut() {
         let label_idx = AtomicU32::new(0);
 
@@ -63,7 +64,7 @@ pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) {
 
                     MIRStatement::ContinueStatement { span } => {
                         let Some(loop_data) = scope.parent_data.loop_labels.as_ref() else {
-                            eprintln!("Continue only works inside of loops!");
+                            eprintln_span!(ctx, Some(span), "Continue only works inside of loops!");
                             return false;
                         };
 
@@ -79,7 +80,7 @@ pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) {
 
                     MIRStatement::BreakStatement { span } => {
                         let Some(loop_data) = scope.parent_data.loop_labels.as_ref() else {
-                            eprintln!("Break only works inside of loops!");
+                            eprintln_span!(ctx, Some(span), "Break only works inside of loops!");
                             return false;
                         };
 
@@ -124,7 +125,9 @@ pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) {
                 true
             },
         ) {
-            panic!("flatten_loops returned false!");
+            return false;
         }
     }
+
+    true
 }
