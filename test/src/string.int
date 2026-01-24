@@ -1,0 +1,19 @@
+//@check
+
+import "std/string.int";
+
+function str1() -> string {
+    return string(10u32);
+}
+
+function str2() -> string {
+    return string(-10i32);
+}
+
+function str3() -> string {
+    return string(true);
+}
+
+static str1s: string = string(10u32);
+static str2s: string = string(-10i32);
+static str3s: string = string(true);

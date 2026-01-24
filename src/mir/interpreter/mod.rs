@@ -2,6 +2,7 @@ use crate::mir::function::{insert_fn_arg_args, resolve_fns_to_vars};
 use crate::mir::interpreter::if_statement::flatten_ifs;
 use crate::mir::interpreter::label::label_to_index;
 use crate::mir::interpreter::loop_statement::flatten_loops;
+use crate::mir::interpreter::native::{NativeFunctions, register_natives};
 use crate::mir::type_check::type_check;
 use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionKey, MIRFunctionType,
@@ -15,6 +16,7 @@ use std::rc::Rc;
 mod if_statement;
 mod label;
 mod loop_statement;
+mod native;
 
 /// This is used to evaluate functions/expressions at compile-time.
 pub struct Interpreter<'a> {
@@ -25,6 +27,9 @@ pub struct Interpreter<'a> {
     /// We can't do the same for functions, since recursion can be
     /// useful there.
     current_evals: RefCell<HashSet<Cow<'a, str>>>,
+    /// Functions which are executed as native code when called in
+    /// the interpreter.
+    natives: NativeFunctions,
 }
 
 /// Data stored in a variable.
@@ -78,6 +83,10 @@ impl<'a> Interpreter<'a> {
     /// Returns Err if one of the passes failed, indicating
     /// a compile error.
     pub fn new(mut ctx: MIRContext<'a>) -> Result<Self, ()> {
+        let natives = register_natives(&mut ctx)?;
+
+        // Native functions (for the interpreter) now exist.
+
         insert_fn_arg_args(&mut ctx);
 
         // Args now exist as phantom variables.
@@ -125,6 +134,7 @@ impl<'a> Interpreter<'a> {
             constants: RefCell::new(HashMap::new()),
             statics: RefCell::new(HashMap::new()),
             current_evals: RefCell::new(HashSet::new()),
+            natives,
         })
     }
 
@@ -439,6 +449,11 @@ impl<'a> Interpreter<'a> {
         args: Vec<(InterpreterData<'a>, MIRTypeInner<'a>)>,
     ) -> Result<InterpreterData<'a>, ()> {
         let fn_data = &self.ctx.program.functions[fn_key];
+
+        if let Some(native) = self.natives.funcs.get(fn_key) {
+            // This is a native function, so we can just call it directly.
+            return Ok(native(&args));
+        }
 
         if fn_data.fn_type == MIRFunctionType::Extern {
             eprintln!(

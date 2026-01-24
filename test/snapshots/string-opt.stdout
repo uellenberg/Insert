@@ -1,0 +1,85 @@
+// Constants: 
+
+// Statics: 
+
+static str1s: string = "10";
+static str2s: string = "-10";
+static str3s: string = "true";
+
+// Functions: 
+
+inline function string(input: u32) : string {
+    let input: u32;
+    let output: string;
+    asprintf((&output), "%u", input)
+    return output;
+    drop output;
+    drop input;
+}
+inline function string(input: i32) : string {
+    let input: i32;
+    let output: string;
+    asprintf((&output), "%i", input)
+    return output;
+    drop output;
+    drop input;
+}
+inline function string(input: bool) : string {
+    let input: bool;
+    let out: string;
+    if input {
+        out = "true";
+    } else {
+        out = "false";
+    }
+    return out;
+    drop out;
+    drop input;
+}
+inline function string(input: string) : string {
+    let input: string;
+    return input;
+    drop input;
+}
+extern function asprintf(ptr: &string, ...) : () from "<stdio.h>";
+
+function str1() : string {
+    let $inline_0: u32 = 10;
+    let $inline_0: u32;
+    let $inline_2: string;
+    asprintf((&$inline_2), "%u", $inline_0)
+    let $inline_1: string = $inline_2;
+    return $inline_1;
+    drop $inline_1;
+    drop $inline_2;
+    drop $inline_0;
+    drop $inline_0;
+}
+function str2() : string {
+    let $inline_3: i32 = -10;
+    let $inline_3: i32;
+    let $inline_5: string;
+    asprintf((&$inline_5), "%i", $inline_3)
+    let $inline_4: string = $inline_5;
+    return $inline_4;
+    drop $inline_4;
+    drop $inline_5;
+    drop $inline_3;
+    drop $inline_3;
+}
+function str3() : string {
+    let $inline_6: bool = true;
+    let $inline_6: bool;
+    let $inline_8: string;
+    if $inline_6 {
+        $inline_8 = "true";
+    } else {
+        $inline_8 = "false";
+    }
+    let $inline_7: string = $inline_8;
+    return $inline_7;
+    drop $inline_7;
+    drop $inline_8;
+    drop $inline_6;
+    drop $inline_6;
+}

@@ -2,7 +2,9 @@
 
 // Statics: 
 
-static test: string = string(10);
+static str1s: string = string(10);
+static str2s: string = string(-10);
+static str3s: string = string(true);
 
 // Functions: 
 
@@ -29,3 +31,13 @@ inline function string(input: string) : string {
     return input;
 }
 extern function asprintf(ptr: &string, ...) : () from "<stdio.h>";
+
+function str1() : string {
+    return string(10);
+}
+function str2() : string {
+    return string(-10);
+}
+function str3() : string {
+    return string(true);
+}

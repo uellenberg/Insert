@@ -7,6 +7,12 @@ use std::path::Path;
 #[derive(Clone, Debug)]
 pub struct Span<'a>(&'a Path, Range<usize>, &'a str);
 
+impl<'a> Span<'a> {
+    pub fn empty() -> Self {
+        Span(&Path::new(""), 0..0, "")
+    }
+}
+
 /// Converts a pest Span to an ariadne Span.
 pub fn to_span<'a>(file: &'a Path, span: pest::Span<'a>) -> Span<'a> {
     Span(file, span.start()..span.end(), span.as_str())

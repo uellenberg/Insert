@@ -2,12 +2,41 @@
 
 // Statics: 
 
-static test: string = "TODO";
+static test: string = "10";
 
 // Functions: 
 
-helper function string(val: u32) : string {
-    let val: u32;
-    return "TODO";
-    drop val;
+inline function string(input: u32) : string {
+    let input: u32;
+    let output: string;
+    asprintf((&output), "%u", input)
+    return output;
+    drop output;
+    drop input;
 }
+inline function string(input: i32) : string {
+    let input: i32;
+    let output: string;
+    asprintf((&output), "%i", input)
+    return output;
+    drop output;
+    drop input;
+}
+inline function string(input: bool) : string {
+    let input: bool;
+    let out: string;
+    if input {
+        out = "true";
+    } else {
+        out = "false";
+    }
+    return out;
+    drop out;
+    drop input;
+}
+inline function string(input: string) : string {
+    let input: string;
+    return input;
+    drop input;
+}
+extern function asprintf(ptr: &string, ...) : () from "<stdio.h>";

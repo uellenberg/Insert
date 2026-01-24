@@ -1,3 +1,30 @@
-helper function string(val: u32) -> string {
-    return "TODO";
+target "C" {
+    inline function string(input: u32) -> string {
+        let output: string;
+        asprintf(&output, "%u", input);
+        return output;
+    }
+
+    inline function string(input: i32) -> string {
+        let output: string;
+        asprintf(&output, "%i", input);
+        return output;
+    }
+
+    inline function string(input: bool) -> string {
+        let out: string;
+        if input {
+            out = "true";
+        } else {
+            out = "false";
+        }
+
+        return out;
+    }
+
+    inline function string(input: string) -> string {
+        return input;
+    }
+
+    extern function asprintf(ptr: &string, ...) from "<stdio.h>";
 }

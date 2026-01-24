@@ -172,6 +172,12 @@ impl<'a> FunctionOverloads<'a> {
             .map(|(_, key)| *key)
     }
 
+    /// Removes all conflicts to a new function with the given args.
+    pub fn remove_conflicts(&mut self, new_args: &MIRFunctionArgs<'a>) {
+        self.0
+            .retain(|(args, _)| !Self::signatures_conflict(args, new_args))
+    }
+
     /// Adds a function overload.
     pub fn push(&mut self, args: MIRFunctionArgs<'a>, key: MIRFunctionKey) {
         self.0.push((args, key));
