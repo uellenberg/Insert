@@ -48,7 +48,7 @@ for (const test of tests) {
         emptyIndex = 1;
 
         // Use all stages for completeness.
-        stages = ["parse", "opt", "target"];
+        stages = ["parse", "opt", "target", "target-fancy"];
     } else if (testData.type === "error") {
         // Check stderr, stdout must be empty.
         checkIndex = 1;
@@ -184,13 +184,15 @@ async function buildCompiler() {
  * Returns the output in the form of [stdout, stderr]
  * for the given test and files to compile it with.
  * @param {string} test
- * @param {"parse" | "opt" | "target"} stage
+ * @param {"parse" | "opt" | "target" | "target-fancy"} stage
  * @returns {Promise<[string, string]>}
  */
 async function getOutputForTest(test, stage) {
+    const fixedStage = stage === "target-fancy" ? "target" : stage;
+
     // Compile.
     // No warnings because they interfere with test output.
-    const [stdout, stderr] = await exec(`"${BINARY}" --stage ${stage} "${path.join(SRC, test + ".int")}"`);
+    const [stdout, stderr] = await exec(`"${BINARY}" --stage ${fixedStage} ${stage === "target-fancy" ? "--fancy" : ""} "${path.join(SRC, test + ".int")}"`);
 
     return [stdout, stderr];
 }
@@ -199,7 +201,7 @@ async function getOutputForTest(test, stage) {
  * Retrieves the Snapshot data for the given test.
  * Returns null if it doesn't exist.
  * @param {string} test
- * @param {"parse" | "opt" | "target"} stage
+ * @param {"parse" | "opt" | "target" | "target-fancy"} stage
  * @param {"stdout" | "stderr"} type
  * @returns {Promise<string | null>}
  */
@@ -213,7 +215,7 @@ async function getSnapshotData(test, stage, type) {
 /**
  * Saves the Snapshot data for the given test.
  * @param {string} test
- * @param {"parse" | "opt" | "target"} stage
+ * @param {"parse" | "opt" | "target" | "target-fancy"} stage
  * @param {"stdout" | "stderr"} type
  * @param {string} data
  * @returns {Promise<void>}

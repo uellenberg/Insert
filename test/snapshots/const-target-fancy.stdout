@@ -1,0 +1,11 @@
+unsigned int complexCalculations(unsigned int a){
+    unsigned int i=0;
+    while(1){
+        if(i>=a){
+            break;
+        }
+        i=i+1;
+    }
+    return i;
+}
+static unsigned int value=10;
