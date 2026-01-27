@@ -80,7 +80,11 @@ impl<'a> Display for MIRFunction<'a> {
             if i > 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{}: {}", &arg.name, &arg.ty)?;
+            if let Some(var_idx) = arg.var_idx {
+                write!(f, "{} ({}): {}", &arg.name, var_idx, &arg.ty)?;
+            } else {
+                write!(f, "{}: {}", &arg.name, &arg.ty)?;
+            }
         }
         if self.args_ty.variadic {
             if !self.args.is_empty() {
@@ -118,10 +122,17 @@ impl<'a> Display for MIRStatement<'a> {
                 span,
                 arg: _arg,
             } => {
-                if let Some(value) = value {
-                    write!(f, "let {}: {} = {};", &var.name, &var.ty, value)?;
+                if let Some(var_idx) = var.var_idx {
+                    write!(f, "let {} ({})", &var.name, var_idx)?;
                 } else {
-                    write!(f, "let {}: {};", &var.name, &var.ty)?;
+                    write!(f, "let {}", &var.name)?;
+                }
+                write!(f, ": {}", &var.ty)?;
+
+                if let Some(value) = value {
+                    write!(f, " = {};", value)?;
+                } else {
+                    write!(f, ";")?;
                 }
 
                 if f.alternate() {
@@ -272,7 +283,13 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::String(val) => write!(f, "\"{}\"", val),
             MIRExpressionInner::Bool(val) => write!(f, "{}", val),
             MIRExpressionInner::Unit => write!(f, "()"),
-            MIRExpressionInner::Variable(name) => write!(f, "{}", name),
+            MIRExpressionInner::Variable(name, idx) => {
+                if let Some(idx) = idx {
+                    write!(f, "{} ({})", name, idx)
+                } else {
+                    write!(f, "{}", name)
+                }
+            }
             MIRExpressionInner::FunctionCall(fn_call) => (**fn_call).fmt(f),
             MIRExpressionInner::Ref(inner) => write!(f, "(&{})", inner),
             MIRExpressionInner::Deref(inner) => write!(f, "(*{})", inner),

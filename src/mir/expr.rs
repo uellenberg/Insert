@@ -45,7 +45,7 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
     for function in ctx.program.functions.values_mut() {
         let res = <StatementExplorer>::explore_block_mut(
             &mut function.body,
-            &|statement, _scope| {
+            &mut |statement, _scope| {
                 find_exprs_mut(statement, &mut |expr| {
                     reduce_expr(expr, &mut |name| {
                         // Ensure the constant exists.
@@ -64,7 +64,7 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
                 true
             },
             &|_, _| true,
-            &|_, _| true,
+            &mut |_, _| true,
         );
 
         if !res {
@@ -134,7 +134,7 @@ fn reduce_expr<'a>(
                 simple_binary!(left, right, Bool, Bool, ||)
             }
 
-            MIRExpressionInner::Variable(name) => get_const(name.clone()).map(|v| v.inner),
+            MIRExpressionInner::Variable(name, _) => get_const(name.clone()).map(|v| v.inner),
 
             // TODO: Implement member access reduction for const structs.
             MIRExpressionInner::Member(_, _) => None,
@@ -217,7 +217,7 @@ macro_rules! explore_expr_body {
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Unit
-            | MIRExpressionInner::Variable(_) => {}
+            | MIRExpressionInner::Variable(_, _) => {}
         }
 
         if !$visit($expr) {
@@ -284,7 +284,7 @@ pub fn explore_outer_place<'a>(
             should_visit = true;
         }
 
-        MIRExpressionInner::Variable(_) => {
+        MIRExpressionInner::Variable(_, _) => {
             should_visit = true;
         }
 
@@ -315,13 +315,21 @@ macro_rules! extract_expr_body {
             MIRStatement::CreateVariable {
                 value: Some(value), ..
             }
-            | MIRStatement::SetVariable { value, .. }
             | MIRStatement::IfStatement {
                 condition: value, ..
             }
             | MIRStatement::GotoNotEqual {
                 condition: value, ..
             } => {
+                if !$for_each(value) {
+                    return false;
+                }
+            }
+
+            MIRStatement::SetVariable { place, value, .. } => {
+                if !$for_each(place) {
+                    return false;
+                }
                 if !$for_each(value) {
                     return false;
                 }

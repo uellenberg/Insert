@@ -295,7 +295,7 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::String(val) => Ok(InterpreterData::String(val.clone())),
             MIRExpressionInner::Bool(val) => Ok(InterpreterData::Bool(*val)),
             MIRExpressionInner::Unit => Ok(InterpreterData::Unit(())),
-            MIRExpressionInner::Variable(name) => {
+            MIRExpressionInner::Variable(name, _) => {
                 if place {
                     if let Some(data) = scope.variables.get(name) {
                         return Ok(InterpreterData::Ref(

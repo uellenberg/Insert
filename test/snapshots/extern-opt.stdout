@@ -4,7 +4,7 @@
 
 // Functions: 
 
-extern function printf(fmt: string, ...) : () from "<stdio.h>";
+extern function printf(fmt (0): string, ...) : () from "<stdio.h>";
 
 function main() : i32 {
     printf("No args

@@ -8,78 +8,72 @@ static str3s: string = "true";
 
 // Functions: 
 
-inline function string(input: u32) : string {
-    let input: u32;
-    let output: string;
-    asprintf((&output), "%u", input)
-    return output;
+inline function string(input (0): u32) : string {
+    let input (0): u32;
+    let output (1): string;
+    asprintf((&output (1)), "%u", input (0))
+    return output (1);
     drop output;
     drop input;
 }
-inline function string(input: i32) : string {
-    let input: i32;
-    let output: string;
-    asprintf((&output), "%i", input)
-    return output;
+inline function string(input (0): i32) : string {
+    let input (0): i32;
+    let output (1): string;
+    asprintf((&output (1)), "%i", input (0))
+    return output (1);
     drop output;
     drop input;
 }
-inline function string(input: bool) : string {
-    let input: bool;
-    let out: string;
-    if input {
-        out = "true";
+inline function string(input (0): bool) : string {
+    let input (0): bool;
+    let out (1): string;
+    if input (0) {
+        out (1) = "true";
     } else {
-        out = "false";
+        out (1) = "false";
     }
-    return out;
+    return out (1);
     drop out;
     drop input;
 }
-inline function string(input: string) : string {
-    let input: string;
-    return input;
+inline function string(input (0): string) : string {
+    let input (0): string;
+    return input (0);
     drop input;
 }
-extern function asprintf(ptr: &string, ...) : () from "<stdio.h>";
+extern function asprintf(ptr (0): &string, ...) : () from "<stdio.h>";
 
 function str1() : string {
-    let $inline_0: u32 = 10;
-    let $inline_0: u32;
-    let $inline_2: string;
-    asprintf((&$inline_2), "%u", $inline_0)
-    let $inline_1: string = $inline_2;
-    return $inline_1;
+    let $inline_0 (0): u32 = 10;
+    let $inline_2 (1): string;
+    asprintf((&$inline_2 (1)), "%u", $inline_0 (0))
+    let $inline_1 (2): string = $inline_2 (1);
+    return $inline_1 (2);
     drop $inline_1;
     drop $inline_2;
     drop $inline_0;
-    drop $inline_0;
 }
 function str2() : string {
-    let $inline_3: i32 = -10;
-    let $inline_3: i32;
-    let $inline_5: string;
-    asprintf((&$inline_5), "%i", $inline_3)
-    let $inline_4: string = $inline_5;
-    return $inline_4;
+    let $inline_3 (0): i32 = -10;
+    let $inline_5 (1): string;
+    asprintf((&$inline_5 (1)), "%i", $inline_3 (0))
+    let $inline_4 (2): string = $inline_5 (1);
+    return $inline_4 (2);
     drop $inline_4;
     drop $inline_5;
     drop $inline_3;
-    drop $inline_3;
 }
 function str3() : string {
-    let $inline_6: bool = true;
-    let $inline_6: bool;
-    let $inline_8: string;
-    if $inline_6 {
-        $inline_8 = "true";
+    let $inline_6 (0): bool = true;
+    let $inline_8 (1): string;
+    if $inline_6 (0) {
+        $inline_8 (1) = "true";
     } else {
-        $inline_8 = "false";
+        $inline_8 (1) = "false";
     }
-    let $inline_7: string = $inline_8;
-    return $inline_7;
+    let $inline_7 (2): string = $inline_8 (1);
+    return $inline_7 (2);
     drop $inline_7;
     drop $inline_8;
-    drop $inline_6;
     drop $inline_6;
 }

@@ -287,7 +287,7 @@ impl Codegen for CLowerer {
                 }
             }
             MIRExpressionInner::Unit => spread![Token::new("void".into())],
-            MIRExpressionInner::Variable(name) => spread![Token::new(name.clone())],
+            MIRExpressionInner::Variable(name, _) => spread![Token::new(name.clone())],
             MIRExpressionInner::FunctionCall(call) => {
                 let args = call
                     .args

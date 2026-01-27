@@ -5,7 +5,7 @@
 // Functions: 
 
 function main() : () {
-    let v: u32 = 10;
-    v = (v * (v * v));
+    let v (0): u32 = 10;
+    v (0) = (v (0) * (v (0) * v (0)));
     drop v;
 }

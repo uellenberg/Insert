@@ -166,7 +166,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
 
     <StatementExplorer>::explore_block_mut(
         &mut function.body,
-        &|statement, scope| {
+        &mut |statement, scope| {
             match statement {
                 // No expressions.
                 MIRStatement::DropVariable(..) => {}
@@ -223,7 +223,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                     // we aren't modifying the const.
                     // If it appears outside (e.g., const[a]), then we are, so should error.
                     if !explore_outer_place(place, &mut |expr| {
-                        if let MIRExpressionInner::Variable(var) = &expr.inner
+                        if let MIRExpressionInner::Variable(var, _) = &expr.inner
                             && ctx.program.const_names.contains_key(var)
                         {
                             eprintln_span!(ctx, Some(expr.span.clone()), "Cannot set constants!");
@@ -334,7 +334,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
             true
         },
         &|_, _| true,
-        &|_, _| true,
+        &mut |_, _| true,
     )
 }
 

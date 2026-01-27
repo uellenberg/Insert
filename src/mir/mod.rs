@@ -3,8 +3,10 @@ mod drop;
 mod expr;
 mod function;
 mod interpreter;
+mod opt;
 mod scope;
 mod type_check;
+mod var;
 
 use crate::codegen::Codegen;
 use crate::mir::drop::drop_at_scope_end;
@@ -14,6 +16,7 @@ use crate::mir::function::{
 };
 use crate::mir::interpreter::Interpreter;
 use crate::mir::type_check::{type_check, types_could_match};
+use crate::mir::var::make_vars_unique;
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
 use crate::targets::Target;
@@ -91,6 +94,12 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // Expressions no longer contain references
     // to constants.
+
+    if !make_vars_unique(ctx) {
+        return false;
+    }
+
+    // var_idx now exists for all variables.
 
     if !drop_at_scope_end(ctx) {
         return false;
@@ -652,6 +661,11 @@ pub struct MIRVariable<'a> {
     /// The code that created
     /// this item.
     pub span: Span<'a>,
+
+    /// The index of the variable in the MIR.
+    /// This is unique across the whole function, given
+    /// that the corresponding compile pass has ran.
+    pub var_idx: Option<usize>,
 }
 
 /// A statement inside a function's
@@ -867,7 +881,10 @@ pub enum MIRExpressionInner<'a> {
     Unit,
 
     /// Variable access.
-    Variable(Cow<'a, str>),
+    /// If the corresponding compile pass has ran,
+    /// this will contain the var_idx that this is pointing to.
+    /// If this is accessing a non-local, var_idx will always be None.
+    Variable(Cow<'a, str>, Option<usize>),
 
     /// Function call (using return value).
     FunctionCall(Box<MIRFnCall<'a>>),

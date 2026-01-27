@@ -5,34 +5,26 @@
 // Functions: 
 
 function main() : () {
-    let val: u32 = used();
-    let $inline_0: u32 = val;
-    let $inline_0: u32;
-    let $inline_1: u32 = ($inline_0 + 1);
-    val = $inline_1;
-    let $inline_2: u32 = 15;
-    let $inline_2: u32;
-    let $inline_3: u32 = ($inline_2 + 1);
+    let val (0): u32 = used();
+    let $inline_0 (1): u32 = val (0);
+    let $inline_1 (2): u32 = ($inline_0 (1) + 1);
+    val (0) = $inline_1 (2);
+    let $inline_2 (3): u32 = 15;
+    let $inline_3 (4): u32 = ($inline_2 (3) + 1);
     used()
-    let $inline_4: u32 = val;
-    let $inline_4: u32;
-    let $inline_5: u32 = ($inline_4 + 1);
-    let $inline_6: u32 = $inline_5;
-    let $inline_6: u32;
-    let $inline_7: u32 = ($inline_6 + 1);
-    let res: u32 = $inline_7;
+    let $inline_4 (5): u32 = val (0);
+    let $inline_5 (6): u32 = ($inline_4 (5) + 1);
+    let $inline_6 (7): u32 = $inline_5 (6);
+    let $inline_7 (8): u32 = ($inline_6 (7) + 1);
+    let res (9): u32 = $inline_7 (8);
     drop res;
     drop $inline_7;
     drop $inline_6;
-    drop $inline_6;
     drop $inline_5;
-    drop $inline_4;
     drop $inline_4;
     drop $inline_3;
     drop $inline_2;
-    drop $inline_2;
     drop $inline_1;
-    drop $inline_0;
     drop $inline_0;
     drop val;
 }
@@ -42,8 +34,8 @@ function used() : u32 {
 helper function unused() : u32 {
     return 11;
 }
-inline function addOne(a: u32) : u32 {
-    let a: u32;
-    return (a + 1);
+inline function addOne(a (0): u32) : u32 {
+    let a (0): u32;
+    return (a (0) + 1);
     drop a;
 }

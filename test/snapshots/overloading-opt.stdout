@@ -6,33 +6,33 @@ static sValue: i32 = -10;
 
 // Functions: 
 
-function f(value: u32) : u32 {
-    let value: u32;
+function f(value (0): u32) : u32 {
+    let value (0): u32;
     return 10;
     drop value;
 }
-function f(value: i32) : i32 {
-    let value: i32;
+function f(value (0): i32) : i32 {
+    let value (0): i32;
     return -10;
     drop value;
 }
-inline function g(value: u32) : u32 {
-    let value: u32;
+inline function g(value (0): u32) : u32 {
+    let value (0): u32;
     return 10;
     drop value;
 }
-inline function g(value: i32) : i32 {
-    let value: i32;
+inline function g(value (0): i32) : i32 {
+    let value (0): i32;
     return -10;
     drop value;
 }
-function h(value: u32) : u32 {
-    let value: u32;
+function h(value (0): u32) : u32 {
+    let value (0): u32;
     return 10;
     drop value;
 }
-helper function h(value: i32) : i32 {
-    let value: i32;
+helper function h(value (0): i32) : i32 {
+    let value (0): i32;
     return -10;
     drop value;
 }

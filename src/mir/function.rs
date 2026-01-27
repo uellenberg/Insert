@@ -20,7 +20,7 @@ pub fn resolve_fns_to_vars(ctx: &mut MIRContext<'_>) {
     for function in functions.values_mut() {
         <StatementExplorer>::explore_block_mut(
             &mut function.body,
-            &|statement, scope| {
+            &mut |statement, scope| {
                 match statement {
                     // No expressions.
                     MIRStatement::CreateVariable { value: None, .. } => {}
@@ -58,7 +58,7 @@ pub fn resolve_fns_to_vars(ctx: &mut MIRContext<'_>) {
                 true
             },
             &|_, _| true,
-            &|_, _| true,
+            &mut |_, _| true,
         );
     }
 }
@@ -78,7 +78,7 @@ fn resolve_fn_to_var<'a>(ctx: &MIRContext<'a>, scope: &Scope<'a>, fn_call: &mut 
         // it needs to be turned into indirect.
         if scope.get_variable(name).is_some() {
             fn_call.source = MIRFnSource::Indirect(MIRExpression {
-                inner: MIRExpressionInner::Variable(name.clone()),
+                inner: MIRExpressionInner::Variable(name.clone(), None),
                 span: span.clone(),
                 ty: None,
             });
@@ -281,7 +281,7 @@ fn inline_function<'a>(
                             };
 
                             block.append(&mut res.0);
-                            expr.inner = MIRExpressionInner::Variable(res.1);
+                            expr.inner = MIRExpressionInner::Variable(res.1, None);
                         }
                     }
 
@@ -383,6 +383,9 @@ fn rewrite_inline_function<'a>(
 
     // Main body.
     let mut body = ctx.program.functions[func].body.clone();
+    // The body will have phantom arg variables, but we've just materialized thme above,
+    // so remove them to avoid duplicates.
+    body.retain(|statement| !matches!(statement, MIRStatement::CreateVariable { arg: true, .. }));
 
     // Output variable.
     let output_var = format!("$inline_{}", inline_var_idx);
@@ -394,6 +397,7 @@ fn rewrite_inline_function<'a>(
         name: output_var.clone().into(),
         ty: ctx.program.functions[func].ret_ty.clone(),
         span: ctx.program.functions[func].span.clone(),
+        var_idx: None,
     };
 
     if let Some(MIRStatement::Return { expr, span }) = body.last().cloned() {
@@ -459,7 +463,7 @@ fn rewrite_inline_function<'a>(
                 }
                 MIRStatement::SetVariable { place, .. } => {
                     explore_expr_mut(place, &mut |expr| {
-                        if let MIRExpressionInner::Variable(name) = &mut expr.inner
+                        if let MIRExpressionInner::Variable(name, _) = &mut expr.inner
                             && let Some(new_name) = var_map.get(name)
                         {
                             *name = new_name.clone();
@@ -479,7 +483,7 @@ fn rewrite_inline_function<'a>(
 
             if !find_exprs_mut(&mut statement, &mut |expr| {
                 explore_expr_mut(expr, &mut |expr| {
-                    if let MIRExpressionInner::Variable(name) = &mut expr.inner
+                    if let MIRExpressionInner::Variable(name, _) = &mut expr.inner
                         && let Some(new_name) = var_map.get(name)
                     {
                         *name = new_name.clone();

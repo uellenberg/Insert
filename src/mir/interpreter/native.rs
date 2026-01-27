@@ -44,6 +44,7 @@ pub fn register_natives(ctx: &mut MIRContext) -> Result<NativeFunctions, ()> {
                         ty: arg.clone(),
                         span: None,
                     },
+                    var_idx: None,
                 })
                 .collect(),
             extern_import: None,

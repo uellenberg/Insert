@@ -271,6 +271,7 @@ fn parse_extern_function_args<'a>(
                     name: Cow::Borrowed(identifier),
                     ty,
                     span,
+                    var_idx: None,
                 });
             }
             Rule::variadic => {
@@ -361,6 +362,7 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         name: Cow::Borrowed(identifier),
                         ty,
                         span: span.clone(),
+                        var_idx: None,
                     },
                     value: None,
                     arg: false,
@@ -379,6 +381,7 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         name: Cow::Borrowed(identifier),
                         ty,
                         span: span.clone(),
+                        var_idx: None,
                     },
                     value: Some(value),
                     arg: false,
@@ -512,6 +515,7 @@ fn parse_function_args<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                     name: Cow::Borrowed(identifier),
                     ty,
                     span,
+                    var_idx: None,
                 });
             }
             _ => unreachable!(),
@@ -768,7 +772,7 @@ fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
     // Otherwise, we have a base (identifier or parenthesized placeExpr) followed by postfixes.
     let mut current = match first.as_rule() {
         Rule::identifier => MIRExpression {
-            inner: MIRExpressionInner::Variable(Cow::Borrowed(first.as_str())),
+            inner: MIRExpressionInner::Variable(Cow::Borrowed(first.as_str()), None),
             ty: None,
             span: to_span(location, first.as_span()),
         },

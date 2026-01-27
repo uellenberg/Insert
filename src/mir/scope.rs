@@ -28,14 +28,14 @@ use std::mem::swap;
 /// Returns whether exploration was successful.
 /// Both functions return whether they were successful,
 /// and will halt exploration if any returns false.
-pub struct StatementExplorer<Data: Clone + Default = ()> {
-    _data: PhantomData<Data>,
+pub struct StatementExplorer<ParentData: Clone + Default = ()> {
+    _data: PhantomData<ParentData>,
 }
 
 /// A scope containing currently
 /// available variables.
 #[derive(Debug, Default)]
-pub struct Scope<'a, Data: Clone + Default = ()> {
+pub struct Scope<'a, ParentData: Clone + Default = (), ScopeData: Clone + Default = ()> {
     /// The variables currently in scope.
     /// If shadowing occurs, a variable will
     /// be overridden.
@@ -67,10 +67,15 @@ pub struct Scope<'a, Data: Clone + Default = ()> {
     /// However, parent_data is retained from pre_run
     /// to for_each, and can be used to share data between
     /// the two phases.
-    pub parent_data: Data,
+    pub parent_data: ParentData,
+
+    /// This is like parent_data, except it's shared for all
+    /// statements on the same scope.
+    /// Children are given a cloned version of this.
+    pub scope_data: ScopeData,
 }
 
-impl<'a, Data: Clone + Default> Scope<'a, Data> {
+impl<'a, Data: Clone + Default, ScopeData: Clone + Default> Scope<'a, Data, ScopeData> {
     /// Creates a new scope to be used
     /// in a sub block of the parent
     /// scope.
@@ -82,6 +87,7 @@ impl<'a, Data: Clone + Default> Scope<'a, Data> {
             // scope.
             to_drop: vec![],
             parent_data: self.parent_data.clone(),
+            scope_data: self.scope_data.clone(),
         }
     }
 
@@ -238,20 +244,23 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
 
     /// This is a version of explore_block
     /// that allows modifying each statement.
+    /// A new variable is added to the scope after
+    /// for_each and pre_run run, so any modifications
+    /// to the name or otherwise are propagated through.
     pub fn explore_block_mut<'a>(
         block: &mut [MIRStatement<'a>],
-        for_each: &impl Fn(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
+        for_each: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
         on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
-        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
+        pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
     ) -> bool {
         Self::explore_block_mut_internal(block, for_each, on_scope_drop, pre_run, Scope::default())
     }
 
     fn explore_block_mut_internal<'a>(
         block: &mut [MIRStatement<'a>],
-        for_each: &impl Fn(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
+        for_each: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
         on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
-        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
+        pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
         mut scope: Scope<'a, Data>,
     ) -> bool {
         for statement in block {

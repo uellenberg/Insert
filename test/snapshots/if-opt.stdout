@@ -5,22 +5,22 @@
 // Functions: 
 
 function main() : () {
-    let g: u32;
-    let h: bool = true;
-    if h {
-        g = 10;
+    let g (0): u32;
+    let h (1): bool = true;
+    if h (1) {
+        g (0) = 10;
     } else {
-        if (h == false) {
-            g = 20;
+        if (h (1) == false) {
+            g (0) = 20;
         } else {
-            g = 30;
+            g (0) = 30;
         }
     }
     loop {
-        if (g == 0) {
+        if (g (0) == 0) {
             break;
         }
-        g = (g - 1);
+        g (0) = (g (0) - 1);
     }
     drop h;
     drop g;
