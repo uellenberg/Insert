@@ -28,8 +28,8 @@ use std::mem::swap;
 /// Returns whether exploration was successful.
 /// Both functions return whether they were successful,
 /// and will halt exploration if any returns false.
-pub struct StatementExplorer<ParentData: Clone + Default = ()> {
-    _data: PhantomData<ParentData>,
+pub struct StatementExplorer<ParentData: Clone + Default = (), ScopeData: Clone + Default = ()> {
+    _data: PhantomData<(ParentData, ScopeData)>,
 }
 
 /// A scope containing currently
@@ -142,23 +142,25 @@ macro_rules! explore_recurse {
     };
 }
 
-impl<Data: Clone + Default> StatementExplorer<Data> {
+impl<ParentData: Clone + Default, ScopeData: Clone + Default>
+    StatementExplorer<ParentData, ScopeData>
+{
     /// Explores every statement in a block.
     pub fn explore_block<'a>(
         block: &[MIRStatement<'a>],
-        for_each: &impl Fn(&MIRStatement<'a>, &Scope<'a, Data>) -> bool,
-        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
-        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
+        for_each: &impl Fn(&MIRStatement<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
     ) -> bool {
         Self::explore_block_internal(block, for_each, on_scope_drop, pre_run, Scope::default())
     }
 
     fn explore_block_internal<'a>(
         block: &[MIRStatement<'a>],
-        for_each: &impl Fn(&MIRStatement<'a>, &Scope<'a, Data>) -> bool,
-        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
-        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
-        mut scope: Scope<'a, Data>,
+        for_each: &impl Fn(&MIRStatement<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
+        mut scope: Scope<'a, ParentData, ScopeData>,
     ) -> bool {
         for statement in block {
             // We need to do this so parent_data
@@ -192,7 +194,7 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
 
     fn explore_block_handle_scope<'a>(
         statement: &MIRStatement<'a>,
-        scope: &mut Scope<'a, Data>,
+        scope: &mut Scope<'a, ParentData, ScopeData>,
     ) -> bool {
         match statement {
             // Doesn't create / drop variables.
@@ -229,8 +231,8 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
     }
 
     fn explore_block_handle_drop<'a>(
-        scope: &Scope<'a, Data>,
-        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
+        scope: &Scope<'a, ParentData, ScopeData>,
+        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
     ) {
         // Drop at the end of scope.
         // This needs to be in reverse
@@ -249,19 +251,19 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
     /// to the name or otherwise are propagated through.
     pub fn explore_block_mut<'a>(
         block: &mut [MIRStatement<'a>],
-        for_each: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
-        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
-        pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
+        for_each: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
+        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
     ) -> bool {
         Self::explore_block_mut_internal(block, for_each, on_scope_drop, pre_run, Scope::default())
     }
 
     fn explore_block_mut_internal<'a>(
         block: &mut [MIRStatement<'a>],
-        for_each: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
-        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, Data>) -> bool,
-        pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, Data>) -> bool,
-        mut scope: Scope<'a, Data>,
+        for_each: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
+        on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
+        mut scope: Scope<'a, ParentData, ScopeData>,
     ) -> bool {
         for statement in block {
             // We need to do this so parent_data
@@ -304,11 +306,18 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
         block: &mut Vec<MIRStatement<'a>>,
         for_each: &mut impl FnMut(
             MIRStatement<'a>,
-            &Scope<'a, Data>,
+            &mut Scope<'a, ParentData, ScopeData>,
             &mut Vec<MIRStatement<'a>>,
         ) -> bool,
-        on_scope_end: &mut impl FnMut(&Scope<'a, Data>, &mut Vec<MIRStatement<'a>>) -> bool,
-        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, Data>, &mut Vec<MIRStatement<'a>>) -> bool,
+        on_scope_end: &mut impl FnMut(
+            &Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        pre_run: &impl Fn(
+            &MIRStatement<'a>,
+            &mut Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
     ) -> bool {
         Self::rewrite_block_internal(block, for_each, on_scope_end, pre_run, Scope::default())
     }
@@ -317,32 +326,40 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
         block: &mut Vec<MIRStatement<'a>>,
         for_each: &mut impl FnMut(
             MIRStatement<'a>,
-            &Scope<'a, Data>,
+            &mut Scope<'a, ParentData, ScopeData>,
             &mut Vec<MIRStatement<'a>>,
         ) -> bool,
-        on_scope_end: &mut impl FnMut(&Scope<'a, Data>, &mut Vec<MIRStatement<'a>>) -> bool,
-        pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, Data>, &mut Vec<MIRStatement<'a>>) -> bool,
-        mut scope: Scope<'a, Data>,
+        on_scope_end: &mut impl FnMut(
+            &Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        pre_run: &impl Fn(
+            &MIRStatement<'a>,
+            &mut Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        mut scope: Scope<'a, ParentData, ScopeData>,
     ) -> bool {
         let mut old_block = vec![];
         swap(block, &mut old_block);
+
+        let parent_data = scope.parent_data.clone();
 
         for mut statement in old_block {
             // We need to do this so parent_data
             // is shared between pre_run and for_each.
             {
-                let mut child_scope = scope.child();
-                if !pre_run(&statement, &mut child_scope, block) {
+                if !pre_run(&statement, &mut scope, block) {
                     return false;
                 }
 
                 explore_recurse!(&mut statement, (child_block) => {
-                    if !Self::rewrite_block_internal(child_block, for_each, on_scope_end, pre_run, child_scope.child()) {
+                    if !Self::rewrite_block_internal(child_block, for_each, on_scope_end, pre_run, scope.child()) {
                         return false;
                     }
                 });
 
-                if !for_each(statement.clone(), &mut child_scope, block) {
+                if !for_each(statement.clone(), &mut scope, block) {
                     return false;
                 }
             }
@@ -350,6 +367,10 @@ impl<Data: Clone + Default> StatementExplorer<Data> {
             if !Self::explore_block_handle_scope(&statement, &mut scope) {
                 return false;
             }
+
+            // The parent data can't be shared between statements on the same level, so we
+            // need to reset it.
+            scope.parent_data = parent_data.clone();
         }
 
         if !on_scope_end(&scope, block) {

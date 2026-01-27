@@ -15,6 +15,7 @@ use crate::mir::function::{
     inline_functions, insert_fn_arg_args, mark_reachable, prune_functions, resolve_fns_to_vars,
 };
 use crate::mir::interpreter::Interpreter;
+use crate::mir::opt::{remove_dead_code, remove_trivial_ifs};
 use crate::mir::type_check::{type_check, types_could_match};
 use crate::mir::var::make_vars_unique;
 use crate::parser::file_cache::FileCache;
@@ -100,6 +101,14 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     }
 
     // var_idx now exists for all variables.
+
+    if !remove_trivial_ifs(ctx) {
+        return false;
+    }
+
+    if !remove_dead_code(ctx) {
+        return false;
+    }
 
     if !drop_at_scope_end(ctx) {
         return false;
