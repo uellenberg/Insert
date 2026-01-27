@@ -61,38 +61,45 @@ for (const test of tests) {
     }
 
     for (const stage of stages) {
-        const output = await getOutputForTest(test, stage);
-        if (output[emptyIndex].trim() !== "") {
-            console.error("Error while running test \"" + test + "\" at stage \"" + stage + "\": expected empty string but got \"" + output[emptyIndex].trim() + "\".");
+        try {
+            const output = await getOutputForTest(test, stage);
+            if (output[emptyIndex].trim() !== "") {
+                console.error("Error while running test \"" + test + "\" at stage \"" + stage + "\": expected empty string but got \"" + output[emptyIndex].trim() + "\".");
+                errored = true;
+                // We can keep going instead of aborting this stage, since
+                // the checkIndex might have useful information.
+            }
+
+            const type = checkIndex === 0 ? "stdout" : "stderr";
+            const curSnapshot = await getSnapshotData(test, stage, type);
+
+            if (opt === "test") {
+                console.log("Running " + test + "-" + stage);
+
+                if (curSnapshot == null) {
+                    console.error("Error while running test \"" + test + "\" at stage \"" + stage + "\": snapshot not found, run --bless to create it.");
+                    errored = true;
+                    continue;
+                }
+
+                if (curSnapshot.trim() !== output[checkIndex].trim()) {
+                    console.error("Error while running test \"" + test + "\" at stage \"" + stage + "\": expected \"" + curSnapshot.trim() + "\" but got \"" + output[checkIndex].trim() + "\".");
+                    errored = true;
+                    continue;
+                }
+            } else if (opt === "bless") {
+                if (curSnapshot == null || curSnapshot.trim() !== output[checkIndex].trim()) {
+                    // Update is needed.
+                    await saveSnapshotData(test, stage, type, output[checkIndex].trim());
+                }
+            }
+        } catch(e) {
+            console.error("Error while running test \"" + test + "\" stage \"" + stage + "\":");
+            console.error(e);
             errored = true;
-            // We can keep going instead of aborting this stage, since
-            // the checkIndex might have useful information.
-        }
-
-        const type = checkIndex === 0 ? "stdout" : "stderr";
-        const curSnapshot = await getSnapshotData(test, stage, type);
-
-        if (opt === "test") {
-            console.log("Running " + test + "-" + stage);
-
-            if (curSnapshot == null) {
-                console.error("Error while running test \"" + test + "\" at stage \"" + stage + "\": snapshot not found, run --bless to create it.");
-                errored = true;
-                continue;
-            }
-
-            if (curSnapshot.trim() !== output[checkIndex].trim()) {
-                console.error("Error while running test \"" + test + "\" at stage \"" + stage + "\": expected \"" + curSnapshot.trim() + "\" but got \"" + output[checkIndex].trim() + "\".");
-                errored = true;
-                continue;
-            }
-        } else if (opt === "bless") {
-            if (curSnapshot == null || curSnapshot.trim() !== output[checkIndex].trim()) {
-                // Update is needed.
-                await saveSnapshotData(test, stage, type, output[checkIndex].trim());
-            }
         }
     }
+
 }
 
 if (errored) {
@@ -118,7 +125,8 @@ function exec(command) {
                     console.error(stderr);
                 }
 
-                throw reject(error);
+                reject(error);
+                return;
             }
 
             resolve([stdout.replace(/\r\n/g, "\n"), stderr.replace(/\r\n/g, "\n")]);
