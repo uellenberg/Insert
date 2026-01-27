@@ -272,6 +272,7 @@ fn parse_extern_function_args<'a>(
                     ty,
                     span,
                     var_idx: None,
+                    arg: true,
                 });
             }
             Rule::variadic => {
@@ -363,9 +364,9 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         ty,
                         span: span.clone(),
                         var_idx: None,
+                        arg: false,
                     },
                     value: None,
-                    arg: false,
                     span,
                 });
             }
@@ -382,9 +383,9 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                         ty,
                         span: span.clone(),
                         var_idx: None,
+                        arg: false,
                     },
                     value: Some(value),
-                    arg: false,
                     span: span.clone(),
                 });
             }
@@ -516,6 +517,7 @@ fn parse_function_args<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                     ty,
                     span,
                     var_idx: None,
+                    arg: true,
                 });
             }
             _ => unreachable!(),

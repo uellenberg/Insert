@@ -1,6 +1,6 @@
 use crate::mir::expr::{explore_expr_mut, find_exprs_mut};
 use crate::mir::scope::StatementExplorer;
-use crate::mir::{MIRContext, MIRExpression, MIRExpressionInner, MIRStatement, MIRVariable};
+use crate::mir::{MIRContext, MIRExpressionInner, MIRStatement, MIRVariable};
 
 /// Gives each variable a unique name and assigns the var_idx.
 /// This MUST be ran after all passes which create new variables.
@@ -13,8 +13,13 @@ pub fn make_vars_unique(ctx: &mut MIRContext) -> bool {
             &mut |statement, scope| {
                 // For phantom arg variables, we need to save the var_idx to the real arg as well.
                 if let MIRStatement::CreateVariable {
-                    var: MIRVariable { var_idx, name, .. },
-                    arg: true,
+                    var:
+                        MIRVariable {
+                            var_idx,
+                            name,
+                            arg: true,
+                            ..
+                        },
                     ..
                 } = statement
                 {

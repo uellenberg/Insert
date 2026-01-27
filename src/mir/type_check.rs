@@ -177,16 +177,12 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::LoopStatement { .. } => {}
 
                 MIRStatement::CreateVariable {
-                    var,
-                    value,
-                    arg,
-                    span,
-                    ..
+                    var, value, span, ..
                 } => {
                     // Disallow shadowing.
                     // (Phantom) arg variables shouldn't get checked against locals, since
                     // they might be added to the scope automatically.
-                    if (!*arg && scope.get_variable(&var.name).is_some())
+                    if (!var.arg && scope.get_variable(&var.name).is_some())
                         || ctx.program.static_names.contains_key(&var.name)
                         || ctx.program.const_names.contains_key(&var.name)
                     {
@@ -232,6 +228,25 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
 
                         true
                     }) {
+                        return false;
+                    }
+
+                    // When we allocate variables, we want to use args before creating new variables.
+                    // Therefore, it's useful for args to be simplified, as it's tricky to allocate into
+                    // a variable which has a complex lifetime. There's basically no need to anyway, since
+                    // variable allocation will make efficient use of the space.
+                    //
+                    // However, setting the data inside a variable is a legitimate operation, so we need
+                    // to allow it. Therefore, any such operation is considered a read and a write for
+                    // optimization. This is important because a write with no read after it will just
+                    // be removed.
+                    //
+                    // So, the only case we need to disallow is directly setting a variable.
+                    if let MIRExpressionInner::Variable(var, _) = &place.inner
+                        && let Some(scope_var) = scope.get_variable(var)
+                        && scope_var.arg
+                    {
+                        eprintln_span!(ctx, Some(place.span.clone()), "Cannot set args!");
                         return false;
                     }
 

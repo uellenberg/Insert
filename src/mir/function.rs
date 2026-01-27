@@ -120,9 +120,9 @@ pub fn insert_fn_arg_args(ctx: &mut MIRContext<'_>) {
                 .args
                 .iter()
                 .map(|arg| MIRStatement::CreateVariable {
+                    // arg is already set to true here.
                     var: arg.clone(),
                     value: None,
-                    arg: true,
                     span: arg.span.clone(),
                 }),
         );
@@ -372,20 +372,28 @@ fn rewrite_inline_function<'a>(
         header.push(MIRStatement::CreateVariable {
             var: MIRVariable {
                 name: new_name,
+                // Not a phantom variable - this is a real variable with data!
+                arg: false,
                 ..arg_info.clone()
             },
             value: Some(arg_value.clone()),
-            // Not a phantom variable - this is a real variable with data!
-            arg: false,
             span: arg_info.span.clone(),
         });
     }
 
     // Main body.
     let mut body = ctx.program.functions[func].body.clone();
-    // The body will have phantom arg variables, but we've just materialized thme above,
+    // The body will have phantom arg variables, but we've just materialized them above,
     // so remove them to avoid duplicates.
-    body.retain(|statement| !matches!(statement, MIRStatement::CreateVariable { arg: true, .. }));
+    body.retain(|statement| {
+        !matches!(
+            statement,
+            MIRStatement::CreateVariable {
+                var: MIRVariable { arg: true, .. },
+                ..
+            }
+        )
+    });
 
     // Output variable.
     let output_var = format!("$inline_{}", inline_var_idx);
@@ -398,6 +406,7 @@ fn rewrite_inline_function<'a>(
         ty: ctx.program.functions[func].ret_ty.clone(),
         span: ctx.program.functions[func].span.clone(),
         var_idx: None,
+        arg: false,
     };
 
     if let Some(MIRStatement::Return { expr, span }) = body.last().cloned() {
@@ -406,7 +415,6 @@ fn rewrite_inline_function<'a>(
         body.push(MIRStatement::CreateVariable {
             var: output_var_info,
             value: expr,
-            arg: false,
             span,
         });
     } else {
@@ -418,7 +426,6 @@ fn rewrite_inline_function<'a>(
                 ty: Some(ctx.program.functions[func].ret_ty.clone()),
                 span: output_var_info.span.clone(),
             }),
-            arg: false,
             span: output_var_info.span.clone(),
             var: output_var_info,
         });

@@ -675,6 +675,12 @@ pub struct MIRVariable<'a> {
     /// This is unique across the whole function, given
     /// that the corresponding compile pass has ran.
     pub var_idx: Option<usize>,
+
+    /// This is used for function arguments,
+    /// to allow them to be analyzed the same
+    /// way as normal variables.
+    /// Arg variables aren't lowered to IR.
+    pub(crate) arg: bool,
 }
 
 /// A statement inside a function's
@@ -688,12 +694,6 @@ pub enum MIRStatement<'a> {
 
         /// An optional initial value.
         value: Option<MIRExpression<'a>>,
-
-        /// This is used for function arguments,
-        /// to allow them to be analyzed the same
-        /// way as normal variables.
-        /// Arg variables aren't lowered to IR.
-        arg: bool,
 
         /// The code that created
         /// this item.

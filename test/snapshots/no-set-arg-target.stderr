@@ -1,0 +1,6 @@
+--> 4:5
+  |
+4 |     let b = 10;
+  |     ^---
+  |
+  = expected functionBody

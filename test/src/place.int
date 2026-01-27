@@ -3,12 +3,13 @@
 static staticValue: u32 = test(4);
 
 function test(in: u32) -> u32 {
-    in = in + 1;
-    (in) = (in) + 2;
+    let in1: u32 = in;
+    in1 = in1 + 1;
+    (in1) = (in1) + 2;
 
     let val: u32;
     // val = val;
-    val = in + 3;
+    val = in1 + 3;
 
     return val;
 }

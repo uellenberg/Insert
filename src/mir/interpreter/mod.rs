@@ -8,6 +8,7 @@ use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionKey, MIRFunctionType,
     MIRStatement, MIRTypeInner,
 };
+use crate::parser::span::eprintln_span;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -321,11 +322,17 @@ impl<'a> Interpreter<'a> {
                     }
                 } else {
                     if let Some(data) = scope.variables.get(name) {
-                        return Ok(data
-                            .borrow()
-                            .as_ref()
-                            .expect("Variable has not been set!")
-                            .clone());
+                        let data = data.borrow();
+                        let Some(data) = data.as_ref() else {
+                            eprintln_span!(
+                                self.ctx,
+                                Some(expr.span.clone()),
+                                "Variable has not been set!"
+                            );
+                            return Err(());
+                        };
+
+                        return Ok(data.clone());
                     };
 
                     if self.ctx.program.const_names.contains_key(name) {
@@ -507,11 +514,9 @@ impl<'a> Interpreter<'a> {
         scope: &mut InterpreterScope<'a>,
     ) -> Result<Option<InterpreterData<'a>>, ()> {
         match statement {
-            MIRStatement::CreateVariable {
-                var, value, arg, ..
-            } => {
+            MIRStatement::CreateVariable { var, value, .. } => {
                 // Phantom variables for args aren't needed here.
-                if *arg {
+                if var.arg {
                     return Ok(None);
                 }
 

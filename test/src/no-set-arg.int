@@ -1,0 +1,7 @@
+//@error
+
+function test(a: u32) {
+    let b = 10;
+    b = a;
+    a = b;
+}

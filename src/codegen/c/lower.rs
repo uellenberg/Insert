@@ -7,7 +7,7 @@ use crate::codegen::c::token::{
 use crate::codegen::token::{Token, TokenInfo, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
     MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction,
-    MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
 use std::borrow::Cow;
 
@@ -108,7 +108,11 @@ impl Codegen for CLowerer {
 
         match stmt {
             // Just for analysis, no real codegen.
-            MIRStatement::CreateVariable { arg: true, .. } | MIRStatement::DropVariable(..) => None,
+            MIRStatement::CreateVariable {
+                var: MIRVariable { arg: true, .. },
+                ..
+            }
+            | MIRStatement::DropVariable(..) => None,
 
             MIRStatement::CreateVariable { var, value, .. } => {
                 let decorated = self.decorate_with_type(var.name.clone(), &var.ty);
