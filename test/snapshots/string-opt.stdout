@@ -46,7 +46,7 @@ extern function asprintf(ptr (0): &string, ...) : () from "<stdio.h>";
 function str1() : string {
     let $inline_0 (0): u32 = 10;
     let $inline_2 (1): string;
-    asprintf((&$inline_2 (1)), "%u", $inline_0 (0))
+    asprintf((&$inline_2 (1)), "%u", 10)
     let $inline_1 (2): string = $inline_2 (1);
     return $inline_1 (2);
     drop $inline_1;
@@ -56,7 +56,7 @@ function str1() : string {
 function str2() : string {
     let $inline_3 (0): i32 = -10;
     let $inline_5 (1): string;
-    asprintf((&$inline_5 (1)), "%i", $inline_3 (0))
+    asprintf((&$inline_5 (1)), "%i", -10)
     let $inline_4 (2): string = $inline_5 (1);
     return $inline_4 (2);
     drop $inline_4;
@@ -66,11 +66,7 @@ function str2() : string {
 function str3() : string {
     let $inline_6 (0): bool = true;
     let $inline_8 (1): string;
-    if $inline_6 (0) {
-        $inline_8 (1) = "true";
-    } else {
-        $inline_8 (1) = "false";
-    }
+    $inline_8 (1) = "true";
     let $inline_7 (2): string = $inline_8 (1);
     return $inline_7 (2);
     drop $inline_7;

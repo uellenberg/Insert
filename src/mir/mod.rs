@@ -15,7 +15,7 @@ use crate::mir::function::{
     inline_functions, insert_fn_arg_args, mark_reachable, prune_functions, resolve_fns_to_vars,
 };
 use crate::mir::interpreter::Interpreter;
-use crate::mir::opt::{remove_dead_code, remove_trivial_ifs};
+use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
 use crate::mir::type_check::{type_check, types_could_match};
 use crate::mir::var::make_vars_unique;
 use crate::parser::file_cache::FileCache;
@@ -89,6 +89,15 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // Constants are now only literals.
 
+    // TODO: Run a reduce_const_expr pass here to just remove consts from exprs,
+    //       then have a separate optimize_expr pass to do the optimization.
+
+    if !make_vars_unique(ctx) {
+        return false;
+    }
+
+    // var_idx now exists for all variables.
+
     if !const_optimize_expr(ctx) {
         return false;
     }
@@ -96,11 +105,9 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     // Expressions no longer contain references
     // to constants.
 
-    if !make_vars_unique(ctx) {
+    if !inline_primitives(ctx) {
         return false;
     }
-
-    // var_idx now exists for all variables.
 
     if !remove_trivial_ifs(ctx) {
         return false;

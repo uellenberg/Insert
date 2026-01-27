@@ -4,7 +4,7 @@ void main(){
     unsigned int$inline_1=$inline_0+1;
     val=$inline_1;
     unsigned int$inline_2=15;
-    unsigned int$inline_3=$inline_2+1;
+    unsigned int$inline_3=15+1;
     used();
     unsigned int$inline_4=val;
     unsigned int$inline_5=$inline_4+1;

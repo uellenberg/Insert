@@ -148,7 +148,7 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
     /// Explores every statement in a block.
     pub fn explore_block<'a>(
         block: &[MIRStatement<'a>],
-        for_each: &impl Fn(&MIRStatement<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        for_each: &mut impl FnMut(&MIRStatement<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
         on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
         pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
     ) -> bool {
@@ -157,27 +157,28 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
 
     fn explore_block_internal<'a>(
         block: &[MIRStatement<'a>],
-        for_each: &impl Fn(&MIRStatement<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
+        for_each: &mut impl FnMut(&MIRStatement<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
         on_scope_drop: &impl Fn(&MIRVariable<'a>, &Scope<'a, ParentData, ScopeData>) -> bool,
         pre_run: &impl Fn(&MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
         mut scope: Scope<'a, ParentData, ScopeData>,
     ) -> bool {
+        let parent_data = scope.parent_data.clone();
+
         for statement in block {
             // We need to do this so parent_data
             // is shared between pre_run and for_each.
             {
-                let mut child_scope = scope.child();
-                if !pre_run(statement, &mut child_scope) {
+                if !pre_run(statement, &mut scope) {
                     return false;
                 }
 
                 explore_recurse!(statement, (child_block) => {
-                    if !Self::explore_block_internal(child_block, for_each, on_scope_drop, pre_run, child_scope.child()) {
+                    if !Self::explore_block_internal(child_block, for_each, on_scope_drop, pre_run, scope.child()) {
                         return false;
                     }
                 });
 
-                if !for_each(statement, &child_scope) {
+                if !for_each(statement, &scope) {
                     return false;
                 }
             }
@@ -185,6 +186,10 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             if !Self::explore_block_handle_scope(statement, &mut scope) {
                 return false;
             }
+
+            // The parent data can't be shared between statements on the same level, so we
+            // need to reset it.
+            scope.parent_data = parent_data.clone();
         }
 
         Self::explore_block_handle_drop(&scope, on_scope_drop);
@@ -265,22 +270,23 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
         pre_run: &mut impl FnMut(&mut MIRStatement<'a>, &mut Scope<'a, ParentData, ScopeData>) -> bool,
         mut scope: Scope<'a, ParentData, ScopeData>,
     ) -> bool {
+        let parent_data = scope.parent_data.clone();
+
         for statement in block {
             // We need to do this so parent_data
             // is shared between pre_run and for_each.
             {
-                let mut child_scope = scope.child();
-                if !pre_run(statement, &mut child_scope) {
+                if !pre_run(statement, &mut scope) {
                     return false;
                 }
 
                 explore_recurse!(statement, (child_block) => {
-                    if !Self::explore_block_mut_internal(child_block, for_each, on_scope_drop, pre_run, child_scope.child()) {
+                    if !Self::explore_block_mut_internal(child_block, for_each, on_scope_drop, pre_run, scope.child()) {
                         return false;
                     }
                 });
 
-                if !for_each(statement, &mut child_scope) {
+                if !for_each(statement, &mut scope) {
                     return false;
                 }
             }
@@ -288,6 +294,10 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             if !Self::explore_block_handle_scope(statement, &mut scope) {
                 return false;
             }
+
+            // The parent data can't be shared between statements on the same level, so we
+            // need to reset it.
+            scope.parent_data = parent_data.clone();
         }
 
         Self::explore_block_handle_drop(&scope, on_scope_drop);

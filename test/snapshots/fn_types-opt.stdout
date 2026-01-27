@@ -10,7 +10,7 @@ function main() : () {
     let $inline_1 (2): u32 = ($inline_0 (1) + 1);
     val (0) = $inline_1 (2);
     let $inline_2 (3): u32 = 15;
-    let $inline_3 (4): u32 = ($inline_2 (3) + 1);
+    let $inline_3 (4): u32 = (15 + 1);
     used()
     let $inline_4 (5): u32 = val (0);
     let $inline_5 (6): u32 = ($inline_4 (5) + 1);

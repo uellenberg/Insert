@@ -1,1 +1,1 @@
-void main(){unsigned int g;bool h=true;if(h){g=10;}else{if(h==false){g=20;}else{g=30;}}while(1){if(g==0){break;}g=g-1;}}
+void main(){unsigned int g;bool h=true;g=10;while(1){if(g==0){break;}g=g-1;}}

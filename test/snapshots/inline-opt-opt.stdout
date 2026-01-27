@@ -1,0 +1,38 @@
+// Constants: 
+
+// Statics: 
+
+// Functions: 
+
+function main() : () {
+    let val (0): u32 = 10;
+    let val2 (1): u32 = 10;
+    if (10 == val2 (1)) {
+        val2 (1) = 20;
+    }
+    let val3 (2): u32 = val2 (1);
+    val2 (1) = 20;
+    let val4 (3): u32 = 20;
+    loop {
+        if (val4 (3) == 30) {
+            val4 (3) = 10;
+        }
+        val4 (3) = (val4 (3) + 1);
+        loop {
+            let val5 (4): u32 = val4 (3);
+            val4 (3) = 50;
+            let val6 (5): u32 = 50;
+            drop val6;
+            drop val5;
+        }
+    }
+    let val5 (6): u32 = val4 (3);
+    val4 (3) = 30;
+    let val6 (7): u32 = 30;
+    drop val6;
+    drop val5;
+    drop val4;
+    drop val3;
+    drop val2;
+    drop val;
+}
