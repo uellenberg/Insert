@@ -1,8 +1,8 @@
-static unsigned int test=21;void main(){
-    unsigned int v;
-    unsigned int g;
-    bool h;
-    v=5;
-    g=25;
-    h=true;
+static unsigned int a=21;void main(){
+    unsigned int b;
+    unsigned int c;
+    bool d;
+    b=5;
+    c=25;
+    d=true;
 }

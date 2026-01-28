@@ -1,12 +1,12 @@
 void main(){
-    unsigned int g;
-    bool h;
-    h=true;
-    g=10;
+    unsigned int a;
+    bool b;
+    b=true;
+    a=10;
     while(1){
-        if(g==0){
+        if(a==0){
             break;
         }
-        g=g-1;
+        a=a-1;
     }
 }

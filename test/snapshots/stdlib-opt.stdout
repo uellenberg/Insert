@@ -2,34 +2,34 @@
 
 // Statics: 
 
-static test: string = "10";
+static a: string = "10";
 
 // Functions: 
 
-inline function string(input (0): u32) : string {
-    let input (0): u32;
-    let output (1): string;
-    asprintf((&output (1)), "%u", input (0))
-    return output (1);
+inline function b(g (0): u32) : string {
+    let g (0): u32;
+    let h (1): string;
+    f((&h (1)), "%u", g (0))
+    return h (1);
 }
-inline function string(input (0): i32) : string {
-    let input (0): i32;
-    let output (1): string;
-    asprintf((&output (1)), "%i", input (0))
-    return output (1);
+inline function c(g (0): i32) : string {
+    let g (0): i32;
+    let h (1): string;
+    f((&h (1)), "%i", g (0))
+    return h (1);
 }
-inline function string(input (0): bool) : string {
-    let input (0): bool;
-    let out (1): string;
-    if input (0) {
-        out (1) = "true";
+inline function d(g (0): bool) : string {
+    let g (0): bool;
+    let h (1): string;
+    if g (0) {
+        h (1) = "true";
     } else {
-        out (1) = "false";
+        h (1) = "false";
     }
-    return out (1);
+    return h (1);
 }
-inline function string(input (0): string) : string {
-    let input (0): string;
-    return input (0);
+inline function e(g (0): string) : string {
+    let g (0): string;
+    return g (0);
 }
-extern function asprintf(ptr (0): &string, ...) : () from "<stdio.h>";
+extern function f(g (0): &string, ...) : () from "<stdio.h>";

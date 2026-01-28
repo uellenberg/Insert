@@ -3,6 +3,7 @@ mod drop;
 mod expr;
 mod function;
 mod interpreter;
+mod mangle;
 mod opt;
 mod scope;
 mod type_check;
@@ -15,6 +16,7 @@ use crate::mir::function::{
     inline_functions, insert_fn_arg_args, mark_reachable, prune_functions, resolve_fns_to_vars,
 };
 use crate::mir::interpreter::Interpreter;
+use crate::mir::mangle::mangle_names;
 use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
 use crate::mir::type_check::{type_check, types_could_match};
 use crate::mir::var::{make_vars_unique, min_vars};
@@ -152,11 +154,6 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // TODO: Add a pass to remove unit variables (probably part of SSA -> function scope var generation).
 
-    // TODO: Add a pass to mangle functions (both for size optimization and to rename overloaded functions).
-
-    // TODO: Add a pass to mangle variables (locals and statics), both for size optimization and to
-    //       fix invalid variable names.
-
     mark_reachable(ctx);
 
     // Helper functions are now exported when needed.
@@ -164,6 +161,10 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     prune_functions(ctx);
 
     // Non-export functions are now removed.
+
+    mangle_names(ctx);
+
+    // All identifiers are now short mangled names.
 
     true
 }

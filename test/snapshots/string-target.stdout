@@ -1,2 +1,2 @@
 #include<stdio.h>
-char*str1(){unsigned int$inline_0;char*$inline_2;char*$inline_1;$inline_0=10;asprintf(&$inline_2,"%u",10);$inline_1=$inline_2;return$inline_1;}char*str2(){int$inline_3;char*$inline_5;char*$inline_4;$inline_3=-10;asprintf(&$inline_5,"%i",-10);$inline_4=$inline_5;return$inline_4;}char*str3(){bool$inline_6;char*$inline_8;char*$inline_7;$inline_6=true;$inline_8="true";$inline_7="true";return"true";}static char*str1s="10";static char*str2s="-10";static char*str3s="true";
+char*i(){unsigned int l;char*m;char*n;l=10;h(&m,"%u",10);n=m;return n;}char*j(){int l;char*m;char*n;l=-10;h(&m,"%i",-10);n=m;return n;}char*k(){bool l;char*m;char*n;l=true;m="true";n="true";return"true";}static char*a="10";static char*b="-10";static char*c="true";

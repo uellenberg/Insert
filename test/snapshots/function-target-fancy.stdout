@@ -1,19 +1,19 @@
 void main(){
-    bool my_val;
-    other(10,11,12,13,14,15);
-    my_val=bools(true, false, false, false, false, bools(true, false, false, false, false, false));
+    bool d;
+    a(10,11,12,13,14,15);
+    d=b(true, false, false, false, false, b(true, false, false, false, false, false));
 }
-void other(unsigned int test,unsigned int a1,unsigned int b1,unsigned int c1,unsigned int d1,unsigned int e1){
-    unsigned int ret;
-    unsigned int other_v;
-    ret=test+10;
-    other_v=e1;
+void a(unsigned int d,unsigned int e,unsigned int f,unsigned int g,unsigned int h,unsigned int i){
+    unsigned int j;
+    unsigned int k;
+    j=d+10;
+    k=i;
 }
-bool bools(bool a,bool b,bool c,bool d,bool e,bool f){
-    bool val;
-    val=f;
-    return val;
+bool b(bool d,bool e,bool f,bool g,bool h,bool i){
+    bool j;
+    j=i;
+    return j;
 }
-unsigned int one(){
+unsigned int c(){
     return 1;
 }

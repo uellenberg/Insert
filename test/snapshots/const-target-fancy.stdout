@@ -1,12 +1,12 @@
-unsigned int complexCalculations(unsigned int a){
-    unsigned int i;
-    i=0;
+unsigned int b(unsigned int c){
+    unsigned int d;
+    d=0;
     while(1){
-        if(i>=a){
+        if(d>=c){
             break;
         }
-        i=i+1;
+        d=d+1;
     }
-    return i;
+    return d;
 }
-static unsigned int value=10;
+static unsigned int a=10;

@@ -7,9 +7,9 @@ static b: u32 = 13;
 
 // Functions: 
 
-function usesImport1() : u32 {
+function c() : u32 {
     return (a + 2);
 }
-function usesImport2() : u32 {
-    return (usesImport1() + 1);
+function d() : u32 {
+    return (c() + 1);
 }

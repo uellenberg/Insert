@@ -1,5 +1,5 @@
 void main(){
-    unsigned int v;
-    v=10;
-    v=1000;
+    unsigned int a;
+    a=10;
+    a=1000;
 }

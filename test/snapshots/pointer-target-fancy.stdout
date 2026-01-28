@@ -1,15 +1,15 @@
-void mul(int*a,int b){
-    *a=*a*b;
+void c(int*e,int f){
+    *e=*e*f;
 }
-int test(int val){
-    int*val1;
-    int val2;
-    int*val3;
-    val1=&val;
-    val2=val+1;
-    val3=&val2;
-    mul(&val,2);
-    mul(&val2,3);
-    return* &val+ * &val2;
+int d(int e){
+    int*f;
+    int g;
+    int*h;
+    f=&e;
+    g=e+1;
+    h=&g;
+    c(&e,2);
+    c(&g,3);
+    return* &e+ * &g;
 }
-static int testVal=8;static int*testVal2=&testVal;
+static int a=8;static int*b=&testVal;

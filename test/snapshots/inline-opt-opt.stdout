@@ -5,30 +5,30 @@
 // Functions: 
 
 function main() : () {
-    let val (0): u32;
-    let val2 (1): u32;
-    let val3 (2): u32;
-    let val4 (3): u32;
-    let val5 (4): u32;
-    let val6 (5): u32;
-    val (0) = 10;
-    val2 (1) = 10;
-    val2 (1) = 20;
-    val3 (2) = 20;
-    val2 (1) = 20;
-    val4 (3) = 20;
+    let a (0): u32;
+    let b (1): u32;
+    let c (2): u32;
+    let d (3): u32;
+    let e (4): u32;
+    let f (5): u32;
+    a (0) = 10;
+    b (1) = 10;
+    b (1) = 20;
+    c (2) = 20;
+    b (1) = 20;
+    d (3) = 20;
     loop {
-        if (val4 (3) == 30) {
-            val4 (3) = 10;
+        if (d (3) == 30) {
+            d (3) = 10;
         }
-        val4 (3) = (val4 (3) + 1);
+        d (3) = (d (3) + 1);
         loop {
-            val5 (4) = val4 (3);
-            val4 (3) = 50;
-            val6 (5) = 50;
+            e (4) = d (3);
+            d (3) = 50;
+            f (5) = 50;
         }
     }
-    val5 (4) = val4 (3);
-    val4 (3) = 30;
-    val6 (5) = 30;
+    e (4) = d (3);
+    d (3) = 30;
+    f (5) = 30;
 }

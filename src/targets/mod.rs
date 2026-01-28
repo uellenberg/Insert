@@ -10,6 +10,9 @@ pub trait Target {
     /// This is used as the specified in target blocks
     /// and the CLI, so shouldn't change.
     fn name(&self) -> &'static str;
+
+    /// The name of the main function, if that exists for this target.
+    fn main(&self) -> Option<&'static str>;
 }
 
 pub struct C;
@@ -21,5 +24,9 @@ impl Target for C {
 
     fn name(&self) -> &'static str {
         "C"
+    }
+
+    fn main(&self) -> Option<&'static str> {
+        Some("main")
     }
 }

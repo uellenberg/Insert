@@ -1,1 +1,1 @@
-static unsigned int a=10;unsigned int usesImport1(){return a+2;}unsigned int usesImport2(){return usesImport1()+1;}static unsigned int b=13;
+static unsigned int a=10;unsigned int c(){return a+2;}unsigned int d(){return c()+1;}static unsigned int b=13;

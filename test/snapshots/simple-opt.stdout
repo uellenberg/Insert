@@ -5,15 +5,15 @@ const val2: u32 = 15;
 
 // Statics: 
 
-static test: u32 = 21;
+static a: u32 = 21;
 
 // Functions: 
 
 function main() : () {
-    let v (0): u32;
-    let g (1): u32;
-    let h (2): bool;
-    v (0) = 5;
-    g (1) = 25;
-    h (2) = true;
+    let b (0): u32;
+    let c (1): u32;
+    let d (2): bool;
+    b (0) = 5;
+    c (1) = 25;
+    d (2) = true;
 }

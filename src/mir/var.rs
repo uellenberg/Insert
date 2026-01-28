@@ -164,6 +164,8 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
                             .borrow()
                             .dropped
                             .contains(&var.var_idx.unwrap())
+                            // Even if the variable is dead, we can't remove args.
+                            && !var.arg
                         {
                             // Dead variable.
                             return true;

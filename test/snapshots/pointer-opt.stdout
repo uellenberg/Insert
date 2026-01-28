@@ -2,25 +2,25 @@
 
 // Statics: 
 
-static testVal: i32 = 8;
-static testVal2: &i32 = (&testVal);
+static a: i32 = 8;
+static b: &i32 = (&testVal);
 
 // Functions: 
 
-function mul(a (0): &i32, b (1): i32) : () {
-    let a (0): &i32;
-    let b (1): i32;
-    (*a (0)) = ((*a (0)) * b (1));
+function c(e (0): &i32, f (1): i32) : () {
+    let e (0): &i32;
+    let f (1): i32;
+    (*e (0)) = ((*e (0)) * f (1));
 }
-function test(val (0): i32) : i32 {
-    let val (0): i32;
-    let val1 (1): &i32;
-    let val2 (2): i32;
-    let val3 (3): &i32;
-    val1 (1) = (&val (0));
-    val2 (2) = (val (0) + 1);
-    val3 (3) = (&val2 (2));
-    mul((&val (0)), 2)
-    mul((&val2 (2)), 3)
-    return ((*(&val (0))) + (*(&val2 (2))));
+function d(e (0): i32) : i32 {
+    let e (0): i32;
+    let f (1): &i32;
+    let g (2): i32;
+    let h (3): &i32;
+    f (1) = (&e (0));
+    g (2) = (e (0) + 1);
+    h (3) = (&g (2));
+    c((&e (0)), 2)
+    c((&g (2)), 3)
+    return ((*(&e (0))) + (*(&g (2))));
 }

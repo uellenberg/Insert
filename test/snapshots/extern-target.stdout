@@ -1,2 +1,2 @@
 #include<stdio.h>
-int main(){printf("No args\n");printf("One arg: %d\n",1);printf("Two args: %d %d\n",1,2);return 0;}
+int main(){a("No args\n");a("One arg: %d\n",1);a("Two args: %d %d\n",1,2);return 0;}

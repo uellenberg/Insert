@@ -1,9 +1,9 @@
-static unsigned int staticValue=10;unsigned int test(unsigned int in){
-    unsigned int in1;
-    unsigned int val;
-    in1=in;
-    in1=in1+1;
-    in1=in1+2;
-    val=in1+3;
-    return val;
+static unsigned int a=10;unsigned int b(unsigned int c){
+    unsigned int d;
+    unsigned int e;
+    d=c;
+    d=d+1;
+    d=d+2;
+    e=d+3;
+    return e;
 }

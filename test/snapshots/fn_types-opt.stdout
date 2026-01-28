@@ -7,36 +7,36 @@ const val1: u32 = 10;
 // Functions: 
 
 function main() : () {
-    let val (0): u32;
-    let $inline_0 (1): u32;
-    let $inline_1 (2): u32;
-    let $inline_2 (3): u32;
-    let $inline_3 (4): u32;
-    let $inline_4 (5): u32;
-    let $inline_5 (6): u32;
-    let $inline_6 (7): u32;
-    let $inline_7 (8): u32;
-    let res (9): u32;
-    val (0) = 10;
-    $inline_0 (1) = 10;
-    $inline_1 (2) = 11;
-    val (0) = 11;
-    $inline_2 (3) = 15;
-    $inline_3 (4) = 16;
-    used()
-    $inline_4 (5) = 10;
-    $inline_5 (6) = 11;
-    $inline_6 (7) = 11;
-    $inline_7 (8) = 12;
-    res (9) = 12;
+    let d (0): u32;
+    let e (1): u32;
+    let f (2): u32;
+    let g (3): u32;
+    let h (4): u32;
+    let i (5): u32;
+    let j (6): u32;
+    let k (7): u32;
+    let l (8): u32;
+    let m (9): u32;
+    d (0) = 10;
+    e (1) = 10;
+    f (2) = 11;
+    d (0) = 11;
+    g (3) = 15;
+    h (4) = 16;
+    a()
+    i (5) = 10;
+    j (6) = 11;
+    k (7) = 11;
+    l (8) = 12;
+    m (9) = 12;
 }
-function used() : u32 {
+function a() : u32 {
     return 10;
 }
-helper function unused() : u32 {
+helper function b() : u32 {
     return 11;
 }
-inline function addOne(a (0): u32) : u32 {
-    let a (0): u32;
-    return (a (0) + 1);
+inline function c(d (0): u32) : u32 {
+    let d (0): u32;
+    return (d (0) + 1);
 }

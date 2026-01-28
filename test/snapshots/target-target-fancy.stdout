@@ -1,4 +1,4 @@
-static int x=1;int test(){
-    return x*2;
+static int a=1;int c(){
+    return a*2;
 }
-static int val=2;
+static int b=2;
