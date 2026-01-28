@@ -190,7 +190,7 @@ fn mark_visited<'a>(
             mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
         } else {
             // TODO: Visit function pointers in expressions.
-            find_exprs(statement, &mut |expr| {
+            find_exprs(statement, &mut |expr, _| {
                 explore_expr(expr, &mut |expr| {
                     if let MIRExpressionInner::FunctionCall(box MIRFnCall {
                         source, args_ty, ..
@@ -263,7 +263,7 @@ fn inline_function<'a>(
             // inline function calls themselves.
             // For there, we need to add their code before this statement,
             // then substitute the output variable.
-            if !find_exprs_mut(&mut statement, &mut |expr| {
+            if !find_exprs_mut(&mut statement, &mut |expr, _| {
                 explore_expr_mut(expr, &mut |expr| {
                     if let MIRExpressionInner::FunctionCall(box MIRFnCall {
                         source: MIRFnSource::Direct(name, ..),
@@ -488,7 +488,7 @@ fn rewrite_inline_function<'a>(
                 _ => {}
             }
 
-            if !find_exprs_mut(&mut statement, &mut |expr| {
+            if !find_exprs_mut(&mut statement, &mut |expr, _| {
                 explore_expr_mut(expr, &mut |expr| {
                     if let MIRExpressionInner::Variable(name, _) = &mut expr.inner
                         && let Some(new_name) = var_map.get(name)

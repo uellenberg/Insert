@@ -17,7 +17,7 @@ char*str3(){
     bool$inline_6=true;
     char*$inline_8;
     $inline_8="true";
-    char*$inline_7=$inline_8;
-    return$inline_7;
+    char*$inline_7="true";
+    return"true";
 }
 static char*str1s="10";static char*str2s="-10";static char*str3s="true";

@@ -33,7 +33,7 @@ pub fn make_vars_unique(ctx: &mut MIRContext) -> bool {
 
                 // Rewrite expressions to use the new variable.
                 // This includes place expressions in SetVariable.
-                find_exprs_mut(statement, &mut |expr| {
+                find_exprs_mut(statement, &mut |expr, _| {
                     explore_expr_mut(expr, &mut |expr| {
                         if let MIRExpressionInner::Variable(name, var_idx) = &mut expr.inner
                             && let Some(var) = scope.get_variable(name)

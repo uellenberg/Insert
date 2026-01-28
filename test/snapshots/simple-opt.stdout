@@ -13,9 +13,9 @@ function main() : () {
     let v (0): u32;
     v (0) = 5;
     let g (1): u32;
-    g (1) = (5 * v (0));
+    g (1) = 25;
     let h (2): bool;
-    h (2) = (v (0) != g (1));
+    h (2) = true;
     drop h;
     drop g;
     drop v;

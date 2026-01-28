@@ -1,7 +1,9 @@
 //@check
 
+const val1: u32 = used();
+
 function main() {
-    let val: u32 = used();
+    let val: u32 = val1;
     val = addOne(val);
     addOne(15);
     used();

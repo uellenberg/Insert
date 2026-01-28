@@ -1,4 +1,4 @@
 void main(){
     unsigned int v=10;
-    v=v*v*v;
+    v=1000;
 }

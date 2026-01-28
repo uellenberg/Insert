@@ -1,1 +1,1 @@
-void main(){unsigned int v=10;v=v*v*v;}
+void main(){unsigned int v=10;v=1000;}

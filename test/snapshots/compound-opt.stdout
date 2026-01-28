@@ -6,6 +6,6 @@
 
 function main() : () {
     let v (0): u32 = 10;
-    v (0) = (v (0) * (v (0) * v (0)));
+    v (0) = 1000;
     drop v;
 }

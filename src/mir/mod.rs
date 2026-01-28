@@ -10,7 +10,7 @@ mod var;
 
 use crate::codegen::Codegen;
 use crate::mir::drop::drop_at_scope_end;
-use crate::mir::expr::{const_eval, const_optimize_expr};
+use crate::mir::expr::{const_eval, inline_consts, optimize_exprs};
 use crate::mir::function::{
     inline_functions, insert_fn_arg_args, mark_reachable, prune_functions, resolve_fns_to_vars,
 };
@@ -89,8 +89,12 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // Constants are now only literals.
 
-    // TODO: Run a reduce_const_expr pass here to just remove consts from exprs,
-    //       then have a separate optimize_expr pass to do the optimization.
+    if !inline_consts(ctx) {
+        return false;
+    }
+
+    // Expressions no longer contain references
+    // to constants.
 
     if !make_vars_unique(ctx) {
         return false;
@@ -98,23 +102,39 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // var_idx now exists for all variables.
 
-    if !const_optimize_expr(ctx) {
-        return false;
-    }
+    for function in ctx.program.functions.values_mut() {
+        // Keep optimizing until we reach a fixed point.
+        loop {
+            let mut modified = false;
 
-    // Expressions no longer contain references
-    // to constants.
+            let (success, modified1) = optimize_exprs(function);
+            if !success {
+                return false;
+            }
+            modified |= modified1;
 
-    if !inline_primitives(ctx) {
-        return false;
-    }
+            let (success, modified1) = inline_primitives(function);
+            if !success {
+                return false;
+            }
+            modified |= modified1;
 
-    if !remove_trivial_ifs(ctx) {
-        return false;
-    }
+            let (success, modified1) = remove_trivial_ifs(function);
+            if !success {
+                return false;
+            }
+            modified |= modified1;
 
-    if !remove_dead_code(ctx) {
-        return false;
+            let (success, modified1) = remove_dead_code(function);
+            if !success {
+                return false;
+            }
+            modified |= modified1;
+
+            if !modified {
+                break;
+            }
+        }
     }
 
     if !drop_at_scope_end(ctx) {

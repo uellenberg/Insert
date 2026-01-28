@@ -1,9 +1,9 @@
 use crate::mir::interpreter::Interpreter;
 use crate::mir::scope::StatementExplorer;
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRStatement,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
+    MIRStatement,
 };
-use std::borrow::Cow;
 
 /// Attempts to evaluate all constants and statics, returning
 /// whether it was successful.
@@ -37,28 +37,30 @@ pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a
     true
 }
 
-/// Attempts to optimize all expressions
-/// in every function, returning
+/// Inlines constants in all expressions, returning
 /// whether it was successful.
+/// After this, constants won't appear in any expressions.
 /// This MUST occur after const evaluation.
-pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
+pub fn inline_consts(ctx: &mut MIRContext) -> bool {
     for function in ctx.program.functions.values_mut() {
         let res = <StatementExplorer>::explore_block_mut(
             &mut function.body,
             &mut |statement, _scope| {
-                find_exprs_mut(statement, &mut |expr| {
-                    reduce_expr(expr, &mut |name| {
-                        // Ensure the constant exists.
-                        let key = ctx.program.const_names.get(&name)?;
+                find_exprs_mut(statement, &mut |expr, _| {
+                    explore_expr_mut(expr, &mut |expr| {
+                        if let MIRExpressionInner::Variable(name, _) = &expr.inner {
+                            // Ensure the constant exists.
+                            if let Some(key) = ctx.program.const_names.get(name) {
+                                // Constants are guaranteed to already be evaluated.
 
-                        // Constants are guaranteed to already be evaluated.
+                                // No need to validate that this is a primitive here,
+                                // since eval_constant already does that.
+                                *expr = ctx.program.constants[*key].value.clone();
+                            }
+                        }
 
-                        // No need to validate that this is a primitive here,
-                        // since eval_constant already does that.
-                        Some(ctx.program.constants[*key].value.clone())
-                    });
-
-                    true
+                        true
+                    })
                 });
 
                 true
@@ -75,12 +77,43 @@ pub fn const_optimize_expr(ctx: &mut MIRContext<'_>) -> bool {
     true
 }
 
+/// Attempts to optimize all expressions
+/// in this function, returning
+/// whether it was successful.
+/// This MUST occur after const inlining.
+/// Returns (success, modified).
+pub fn optimize_exprs(function: &mut MIRFunction) -> (bool, bool) {
+    let mut modified = false;
+
+    let res = <StatementExplorer>::explore_block_mut(
+        &mut function.body,
+        &mut |statement, _scope| {
+            find_exprs_mut(statement, &mut |expr, _| {
+                let (success, modified1) = reduce_expr(expr);
+                modified |= modified1;
+
+                success
+            });
+
+            true
+        },
+        &|_, _| true,
+        &mut |_, _| true,
+    );
+
+    if !res {
+        return (false, false);
+    }
+
+    (true, modified)
+}
+
 /// Attempts to reduce an expression
 /// using simple constant evaluation.
-fn reduce_expr<'a>(
-    expr: &mut MIRExpression<'a>,
-    get_const: &mut impl FnMut(Cow<'a, str>) -> Option<MIRExpression<'a>>,
-) {
+/// Returns (success, modified).
+fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
+    let mut modified = false;
+
     macro_rules! simple_binary {
         ($left:expr, $right:expr, $($red_i:path)|+, $red_o:path, $op:tt) => {{
             use MIRExpressionInner::*;
@@ -95,7 +128,7 @@ fn reduce_expr<'a>(
         }};
     }
 
-    explore_expr_mut(expr, &mut |expr| {
+    if !explore_expr_mut(expr, &mut |expr| {
         let new_expr = (|| match &expr.inner {
             MIRExpressionInner::Add(left, right) => {
                 simple_binary!(left, right, Number, Number, +)
@@ -134,8 +167,6 @@ fn reduce_expr<'a>(
                 simple_binary!(left, right, Bool, Bool, ||)
             }
 
-            MIRExpressionInner::Variable(name, _) => get_const(name.clone()).map(|v| v.inner),
-
             // TODO: Implement member access reduction for const structs.
             MIRExpressionInner::Member(_, _) => None,
 
@@ -146,6 +177,7 @@ fn reduce_expr<'a>(
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Unit
+            | MIRExpressionInner::Variable(_, _)
             // We could implement ref/deref reduction (&*val -> val), but in some languages
             // there's a real reason to leave it unsimplified.
             | MIRExpressionInner::Ref(_)
@@ -154,10 +186,15 @@ fn reduce_expr<'a>(
 
         if let Some(new_expr) = new_expr {
             expr.inner = new_expr;
+            modified = true;
         }
 
         true
-    });
+    }) {
+        return (false, false);
+    }
+
+    (true, modified)
 }
 
 macro_rules! explore_expr_body {
@@ -302,6 +339,8 @@ pub fn explore_outer_place<'a>(
 
 macro_rules! extract_expr_body {
     ($statement:expr, $for_each:expr) => {{
+        // for_each is fn(expr, is write place) -> bool.
+
         match $statement {
             // No expressions.
             MIRStatement::CreateVariable { value: None, .. } => {}
@@ -321,29 +360,29 @@ macro_rules! extract_expr_body {
             | MIRStatement::GotoNotEqual {
                 condition: value, ..
             } => {
-                if !$for_each(value) {
+                if !$for_each(value, false) {
                     return false;
                 }
             }
 
             MIRStatement::SetVariable { place, value, .. } => {
-                if !$for_each(place) {
+                if !$for_each(place, true) {
                     return false;
                 }
-                if !$for_each(value) {
+                if !$for_each(value, false) {
                     return false;
                 }
             }
 
             MIRStatement::FunctionCall(MIRFnCall { source, args, .. }) => {
                 if let MIRFnSource::Indirect(expr) = source {
-                    if !$for_each(expr) {
+                    if !$for_each(expr, false) {
                         return false;
                     }
                 }
 
                 for arg in args {
-                    if !$for_each(arg) {
+                    if !$for_each(arg, false) {
                         return false;
                     }
                 }
@@ -351,7 +390,7 @@ macro_rules! extract_expr_body {
 
             MIRStatement::Return { expr, .. } => {
                 if let Some(expr) = expr {
-                    if !$for_each(expr) {
+                    if !$for_each(expr, false) {
                         return false;
                     }
                 }
@@ -363,19 +402,19 @@ macro_rules! extract_expr_body {
 }
 
 /// Extracts all expressions from a statement
-/// and runs the for_each function on them.
+/// and runs the for_each function on them  (expr, is write place).
 pub fn find_exprs<'a, 'b>(
     statement: &'b MIRStatement<'a>,
-    for_each: &mut impl FnMut(&'b MIRExpression<'a>) -> bool,
+    for_each: &mut impl FnMut(&'b MIRExpression<'a>, bool) -> bool,
 ) -> bool {
     extract_expr_body!(statement, for_each)
 }
 
 /// Extracts all expressions from a statement
-/// and runs the rewrite function on them.
+/// and runs the rewrite function on them (expr, is write place).
 pub fn find_exprs_mut<'a, 'b>(
     statement: &'b mut MIRStatement<'a>,
-    rewrite: &mut impl FnMut(&'b mut MIRExpression<'a>) -> bool,
+    rewrite: &mut impl FnMut(&'b mut MIRExpression<'a>, bool) -> bool,
 ) -> bool {
     extract_expr_body!(statement, rewrite)
 }

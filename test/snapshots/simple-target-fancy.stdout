@@ -2,7 +2,7 @@ static unsigned int test=21;void main(){
     unsigned int v;
     v=5;
     unsigned int g;
-    g=5*v;
+    g=25;
     bool h;
-    h=v!=g;
+    h=true;
 }

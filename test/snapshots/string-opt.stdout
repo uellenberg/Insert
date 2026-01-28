@@ -67,8 +67,8 @@ function str3() : string {
     let $inline_6 (0): bool = true;
     let $inline_8 (1): string;
     $inline_8 (1) = "true";
-    let $inline_7 (2): string = $inline_8 (1);
-    return $inline_7 (2);
+    let $inline_7 (2): string = "true";
+    return "true";
     drop $inline_7;
     drop $inline_8;
     drop $inline_6;
