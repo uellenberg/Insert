@@ -17,7 +17,7 @@ use crate::mir::function::{
 use crate::mir::interpreter::Interpreter;
 use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
 use crate::mir::type_check::{type_check, types_could_match};
-use crate::mir::var::make_vars_unique;
+use crate::mir::var::{make_vars_unique, min_vars};
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
 use crate::targets::Target;
@@ -143,6 +143,12 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // All variables are now dropped, including
     // arg variables.
+
+    if !min_vars(ctx) {
+        return false;
+    }
+
+    // Variables now use space more efficiently, and drops are gone.
 
     // TODO: Add a pass to remove unit variables (probably part of SSA -> function scope var generation).
 
@@ -730,7 +736,8 @@ pub enum MIRStatement<'a> {
     /// Drops the value stored
     /// inside a variable and
     /// invalidates it.
-    DropVariable(Cow<'a, str>, Span<'a>),
+    /// Name, var_idx, span.
+    DropVariable(Cow<'a, str>, usize, Span<'a>),
 
     /// Sets a variable to a certain value.
     SetVariable {

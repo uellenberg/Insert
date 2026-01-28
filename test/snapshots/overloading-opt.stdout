@@ -9,32 +9,26 @@ static sValue: i32 = -10;
 function f(value (0): u32) : u32 {
     let value (0): u32;
     return 10;
-    drop value;
 }
 function f(value (0): i32) : i32 {
     let value (0): i32;
     return -10;
-    drop value;
 }
 inline function g(value (0): u32) : u32 {
     let value (0): u32;
     return 10;
-    drop value;
 }
 inline function g(value (0): i32) : i32 {
     let value (0): i32;
     return -10;
-    drop value;
 }
 function h(value (0): u32) : u32 {
     let value (0): u32;
     return 10;
-    drop value;
 }
 helper function h(value (0): i32) : i32 {
     let value (0): i32;
     return -10;
-    drop value;
 }
 function main() : () {
     f(10)

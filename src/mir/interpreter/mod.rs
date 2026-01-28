@@ -537,7 +537,7 @@ impl<'a> Interpreter<'a> {
 
                 *place.borrow_mut() = value;
             }
-            MIRStatement::DropVariable(_, _) => {
+            MIRStatement::DropVariable(_, _, _) => {
                 // Dropping has no effect on the interpreter.
             }
             MIRStatement::FunctionCall(fn_data) => match &fn_data.source {

@@ -1,5 +1,6 @@
 unsigned int fib(unsigned int v){
-    char*test="my test string\0";
+    char*test;
+    test="my test string\0";
     if(v<=1){
         return v;
     }

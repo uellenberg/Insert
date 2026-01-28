@@ -1,6 +1,7 @@
 void main(){
     unsigned int g;
-    bool h=true;
+    bool h;
+    h=true;
     g=10;
     while(1){
         if(g==0){

@@ -7,500 +7,400 @@
 function type_i32(x (0): i32) : () {
     let x (0): i32;
     return;
-    drop x;
 }
 function type_u32(x (0): u32) : () {
     let x (0): u32;
     return;
-    drop x;
 }
 function type_bool(x (0): bool) : () {
     let x (0): bool;
     return;
-    drop x;
 }
 function type_string(x (0): string) : () {
     let x (0): string;
     return;
-    drop x;
 }
 function type_paren_i32(x (0): i32) : () {
     let x (0): i32;
     return;
-    drop x;
 }
 function type_paren_u32(x (0): u32) : () {
     let x (0): u32;
     return;
-    drop x;
 }
 function type_paren_paren_bool(x (0): bool) : () {
     let x (0): bool;
     return;
-    drop x;
 }
 function type_ref_i32(x (0): &i32) : () {
     let x (0): &i32;
     return;
-    drop x;
 }
 function type_ref_u32(x (0): &u32) : () {
     let x (0): &u32;
     return;
-    drop x;
 }
 function type_ref_bool(x (0): &bool) : () {
     let x (0): &bool;
     return;
-    drop x;
 }
 function type_ref_string(x (0): &string) : () {
     let x (0): &string;
     return;
-    drop x;
 }
 function type_paren_ref_i32(x (0): &i32) : () {
     let x (0): &i32;
     return;
-    drop x;
 }
 function type_ref_paren_i32(x (0): &i32) : () {
     let x (0): &i32;
     return;
-    drop x;
 }
 function type_array_i32(x (0): &[i32]) : () {
     let x (0): &[i32];
     return;
-    drop x;
 }
 function type_array_u32(x (0): &[u32]) : () {
     let x (0): &[u32];
     return;
-    drop x;
 }
 function type_array_bool(x (0): &[bool]) : () {
     let x (0): &[bool];
     return;
-    drop x;
 }
 function type_array_string(x (0): &[string]) : () {
     let x (0): &[string];
     return;
-    drop x;
 }
 function type_paren_array_i32(x (0): &[i32]) : () {
     let x (0): &[i32];
     return;
-    drop x;
 }
 function type_array_paren_i32(x (0): &[i32]) : () {
     let x (0): &[i32];
     return;
-    drop x;
 }
 function type_fixed_array_i32(x (0): [i32; 10]) : () {
     let x (0): [i32; 10];
     return;
-    drop x;
 }
 function type_fixed_array_u32(x (0): [u32; 5]) : () {
     let x (0): [u32; 5];
     return;
-    drop x;
 }
 function type_fixed_array_bool(x (0): [bool; 3]) : () {
     let x (0): [bool; 3];
     return;
-    drop x;
 }
 function type_fixed_array_string(x (0): [string; 8]) : () {
     let x (0): [string; 8];
     return;
-    drop x;
 }
 function type_paren_fixed_array(x (0): [i32; 10]) : () {
     let x (0): [i32; 10];
     return;
-    drop x;
 }
 function type_fixed_array_paren(x (0): [i32; 5]) : () {
     let x (0): [i32; 5];
     return;
-    drop x;
 }
 function type_ref_ref_i32(x (0): &&i32) : () {
     let x (0): &&i32;
     return;
-    drop x;
 }
 function type_ref_ref_ref_u32(x (0): &&&u32) : () {
     let x (0): &&&u32;
     return;
-    drop x;
 }
 function type_ref_ref_ref_ref_bool(x (0): &&&&bool) : () {
     let x (0): &&&&bool;
     return;
-    drop x;
 }
 function type_paren_ref_ref(x (0): &&i32) : () {
     let x (0): &&i32;
     return;
-    drop x;
 }
 function type_ref_paren_ref(x (0): &&i32) : () {
     let x (0): &&i32;
     return;
-    drop x;
 }
 function type_array_of_refs(x (0): &[&i32]) : () {
     let x (0): &[&i32];
     return;
-    drop x;
 }
 function type_array_of_arrays(x (0): &[&[u32]]) : () {
     let x (0): &[&[u32]];
     return;
-    drop x;
 }
 function type_ref_of_array(x (0): &&[i32]) : () {
     let x (0): &&[i32];
     return;
-    drop x;
 }
 function type_ref_ref_of_array(x (0): &&&[bool]) : () {
     let x (0): &&&[bool];
     return;
-    drop x;
 }
 function type_paren_array_of_refs(x (0): &[&i32]) : () {
     let x (0): &[&i32];
     return;
-    drop x;
 }
 function type_array_of_paren_refs(x (0): &[&i32]) : () {
     let x (0): &[&i32];
     return;
-    drop x;
 }
 function type_fixed_array_of_refs(x (0): [&i32; 4]) : () {
     let x (0): [&i32; 4];
     return;
-    drop x;
 }
 function type_fixed_array_of_ref_refs(x (0): [&&u32; 2]) : () {
     let x (0): [&&u32; 2];
     return;
-    drop x;
 }
 function type_fixed_array_of_arrays(x (0): [&[i32]; 3]) : () {
     let x (0): [&[i32]; 3];
     return;
-    drop x;
 }
 function type_fixed_array_of_ref(x (0): [&i32; 3]) : () {
     let x (0): [&i32; 3];
     return;
-    drop x;
 }
 function type_ref_fixed_array(x (0): &[i32; 10]) : () {
     let x (0): &[i32; 10];
     return;
-    drop x;
 }
 function type_ref_ref_fixed_array(x (0): &&[u32; 5]) : () {
     let x (0): &&[u32; 5];
     return;
-    drop x;
 }
 function type_array_of_fixed_arrays(x (0): &[[i32; 3]]) : () {
     let x (0): &[[i32; 3]];
     return;
-    drop x;
 }
 function type_paren_ref_fixed_array(x (0): &[i32; 10]) : () {
     let x (0): &[i32; 10];
     return;
-    drop x;
 }
 function type_deep_nest_1(x (0): &[&[&i32]]) : () {
     let x (0): &[&[&i32]];
     return;
-    drop x;
 }
 function type_deep_nest_2(x (0): &&[&[u32]]) : () {
     let x (0): &&[&[u32]];
     return;
-    drop x;
 }
 function type_deep_nest_3(x (0): [&[&bool]; 2]) : () {
     let x (0): [&[&bool]; 2];
     return;
-    drop x;
 }
 function type_deep_nest_4(x (0): &[[&i32; 5]]) : () {
     let x (0): &[[&i32; 5]];
     return;
-    drop x;
 }
 function type_deep_nest_5(x (0): [[[i32; 2]; 3]; 4]) : () {
     let x (0): [[[i32; 2]; 3]; 4];
     return;
-    drop x;
 }
 function type_deep_nest_6(x (0): &[[[u32; 1]; 2]; 3]) : () {
     let x (0): &[[[u32; 1]; 2]; 3];
     return;
-    drop x;
 }
 function type_deep_paren_1(x (0): &[&[&i32]]) : () {
     let x (0): &[&[&i32]];
     return;
-    drop x;
 }
 function type_deep_paren_2(x (0): &&[&[u32]]) : () {
     let x (0): &&[&[u32]];
     return;
-    drop x;
 }
 function type_matrix_2d(x (0): [[i32; 4]; 4]) : () {
     let x (0): [[i32; 4]; 4];
     return;
-    drop x;
 }
 function type_matrix_3d(x (0): [[[bool; 2]; 2]; 2]) : () {
     let x (0): [[[bool; 2]; 2]; 2];
     return;
-    drop x;
 }
 function type_paren_matrix(x (0): [[i32; 4]; 4]) : () {
     let x (0): [[i32; 4]; 4];
     return;
-    drop x;
 }
 function type_fn_void_to_void(x (0): fn() -> ()) : () {
     let x (0): fn() -> ();
     return;
-    drop x;
 }
 function type_fn_i32_to_i32(x (0): fn(i32) -> i32) : () {
     let x (0): fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_fn_multi_args(x (0): fn(i32, u32, bool) -> string) : () {
     let x (0): fn(i32, u32, bool) -> string;
     return;
-    drop x;
 }
 function type_fn_variadic(x (0): fn(string, ...) -> i32) : () {
     let x (0): fn(string, ...) -> i32;
     return;
-    drop x;
 }
 function type_fn_only_variadic(x (0): fn(...) -> i32) : () {
     let x (0): fn(...) -> i32;
     return;
-    drop x;
 }
 function type_fn_returns_ref(x (0): fn(i32) -> &u32) : () {
     let x (0): fn(i32) -> &u32;
     return;
-    drop x;
 }
 function type_fn_takes_ref(x (0): fn(&i32) -> u32) : () {
     let x (0): fn(&i32) -> u32;
     return;
-    drop x;
 }
 function type_fn_takes_and_returns_ref(x (0): fn(&i32, &u32) -> &bool) : () {
     let x (0): fn(&i32, &u32) -> &bool;
     return;
-    drop x;
 }
 function type_paren_fn(x (0): fn(i32) -> i32) : () {
     let x (0): fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_fn_paren_arg(x (0): fn(i32) -> i32) : () {
     let x (0): fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_fn_paren_ret(x (0): fn(i32) -> i32) : () {
     let x (0): fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_ref_fn(x (0): &fn(i32) -> i32) : () {
     let x (0): &fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_ref_ref_fn(x (0): &&fn(u32) -> u32) : () {
     let x (0): &&fn(u32) -> u32;
     return;
-    drop x;
 }
 function type_paren_ref_fn(x (0): &fn(i32) -> i32) : () {
     let x (0): &fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_ref_paren_fn(x (0): &fn(i32) -> i32) : () {
     let x (0): &fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_fn_returns_fn(x (0): fn(i32) -> fn(u32) -> bool) : () {
     let x (0): fn(i32) -> fn(u32) -> bool;
     return;
-    drop x;
 }
 function type_fn_returns_ref_fn(x (0): fn() -> &fn(i32) -> u32) : () {
     let x (0): fn() -> &fn(i32) -> u32;
     return;
-    drop x;
 }
 function type_fn_returns_paren_fn(x (0): fn() -> fn(i32) -> u32) : () {
     let x (0): fn() -> fn(i32) -> u32;
     return;
-    drop x;
 }
 function type_fn_takes_fn(x (0): fn(fn(i32) -> i32) -> u32) : () {
     let x (0): fn(fn(i32) -> i32) -> u32;
     return;
-    drop x;
 }
 function type_fn_takes_fn_returns_fn(x (0): fn(fn(i32) -> i32) -> fn(u32) -> u32) : () {
     let x (0): fn(fn(i32) -> i32) -> fn(u32) -> u32;
     return;
-    drop x;
 }
 function type_fn_takes_paren_fn(x (0): fn(fn(i32) -> i32) -> u32) : () {
     let x (0): fn(fn(i32) -> i32) -> u32;
     return;
-    drop x;
 }
 function type_fn_returns_array(x (0): fn(i32) -> &[u32]) : () {
     let x (0): fn(i32) -> &[u32];
     return;
-    drop x;
 }
 function type_fn_returns_fixed_array(x (0): fn() -> [i32; 5]) : () {
     let x (0): fn() -> [i32; 5];
     return;
-    drop x;
 }
 function type_fn_takes_array(x (0): fn(&[i32]) -> u32) : () {
     let x (0): fn(&[i32]) -> u32;
     return;
-    drop x;
 }
 function type_fn_takes_fixed_array(x (0): fn([bool; 3]) -> i32) : () {
     let x (0): fn([bool; 3]) -> i32;
     return;
-    drop x;
 }
 function type_fn_paren_array(x (0): fn(&[i32]) -> &[u32]) : () {
     let x (0): fn(&[i32]) -> &[u32];
     return;
-    drop x;
 }
 function type_array_of_fn(x (0): &[fn(i32) -> i32]) : () {
     let x (0): &[fn(i32) -> i32];
     return;
-    drop x;
 }
 function type_fixed_array_of_fn(x (0): [fn(u32) -> u32; 4]) : () {
     let x (0): [fn(u32) -> u32; 4];
     return;
-    drop x;
 }
 function type_paren_array_of_fn(x (0): &[fn(i32) -> i32]) : () {
     let x (0): &[fn(i32) -> i32];
     return;
-    drop x;
 }
 function type_array_of_paren_fn(x (0): &[fn(i32) -> i32]) : () {
     let x (0): &[fn(i32) -> i32];
     return;
-    drop x;
 }
 function type_complex_fn_1(x (0): fn(&[&i32]) -> &[&u32]) : () {
     let x (0): fn(&[&i32]) -> &[&u32];
     return;
-    drop x;
 }
 function type_complex_fn_2(x (0): &[fn(&i32) -> &u32]) : () {
     let x (0): &[fn(&i32) -> &u32];
     return;
-    drop x;
 }
 function type_complex_fn_3(x (0): fn(fn(&i32) -> &i32) -> fn(&u32) -> &u32) : () {
     let x (0): fn(fn(&i32) -> &i32) -> fn(&u32) -> &u32;
     return;
-    drop x;
 }
 function type_complex_fn_4(x (0): [&fn(i32, u32) -> &[bool]; 3]) : () {
     let x (0): [&fn(i32, u32) -> &[bool]; 3];
     return;
-    drop x;
 }
 function type_complex_fn_5(x (0): fn(&[fn(i32) -> i32; 2]) -> &fn(u32) -> u32) : () {
     let x (0): fn(&[fn(i32) -> i32; 2]) -> &fn(u32) -> u32;
     return;
-    drop x;
 }
 function type_complex_paren_1(x (0): fn(&[&i32]) -> &[&u32]) : () {
     let x (0): fn(&[&i32]) -> &[&u32];
     return;
-    drop x;
 }
 function type_complex_paren_2(x (0): &[fn(&i32) -> &u32]) : () {
     let x (0): &[fn(&i32) -> &u32];
     return;
-    drop x;
 }
 function type_deep_fn_1(x (0): &&&fn(i32) -> i32) : () {
     let x (0): &&&fn(i32) -> i32;
     return;
-    drop x;
 }
 function type_deep_fn_2(x (0): fn(fn(fn(i32) -> i32) -> i32) -> i32) : () {
     let x (0): fn(fn(fn(i32) -> i32) -> i32) -> i32;
     return;
-    drop x;
 }
 function type_deep_fn_3(x (0): &[&[fn(&i32) -> &i32]]) : () {
     let x (0): &[&[fn(&i32) -> &i32]];
     return;
-    drop x;
 }
 function type_deep_fn_paren(x (0): &&[&[fn(&i32) -> &i32]]) : () {
     let x (0): &&[&[fn(&i32) -> &i32]];
     return;
-    drop x;
 }
 function type_extreme_paren_1(x (0): i32) : () {
     let x (0): i32;
     return;
-    drop x;
 }
 function type_extreme_paren_2(x (0): &&&i32) : () {
     let x (0): &&&i32;
     return;
-    drop x;
 }
 function type_extreme_paren_3(x (0): [&i32; 5]) : () {
     let x (0): [&i32; 5];
     return;
-    drop x;
 }
 function type_extreme_paren_4(x (0): fn(i32) -> u32) : () {
     let x (0): fn(i32) -> u32;
     return;
-    drop x;
 }

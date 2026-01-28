@@ -1,1 +1,1 @@
-unsigned int fib(unsigned int v){char*test="my test string\0";if(v<=1){return v;}return fib(v-1)+fib(v-2);}void main(){fib(10);}
+unsigned int fib(unsigned int v){char*test;test="my test string\0";if(v<=1){return v;}return fib(v-1)+fib(v-2);}void main(){fib(10);}

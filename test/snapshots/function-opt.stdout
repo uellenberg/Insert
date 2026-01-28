@@ -5,9 +5,9 @@
 // Functions: 
 
 function main() : () {
+    let my_val (0): bool;
     other(10, 11, 12, 13, 14, 15)
-    let my_val (0): bool = bools(true, false, false, false, false, bools(true, false, false, false, false, false));
-    drop my_val;
+    my_val (0) = bools(true, false, false, false, false, bools(true, false, false, false, false, false));
 }
 function other(test (0): u32, a1 (1): u32, b1 (2): u32, c1 (3): u32, d1 (4): u32, e1 (5): u32) : () {
     let test (0): u32;
@@ -16,16 +16,10 @@ function other(test (0): u32, a1 (1): u32, b1 (2): u32, c1 (3): u32, d1 (4): u32
     let c1 (3): u32;
     let d1 (4): u32;
     let e1 (5): u32;
-    let ret (6): u32 = (test (0) + 10);
-    let other_v (7): u32 = e1 (5);
-    drop other_v;
-    drop ret;
-    drop e1;
-    drop d1;
-    drop c1;
-    drop b1;
-    drop a1;
-    drop test;
+    let ret (6): u32;
+    let other_v (7): u32;
+    ret (6) = (test (0) + 10);
+    other_v (7) = e1 (5);
 }
 function bools(a (0): bool, b (1): bool, c (2): bool, d (3): bool, e (4): bool, f (5): bool) : bool {
     let a (0): bool;
@@ -34,15 +28,9 @@ function bools(a (0): bool, b (1): bool, c (2): bool, d (3): bool, e (4): bool, 
     let d (3): bool;
     let e (4): bool;
     let f (5): bool;
-    let val (6): bool = f (5);
+    let val (6): bool;
+    val (6) = f (5);
     return val (6);
-    drop val;
-    drop f;
-    drop e;
-    drop d;
-    drop c;
-    drop b;
-    drop a;
 }
 function one() : u32 {
     return 1;

@@ -1,22 +1,28 @@
 void main(){
-    unsigned int val=10;
-    unsigned int val2=10;
+    unsigned int val;
+    unsigned int val2;
+    unsigned int val3;
+    unsigned int val4;
+    unsigned int val5;
+    unsigned int val6;
+    val=10;
+    val2=10;
     val2=20;
-    unsigned int val3=20;
+    val3=20;
     val2=20;
-    unsigned int val4=20;
+    val4=20;
     while(1){
         if(val4==30){
             val4=10;
         }
         val4=val4+1;
         while(1){
-            unsigned int val5=val4;
+            val5=val4;
             val4=50;
-            unsigned int val6=50;
+            val6=50;
         }
     }
-    unsigned int val5=val4;
+    val5=val4;
     val4=30;
-    unsigned int val6=30;
+    val6=30;
 }

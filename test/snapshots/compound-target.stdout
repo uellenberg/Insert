@@ -1,1 +1,1 @@
-void main(){unsigned int v=10;v=1000;}
+void main(){unsigned int v;v=10;v=1000;}

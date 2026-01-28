@@ -1,8 +1,8 @@
 static unsigned int test=21;void main(){
     unsigned int v;
-    v=5;
     unsigned int g;
-    g=25;
     bool h;
+    v=5;
+    g=25;
     h=true;
 }

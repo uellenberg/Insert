@@ -9,8 +9,10 @@ static sum: u32 = 0;
 // Functions: 
 
 function main() : () {
-    let acc (0): u32 = 0;
-    let i (1): u32 = 0;
+    let acc (0): u32;
+    let i (1): u32;
+    acc (0) = 0;
+    i (1) = 0;
     loop {
         if (i (1) > 10) {
             break;
@@ -19,6 +21,4 @@ function main() : () {
         i (1) = (i (1) + 1);
     }
     sum = acc (0);
-    drop i;
-    drop acc;
 }

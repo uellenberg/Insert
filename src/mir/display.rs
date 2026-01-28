@@ -134,8 +134,8 @@ impl<'a> Display for MIRStatement<'a> {
                     writeln!(f, " /* {span} */")?;
                 }
             }
-            MIRStatement::DropVariable(name, span) => {
-                write!(f, "drop {};", name)?;
+            MIRStatement::DropVariable(name, var_idx, span) => {
+                write!(f, "drop {} ({});", name, var_idx)?;
 
                 if f.alternate() {
                     writeln!(f, " /* {span} */")?;
