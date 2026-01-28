@@ -1,1 +1,1 @@
-void main(){unsigned int val=10;unsigned int val2=10;if(10==val2){val2=20;}unsigned int val3=val2;val2=20;unsigned int val4=20;while(1){if(val4==30){val4=10;}val4=val4+1;while(1){unsigned int val5=val4;val4=50;unsigned int val6=50;}}unsigned int val5=val4;val4=30;unsigned int val6=30;}
+void main(){unsigned int val=10;unsigned int val2=10;val2=20;unsigned int val3=20;val2=20;unsigned int val4=20;while(1){if(val4==30){val4=10;}val4=val4+1;while(1){unsigned int val5=val4;val4=50;unsigned int val6=50;}}unsigned int val5=val4;val4=30;unsigned int val6=30;}

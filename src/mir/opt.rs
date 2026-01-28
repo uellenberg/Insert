@@ -1,5 +1,5 @@
 use crate::mir::expr::{explore_expr, explore_expr_mut, find_exprs, find_exprs_mut};
-use crate::mir::scope::StatementExplorer;
+use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{MIRExpression, MIRExpressionInner, MIRFunction, MIRStatement, MIRVariable};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -116,6 +116,9 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
         /// These need to get propagated upwards to our parent.
         needs_invalidation: HashSet<usize>,
 
+        /// Variables that the children have requested we permanently invalidate.
+        needs_perm_invalidation: HashSet<usize>,
+
         /// A reference to our parent's PrimitiveData, None if we're the top-level scope.
         parent: Option<PrimitiveDataRef<'a>>,
 
@@ -137,6 +140,7 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
                 values: data.values.clone(),
                 perm_invalidated: data.perm_invalidated.clone(),
                 needs_invalidation: data.needs_invalidation.clone(),
+                needs_perm_invalidation: data.needs_perm_invalidation.clone(),
                 parent: Some(PrimitiveDataRef(Rc::clone(&self.0))),
                 // Every level needs to reinitialize itself, to pull data from the parent.
                 initialized: false,
@@ -163,34 +167,61 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
         &mut function.body,
         &mut |statement, scope| {
             // If our parent asked us to invalidate some variables, do so.
-            // The logic below will handle removing from values.
+            // We need to invalidate the values here instead of adding to needs_invalidation,
+            // since the code below has some conditional handling, whereas we always need to
+            // invalidate here.
             {
                 let mut data = scope.scope_data.0.borrow_mut();
                 if !data.initialized {
                     data.initialized = true;
-                    data.needs_invalidation
-                        .extend(&scope.parent_data.to_invalidate);
+                    data.values
+                        .retain(|var_idx, _| !scope.parent_data.to_invalidate.contains(var_idx));
                 }
             }
 
-            // Now, we need to apply any invalidations requested by children.
-            // SetVariable has no children, so it doesn't really matter that this
-            // happens after we read a value from it.
-            {
+            /// Applies any invalidations requested by the children, and forwards them to our parent.
+            fn forward_invalidations(scope: &Scope<ParentData, PrimitiveDataRef>) {
                 let mut data = scope.scope_data.0.borrow_mut();
                 let data = &mut *data;
+
+                // If the children requested we permanently invalidate, do so.
+                // We don't have to do this for normal invalidations, since they're
+                // just a one-time thing applied below.
+                data.perm_invalidated
+                    .extend(data.needs_perm_invalidation.iter());
+
                 data.values.retain(|var_idx, _| {
                     !data.perm_invalidated.contains(var_idx)
                         && !data.needs_invalidation.contains(var_idx)
                 });
+
+                // Propagate upwards.
+                if let Some(parent_data) = &data.parent {
+                    let mut parent_data = parent_data.0.borrow_mut();
+                    parent_data
+                        .needs_perm_invalidation
+                        .extend(data.needs_perm_invalidation.iter());
+                    parent_data
+                        .needs_invalidation
+                        .extend(data.needs_invalidation.iter());
+                }
 
                 // Unless permanently invalidated, if we set the value again, it'll be valid
                 // for inlining once more.
                 data.needs_invalidation.clear();
             }
 
-            // TODO: Slight optimization for if statements: inline data in their
-            //       condition before invalidation.
+            // We need a special case for if statements: they have an expression in their condition,
+            // but since their children run afterward, we can hold off on invalidations until after
+            // we inline in their condition.
+            //
+            // This ISN'T true for while loops, since their condition runs multiple times, it must have
+            // the same invalidations applied to it.
+            let do_invalidation_after = matches!(statement, MIRStatement::IfStatement { .. });
+
+            if !do_invalidation_after {
+                forward_invalidations(scope);
+            }
 
             // TODO: When while loops are implemented, they need to additionally use
             //       the invalidated list from parent_data.
@@ -221,6 +252,10 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
                 return false;
             }
 
+            if do_invalidation_after {
+                forward_invalidations(scope);
+            }
+
             // If we ever take a reference to the variable, then we can't easily predict what
             // its value will be, so it needs to be completely excluded from inlining.
             // We only need to worry about direct variable refs, since others (index/member)
@@ -235,8 +270,20 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
                     {
                         let mut scope_data = scope.scope_data.0.borrow_mut();
 
-                        scope_data.needs_invalidation.insert(var_idx);
                         scope_data.perm_invalidated.insert(var_idx);
+                        // We need to invalidate directly, since we need it to affect
+                        // the next statement.
+                        scope_data
+                            .values
+                            .retain(|check_var_idx, _| *check_var_idx != var_idx);
+                        if let Some(parent) = &scope_data.parent {
+                            parent
+                                .0
+                                .borrow_mut()
+                                .needs_perm_invalidation
+                                .insert(var_idx);
+                            parent.0.borrow_mut().needs_invalidation.insert(var_idx);
+                        }
                     }
 
                     true

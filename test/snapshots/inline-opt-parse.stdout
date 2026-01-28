@@ -17,7 +17,12 @@ function main() : () {
         if (val4 == 30) {
             val4 = 10;
         }
-        val4 = (val4 + 1);
+        if (val2 == 20) {
+            val4 = (val4 + 1);
+        }
+        if (val2 == 40) {
+            break;
+        }
         loop {
             let val5: u32 = val4;
             val4 = 50;
