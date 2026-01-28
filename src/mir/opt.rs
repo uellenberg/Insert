@@ -179,6 +179,21 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
                 }
             }
 
+            // If we ever take a reference to the variable, then we can't easily predict what
+            // its value will be, so it needs to be completely excluded from inlining.
+            // We do it here because otherwise validity is based on ordering, e.g,,
+            // for a + val(&a), if we evaluate a first we can inline, but if we evaluate val first
+            // we can't, since it might have changed a. So, it's easier to just invalidate a to begin
+            // with and not worry about it.
+            //
+            // This is also a bit of a hack for the code below. Since we invalidate all references,
+            // we'll never inline Ref<Variable> by accident, since we simply skip that case. But
+            // the code doesn't really check to prevent inlining a variable within a ref, it just relies
+            // on this.
+            if !invalidate_refs(statement, scope) {
+                return false;
+            }
+
             // We need a special case for if statements: they have an expression in their condition,
             // but since their children run afterward, we can hold off on invalidations until after
             // we inline in their condition.
@@ -222,12 +237,6 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
 
             if do_invalidation_after {
                 forward_invalidations(scope);
-            }
-
-            // If we ever take a reference to the variable, then we can't easily predict what
-            // its value will be, so it needs to be completely excluded from inlining.
-            if !invalidate_refs(statement, scope) {
-                return false;
             }
 
             // Save the variable if we can, and invalidate it in the parent scope, since
