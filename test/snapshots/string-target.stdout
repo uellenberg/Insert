@@ -1,2 +1,2 @@
 #include<stdio.h>
-char*i(){char*l;char*m;h(&l,"%u",10);m=l;return m;}char*j(){char*l;char*m;h(&l,"%i",-10);m=l;return m;}char*k(){return"true";}static char*a="10";static char*b="-10";static char*c="true";
+char*i(){char*l;h(&l,"%u",10);return l;}char*j(){char*l;h(&l,"%i",-10);return l;}char*k(){return"true";}static char*a="10";static char*b="-10";static char*c="true";

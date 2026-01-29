@@ -1,17 +1,13 @@
 #include<stdio.h>
 char*i(){
     char*l;
-    char*m;
     h(&l,"%u",10);
-    m=l;
-    return m;
+    return l;
 }
 char*j(){
     char*l;
-    char*m;
     h(&l,"%i",-10);
-    m=l;
-    return m;
+    return l;
 }
 char*k(){
     return"true";

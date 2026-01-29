@@ -38,17 +38,13 @@ extern function h(l (0): &string, ...) : () from "<stdio.h>";
 
 function i() : string {
     let l (1): string;
-    let m (2): string;
     h((&l (1)), "%u", 10)
-    m (2) = l (1);
-    return m (2);
+    return l (1);
 }
 function j() : string {
     let l (1): string;
-    let m (2): string;
     h((&l (1)), "%i", -10)
-    m (2) = l (1);
-    return m (2);
+    return l (1);
 }
 function k() : string {
     return "true";

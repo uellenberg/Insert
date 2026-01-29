@@ -5,7 +5,7 @@ use crate::mir::{
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType, MIRStatement, MIRType,
     MIRTypeInner, MIRVariable,
 };
-use crate::parser::span::eprintln_span;
+use crate::parser::span::{Span, eprintln_span};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -281,7 +281,7 @@ fn inline_function<'a>(
                             };
 
                             block.append(&mut res.0);
-                            expr.inner = MIRExpressionInner::Variable(res.1, None);
+                            *expr = res.1;
                         }
                     }
 
@@ -309,7 +309,7 @@ fn inline_function<'a>(
                         return false;
                     };
 
-                    // The output variable doesn't matter since we don't use it.
+                    // The output expression doesn't matter since we don't use it.
                     block.append(&mut res.0);
 
                     // No pushing statement, since we don't need it anymore.
@@ -345,7 +345,7 @@ fn rewrite_inline_function<'a>(
     args: &[MIRExpression<'a>],
     visited: &mut HashSet<MIRFunctionKey>,
     inline_var_idx: &mut u32,
-) -> Result<(Vec<MIRStatement<'a>>, Cow<'a, str>), ()> {
+) -> Result<(Vec<MIRStatement<'a>>, MIRExpression<'a>), ()> {
     // We need to ensure that we're fully resolved first, before inlining ourselves
     // into a parent function.
     if !inline_function(ctx, func, visited, inline_var_idx) {
@@ -395,40 +395,26 @@ fn rewrite_inline_function<'a>(
         )
     });
 
-    // Output variable.
-    let output_var = format!("$inline_{}", inline_var_idx);
-    *inline_var_idx += 1;
+    let mut out_expr;
 
-    // The only return will be in the last statement.
-    // If there's no return there, then it's implicit.
-    let output_var_info = MIRVariable {
-        name: output_var.clone().into(),
-        ty: ctx.program.functions[func].ret_ty.clone(),
-        span: ctx.program.functions[func].span.clone(),
-        var_idx: None,
-        arg: false,
-    };
-
-    if let Some(MIRStatement::Return { expr, span }) = body.last().cloned() {
-        // Explicit return.
+    if let Some(MIRStatement::Return {
+        expr: Some(expr), ..
+    }) = body.last().cloned()
+    {
+        // Explicit return with value.
         body.pop();
-        body.push(MIRStatement::CreateVariable {
-            var: output_var_info,
-            value: expr,
-            span,
-        });
+        out_expr = expr;
     } else {
-        // Implicit return.
+        // Implicit return or explicit return with no value.
         // This also means the function returns unit.
-        body.push(MIRStatement::CreateVariable {
-            value: Some(MIRExpression {
-                inner: MIRExpressionInner::Unit,
-                ty: Some(ctx.program.functions[func].ret_ty.clone()),
-                span: output_var_info.span.clone(),
+        out_expr = MIRExpression {
+            inner: MIRExpressionInner::Unit,
+            ty: Some(MIRType {
+                ty: MIRTypeInner::Unit,
+                span: None,
             }),
-            span: output_var_info.span.clone(),
-            var: output_var_info,
-        });
+            span: Span::empty(),
+        };
     }
 
     // Rewrite everything to map old variables to new ones.
@@ -450,34 +436,18 @@ fn rewrite_inline_function<'a>(
 
                 // We need to rename local variables to avoid conflicts.
                 MIRStatement::CreateVariable { var, .. } => {
-                    // We'll see the output_var which was injected above, and must not
-                    // rewrites name.
-                    // We should still explore its expressions though.
-                    if var.name != output_var {
-                        // This is for robustness, e.g., phantom variables might be inserted
-                        // for args, and in general, it will always be safe to map the same
-                        // name to a different name, unique to the original (even with shadowing).
-                        if let Some(new_name) = var_map.get(&var.name) {
-                            var.name = new_name.clone();
-                        } else {
-                            let new_name = format!("$inline_{}", inline_var_idx);
-                            *inline_var_idx += 1;
+                    // This is for robustness, e.g., phantom variables might be inserted
+                    // for args, and in general, it will always be safe to map the same
+                    // name to a different name, unique to the original (even with shadowing).
+                    if let Some(new_name) = var_map.get(&var.name) {
+                        var.name = new_name.clone();
+                    } else {
+                        let new_name = format!("$inline_{}", inline_var_idx);
+                        *inline_var_idx += 1;
 
-                            var_map.insert(var.name.clone(), new_name.clone().into());
-                            var.name = new_name.into();
-                        }
+                        var_map.insert(var.name.clone(), new_name.clone().into());
+                        var.name = new_name.into();
                     }
-                }
-                MIRStatement::SetVariable { place, .. } => {
-                    explore_expr_mut(place, &mut |expr| {
-                        if let MIRExpressionInner::Variable(name, _) = &mut expr.inner
-                            && let Some(new_name) = var_map.get(name)
-                        {
-                            *name = new_name.clone();
-                        }
-
-                        true
-                    });
                 }
                 MIRStatement::DropVariable(name, ..) => {
                     if let Some(new_name) = var_map.get(name) {
@@ -489,15 +459,7 @@ fn rewrite_inline_function<'a>(
             }
 
             if !find_exprs_mut(&mut statement, &mut |expr, _| {
-                explore_expr_mut(expr, &mut |expr| {
-                    if let MIRExpressionInner::Variable(name, _) = &mut expr.inner
-                        && let Some(new_name) = var_map.get(name)
-                    {
-                        *name = new_name.clone();
-                    }
-
-                    true
-                });
+                remap_expr_vars(expr, &var_map);
 
                 true
             }) {
@@ -517,7 +479,29 @@ fn rewrite_inline_function<'a>(
     // to form the final output for the function.
     header.append(&mut body);
 
-    Ok((header, output_var.into()))
+    // This needs to be remapped separately, since it isn't
+    // part of the header/body.
+    // It must occur after we rewrite above, so that all the
+    // variables have new names assigned in the map.
+    remap_expr_vars(&mut out_expr, &var_map);
+
+    Ok((header, out_expr))
+}
+
+/// Remaps al inline variables in an expression according to the var map.
+fn remap_expr_vars<'a>(
+    expr: &mut MIRExpression<'a>,
+    var_map: &HashMap<Cow<'a, str>, Cow<'a, str>>,
+) {
+    explore_expr_mut(expr, &mut |expr| {
+        if let MIRExpressionInner::Variable(name, _) = &mut expr.inner
+            && let Some(new_name) = var_map.get(name)
+        {
+            *name = new_name.clone();
+        }
+
+        true
+    });
 }
 
 /// Removes all functions from the final output that aren't marked as export.
