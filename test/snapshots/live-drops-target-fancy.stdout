@@ -1,0 +1,28 @@
+static unsigned int a=250;void b(unsigned int*d,unsigned int* *e){
+    *e=d;
+}
+unsigned int*c(unsigned int*d,unsigned int* *e){
+    return d;
+}
+unsigned int main(){
+    unsigned int d;
+    unsigned int e;
+    unsigned int*f;
+    unsigned int*g;
+    d=20;
+    e=30;
+    b(&e,&f);
+    d=20+e;
+    e=40;
+    f=&e;
+    b(f,&g);
+    d=d+e;
+    d=d+ *g;
+    d=d+ *f;
+    e=40;
+    f=&e;
+    g=c(&e, &f);
+    d=d+e;
+    d=d+ *g;
+    return d;
+}

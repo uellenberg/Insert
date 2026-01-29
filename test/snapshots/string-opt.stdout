@@ -37,29 +37,19 @@ inline function g(l (0): string) : string {
 extern function h(l (0): &string, ...) : () from "<stdio.h>";
 
 function i() : string {
-    let l (0): u32;
-    let m (1): string;
-    let n (2): string;
-    l (0) = 10;
-    h((&m (1)), "%u", 10)
-    n (2) = m (1);
-    return n (2);
+    let l (1): string;
+    let m (2): string;
+    h((&l (1)), "%u", 10)
+    m (2) = l (1);
+    return m (2);
 }
 function j() : string {
-    let l (0): i32;
-    let m (1): string;
-    let n (2): string;
-    l (0) = -10;
-    h((&m (1)), "%i", -10)
-    n (2) = m (1);
-    return n (2);
+    let l (1): string;
+    let m (2): string;
+    h((&l (1)), "%i", -10)
+    m (2) = l (1);
+    return m (2);
 }
 function k() : string {
-    let l (0): bool;
-    let m (1): string;
-    let n (2): string;
-    l (0) = true;
-    m (1) = "true";
-    n (2) = "true";
     return "true";
 }

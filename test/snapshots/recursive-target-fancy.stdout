@@ -1,6 +1,4 @@
 unsigned int a(unsigned int b){
-    char*c;
-    c="my test string\0";
     if(b<=1){
         return b;
     }

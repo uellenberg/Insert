@@ -6,12 +6,13 @@ const val1: u32 = used();
 
 // Functions: 
 
-function main() : () {
+function main() : u32 {
     let val: u32 = val1;
     val = addOne(val);
     addOne(15)
     used()
     let res: u32 = addOne(addOne(val));
+    return res;
 }
 helper function used() : u32 {
     return 10;

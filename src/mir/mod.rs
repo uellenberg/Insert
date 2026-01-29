@@ -10,7 +10,7 @@ mod type_check;
 mod var;
 
 use crate::codegen::Codegen;
-use crate::mir::drop::drop_at_scope_end;
+use crate::mir::drop::add_live_drops;
 use crate::mir::expr::{const_eval, inline_consts, optimize_exprs};
 use crate::mir::function::{
     inline_functions, insert_fn_arg_args, mark_reachable, prune_functions, resolve_fns_to_vars,
@@ -139,9 +139,7 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         }
     }
 
-    if !drop_at_scope_end(ctx) {
-        return false;
-    }
+    add_live_drops(ctx);
 
     // All variables are now dropped, including
     // arg variables.
@@ -1000,7 +998,7 @@ pub enum MIRTypeInner<'a> {
     Array(Box<MIRTypeInner<'a>>),
 
     /// An array of a fixed size.
-    /// This is passed by value.
+    /// This is passed by reference.
     ArrayFixed(Box<MIRTypeInner<'a>>, usize),
 }
 

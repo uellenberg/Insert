@@ -149,7 +149,12 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
                 if !find_exprs_mut(&mut statement, &mut |expr, _| {
                     explore_expr_mut(expr, &mut |expr| {
                         if let MIRExpressionInner::Variable(_, Some(var_idx)) = &mut expr.inner {
-                            *var_idx = scope.scope_data.0.borrow().allocations[var_idx];
+                            let data = scope.scope_data.0.borrow();
+                            // If we're trying to write to a dropped variable, just remove it.
+                            // This only happens if it's a dead write anyway.
+                            if !data.dropped.contains(var_idx) {
+                                *var_idx = data.allocations[var_idx];
+                            }
                         }
 
                         true

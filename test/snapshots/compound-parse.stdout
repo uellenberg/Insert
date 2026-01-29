@@ -4,7 +4,8 @@
 
 // Functions: 
 
-function main() : () {
+function main() : u32 {
     let v: u32 = 10;
     v = (v * (v * v));
+    return v;
 }

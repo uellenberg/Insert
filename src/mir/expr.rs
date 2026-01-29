@@ -166,6 +166,14 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             MIRExpressionInner::BoolOr(left, right) => {
                 simple_binary!(left, right, Bool, Bool, ||)
             }
+            MIRExpressionInner::Ref(box MIRExpression {
+                inner: MIRExpressionInner::Deref(inner),
+                ..
+            })
+            | MIRExpressionInner::Deref(box MIRExpression {
+                inner: MIRExpressionInner::Ref(inner),
+                ..
+            }) => Some(inner.inner.clone()),
 
             // TODO: Implement member access reduction for const structs.
             MIRExpressionInner::Member(_, _) => None,
@@ -178,8 +186,6 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Unit
             | MIRExpressionInner::Variable(_, _)
-            // We could implement ref/deref reduction (&*val -> val), but in some languages
-            // there's a real reason to leave it unsimplified.
             | MIRExpressionInner::Ref(_)
             | MIRExpressionInner::Deref(_) => None,
         })();

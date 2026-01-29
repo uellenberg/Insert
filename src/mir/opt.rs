@@ -361,6 +361,9 @@ fn process_var_write<'a>(
             if !data.perm_invalidated.contains(&var_idx) {
                 data.values.insert(var_idx, value.inner.clone());
             }
+        } else {
+            // Non-primitive write, so we need to invalidate.
+            scope.scope_data.0.borrow_mut().values.remove(&var_idx);
         }
     }
 }

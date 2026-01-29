@@ -4,7 +4,7 @@
 
 // Functions: 
 
-function main() : () {
+function main() : u32 {
     let val: u32 = 10;
     let val2: u32 = val;
     if (val == val2) {
@@ -32,4 +32,5 @@ function main() : () {
     let val5: u32 = val4;
     val4 = 30;
     let val6: u32 = val4;
+    return val4;
 }

@@ -1,1 +1,1 @@
-void main(){unsigned int d;unsigned int e;unsigned int f;unsigned int g;unsigned int h;unsigned int i;unsigned int j;unsigned int k;unsigned int l;unsigned int m;d=10;e=10;f=11;d=11;g=15;h=16;a();i=10;j=11;k=11;l=12;m=12;}unsigned int a(){return 10;}
+unsigned int main(){a();return 13;}unsigned int a(){return 10;}

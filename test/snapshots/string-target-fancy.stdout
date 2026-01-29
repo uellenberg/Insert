@@ -1,29 +1,19 @@
 #include<stdio.h>
 char*i(){
-    unsigned int l;
+    char*l;
     char*m;
-    char*n;
-    l=10;
-    h(&m,"%u",10);
-    n=m;
-    return n;
+    h(&l,"%u",10);
+    m=l;
+    return m;
 }
 char*j(){
-    int l;
+    char*l;
     char*m;
-    char*n;
-    l=-10;
-    h(&m,"%i",-10);
-    n=m;
-    return n;
+    h(&l,"%i",-10);
+    m=l;
+    return m;
 }
 char*k(){
-    bool l;
-    char*m;
-    char*n;
-    l=true;
-    m="true";
-    n="true";
     return"true";
 }
 static char*a="10";static char*b="-10";static char*c="true";

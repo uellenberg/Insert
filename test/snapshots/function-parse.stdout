@@ -4,13 +4,15 @@
 
 // Functions: 
 
-function main() : () {
+function main() : bool {
     other(10, 11, 12, 13, 14, 15)
     let my_val: bool = bools(true, false, false, false, false, bools(true, false, false, false, false, false));
+    return my_val;
 }
-function other(test: u32, a1: u32, b1: u32, c1: u32, d1: u32, e1: u32) : () {
+function other(test: u32, a1: u32, b1: u32, c1: u32, d1: u32, e1: u32) : u32 {
     let ret: u32 = (test + 10);
     let other_v: u32 = e1;
+    return (ret * other_v);
 }
 function bools(a: bool, b: bool, c: bool, d: bool, e: bool, f: bool) : bool {
     let val: bool = f;

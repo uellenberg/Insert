@@ -6,8 +6,6 @@
 
 function main() : () {
     let a (0): u32;
-    let b (1): bool;
-    b (1) = true;
     a (0) = 10;
     loop {
         if (a (0) == 0) {

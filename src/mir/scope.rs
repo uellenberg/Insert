@@ -221,10 +221,7 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             MIRStatement::DropVariable(name, ..) => {
                 // Manual drops don't invoke on_scope_drop.
 
-                if scope.variables.remove(name).is_none() {
-                    eprintln!("Failed to drop {name}: variable does not exist!");
-                    return false;
-                }
+                scope.variables.remove(name);
 
                 // We already dropped it, so no
                 // need to do it automatically.
@@ -386,6 +383,97 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
         if !on_scope_end(&scope, block) {
             return false;
         }
+
+        true
+    }
+
+    /// This is the same as rewrite_block, but it explores bottom-up.
+    /// Statements inserted should still be top-to-bottom, though (same as rewrite_block).
+    pub fn rewrite_block_rev<'a>(
+        block: &mut Vec<MIRStatement<'a>>,
+        for_each: &mut impl FnMut(
+            MIRStatement<'a>,
+            &mut Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        on_scope_end: &mut impl FnMut(
+            &Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        pre_run: &impl Fn(
+            &MIRStatement<'a>,
+            &mut Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+    ) -> bool {
+        Self::rewrite_block_rev_internal(block, for_each, on_scope_end, pre_run, Scope::default())
+    }
+
+    fn rewrite_block_rev_internal<'a>(
+        block: &mut Vec<MIRStatement<'a>>,
+        for_each: &mut impl FnMut(
+            MIRStatement<'a>,
+            &mut Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        on_scope_end: &mut impl FnMut(
+            &Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        pre_run: &impl Fn(
+            &MIRStatement<'a>,
+            &mut Scope<'a, ParentData, ScopeData>,
+            &mut Vec<MIRStatement<'a>>,
+        ) -> bool,
+        mut scope: Scope<'a, ParentData, ScopeData>,
+    ) -> bool {
+        let mut old_block = vec![];
+        swap(block, &mut old_block);
+
+        let parent_data = scope.parent_data.clone();
+
+        for mut statement in old_block.into_iter().rev() {
+            // We need to do this so parent_data
+            // is shared between pre_run and for_each.
+            {
+                let length_before = block.len();
+
+                if !pre_run(&statement, &mut scope, block) {
+                    return false;
+                }
+
+                explore_recurse!(&mut statement, (child_block) => {
+                    if !Self::rewrite_block_rev_internal(child_block, for_each, on_scope_end, pre_run, scope.child()) {
+                        return false;
+                    }
+                });
+
+                if !for_each(statement.clone(), &mut scope, block) {
+                    return false;
+                }
+
+                // Statements are inserted top-to-bottom to make things more ergonomic, but
+                // since the statements overall will be built in reverse, we need to reverse
+                // whatever we inserted.
+                let length_after = block.len();
+                block[length_before..length_after].reverse();
+            }
+
+            if !Self::explore_block_handle_scope(&statement, &mut scope) {
+                return false;
+            }
+
+            // The parent data can't be shared between statements on the same level, so we
+            // need to reset it.
+            scope.parent_data = parent_data.clone();
+        }
+
+        if !on_scope_end(&scope, block) {
+            return false;
+        }
+
+        // We need to reverse the block again, since we built it up in reverse.
+        block.reverse();
 
         true
     }

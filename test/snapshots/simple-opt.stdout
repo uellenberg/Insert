@@ -6,14 +6,12 @@ const val2: u32 = 15;
 // Statics: 
 
 static a: u32 = 21;
+static b: bool = false;
 
 // Functions: 
 
 function main() : () {
-    let b (0): u32;
-    let c (1): u32;
-    let d (2): bool;
-    b (0) = 5;
-    c (1) = 25;
-    d (2) = true;
+    a = 5;
+    a = 25;
+    b = true;
 }

@@ -1,13 +1,14 @@
-void main(){
+bool main(){
     bool d;
     a(10,11,12,13,14,15);
     d=b(true, false, false, false, false, b(true, false, false, false, false, false));
+    return d;
 }
-void a(unsigned int d,unsigned int e,unsigned int f,unsigned int g,unsigned int h,unsigned int i){
+unsigned int a(unsigned int d,unsigned int e,unsigned int f,unsigned int g,unsigned int h,unsigned int i){
     unsigned int j;
-    unsigned int k;
     j=d+10;
-    k=i;
+    d=i;
+    return j*d;
 }
 bool b(bool d,bool e,bool f,bool g,bool h,bool i){
     bool j;

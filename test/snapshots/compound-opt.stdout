@@ -4,8 +4,6 @@
 
 // Functions: 
 
-function main() : () {
-    let a (0): u32;
-    a (0) = 10;
-    a (0) = 1000;
+function main() : u32 {
+    return 1000;
 }

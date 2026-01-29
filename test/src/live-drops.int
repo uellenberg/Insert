@@ -1,0 +1,67 @@
+//@check
+
+static eval: u32 = main();
+
+function ref1(a: &u32, b: &&u32) {
+    // The compiler doesn't know that it does this
+    // when locally evaluating main, but must assume that it does.
+    *b = a;
+}
+
+function ref2(a: &u32, b: &&u32) -> &u32 {
+    // Could return a or b.
+    return a;
+}
+
+function main() -> u32 {
+    // drop val1;
+
+    // Unused, drop immediately.
+    let val1: u32 = 10;
+
+    // Used for the entire duration.
+    let val2: u32 = 20;
+
+    let val3: u32 = 30;
+    let val3ref: &u32 = &val3;
+    let val3ref1: &u32;
+    ref1(val3ref, &val3ref1);
+    // drop val3ref, val3ref1;
+    // Transitive relationships:
+    // - val3ref -> val3
+    // - val3ref1 -> val3ref, val3
+    val2 = val2 + val3;
+    // drop val3;
+
+    let val4: u32 = 40;
+    let val4ref: &u32 = &val4;
+    let val4refref: &&u32 = &val4ref;
+    let val4ref1: &u32;
+    ref1(*val4refref, &val4ref1);
+    // drop val4refref;
+    // Transitive relationships:
+    // val4ref -> val4
+    // val4refref -> val4ref, val4
+    // val4ref1 -> val4ref, val4
+    val2 = val2 + val4;
+    val2 = val2 + *val4ref1;
+    // drop val4ref1;
+    val2 = val2 + *val4ref;
+    // drop val4ref, val4;
+
+    let val5: u32 = 40;
+    let val5ref: &u32 = &val5;
+    let val5ref1: &u32 = &val5;
+    let val5refref: &&u32 = &val5ref;
+    let val5ref2: &u32 = ref2(val5ref1, val5refref);
+    // Transitive relationships:
+    // val5ref -> val5
+    // val5refref -> val5ref, val5ref1, val5
+    // val5ref2 -> vel5ref1, val5refref, val5, val5ref
+    val2 = val2 + val5;
+    val2 = val2 + *val5ref2;
+    // drop val5ref2, val5ref1, val5refref, val5ref, val5;
+
+    return val2;
+    // drop val2;
+}

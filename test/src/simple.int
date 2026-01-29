@@ -4,6 +4,7 @@ const val1: u32 = 10;
 const val2: u32 = 5 + val1;
 
 static test: u32 = val2 + 5 + 2 * (8 - 5) - 5;
+static test2: bool = val1 == val2;
 
 function main() {
     let v: u32;
@@ -14,4 +15,8 @@ function main() {
 
     let h: bool;
     h = v != g;
+
+    test = v;
+    test = g;
+    test2 = h;
 }
