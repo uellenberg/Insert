@@ -314,6 +314,15 @@ impl Codegen for CLowerer {
                 let index = self.lower_expression(index);
                 spread![...base, Token::new("[".into()), ...index, Token::new("]".into())]
             }
+            MIRExpressionInner::Array(elems) => {
+                let elems = elems
+                    .iter()
+                    .map(|v| self.lower_expression(v))
+                    .intersperse(spread![Token::new(",".into())])
+                    .flatten()
+                    .collect::<Tokens<'a>>();
+                spread![LEFT_SQUIGGLE, ...elems, RIGHT_SQUIGGLE]
+            }
         }
     }
 
@@ -329,7 +338,7 @@ impl Codegen for CLowerer {
 
     fn lower_datatype<'a>(&mut self, ty: &MIRTypeInner<'a>) -> (Tokens<'a>, Tokens<'a>) {
         match ty {
-            MIRTypeInner::UnknownNumber => unreachable!(),
+            MIRTypeInner::UnknownNumber | MIRTypeInner::NotConstructed => unreachable!(),
             MIRTypeInner::I32 => (spread![Token::new("int".into())], [].into()),
             MIRTypeInner::U32 => (
                 spread![Token::new("unsigned".into()), Token::new("int".into())],
@@ -441,7 +450,8 @@ impl Codegen for CLowerer {
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Unit
-            | MIRExpressionInner::FunctionCall(_) => None,
+            | MIRExpressionInner::FunctionCall(_)
+            | MIRExpressionInner::Array(_) => None,
 
             MIRExpressionInner::Member(..) | MIRExpressionInner::Index(..) => Some(1),
 

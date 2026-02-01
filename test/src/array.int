@@ -1,0 +1,26 @@
+//@check
+
+static a: &[i32] = [1, 2, 3];
+static b: [i32; 3] = [1, 2, 3];
+static c: i32 = a[1];
+static a_ref: &i32 = &a[1];
+static a_ref_val: i32 = *a_ref;
+static empty: &[i32] = [];
+
+function sum() -> i32 {
+    let sum: i32 = 0;
+
+    let i: u32 = 0;
+    loop {
+        if i >= 3 {
+            break;
+        }
+
+        sum = sum + a[i];
+        i = i + 1;
+    }
+
+    return sum;
+}
+
+static d: i32 = sum();

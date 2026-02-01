@@ -8,7 +8,7 @@ use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunctionKey, MIRFunctionType,
     MIRStatement, MIRTypeInner,
 };
-use crate::parser::span::eprintln_span;
+use crate::parser::span::{Span, eprintln_span};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -54,7 +54,14 @@ pub enum InterpreterData<'a> {
     /// This is to allow us to convert the ref back to an expression form.
     /// This means that the interpreter can't optimize refs very well, but that's okay,
     /// because the const_optimize_expr pass can handle that.
-    Ref(VariableData<'a>, Box<MIRExpression<'a>>),
+    ///
+    /// This is None while the expression is being evaluated, but will always be Some
+    /// afterwards.
+    Ref(VariableData<'a>, Option<Box<MIRExpression<'a>>>),
+    /// An array, passed by reference.
+    /// This needs to store VariableData to allow taking references
+    /// to individual indices.
+    Array(Rc<RefCell<Vec<VariableData<'a>>>>),
 }
 
 /// Contains information about the function currently being called
@@ -299,10 +306,7 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::Variable(name, _) => {
                 if place {
                     if let Some(data) = scope.variables.get(name) {
-                        return Ok(InterpreterData::Ref(
-                            Rc::clone(data),
-                            Box::new(expr.clone()),
-                        ));
+                        return Ok(InterpreterData::Ref(Rc::clone(data), None));
                     }
 
                     if self.ctx.program.static_names.contains_key(name) {
@@ -311,7 +315,7 @@ impl<'a> Interpreter<'a> {
 
                         return Ok(InterpreterData::Ref(
                             Rc::clone(&self.statics.borrow()[name]),
-                            Box::new(expr.clone()),
+                            None,
                         ));
                     }
 
@@ -381,7 +385,12 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::Ref(inner) => {
                 // We need to go into place mode to capture a reference to
                 // the inner expression.
-                let inner = self.eval_expr(inner, scope, true)?;
+                let mut res = self.eval_expr(inner, scope, true)?;
+                let InterpreterData::Ref(_, expr) = &mut res else {
+                    unreachable!("Inner data for reference wasn't a reference!");
+                };
+                // We need to use the top-level expr to preserve full information.
+                *expr = Some(inner.clone());
 
                 // When we switch into place mode, that by itself adds a level
                 // of indirection, so we don't need to directly add a reference.
@@ -392,7 +401,7 @@ impl<'a> Interpreter<'a> {
                         "Cannot create references in place mode (type check should have caught this)!"
                     );
                 } else {
-                    Ok(inner)
+                    Ok(res)
                 }
             }
             MIRExpressionInner::Deref(inner) => {
@@ -417,11 +426,57 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::Member(_base, _name) => {
                 todo!()
             }
-            MIRExpressionInner::Index(_base, _index) => {
+            MIRExpressionInner::Index(base, index) => {
                 // Index crosses the place expression boundary,
                 // so place = false when evaluating it, no matter if
                 // we're current in place mode.
-                todo!()
+                //
+                // Because base is accessing an array, which is already a reference,
+                // then we actually want to capture it in non-place mode as well.
+                // However, place mode still determines whether we return a reference or not.
+                let base = self.eval_expr(base, scope, false)?;
+                let index = self.eval_expr(index, scope, false)?;
+
+                let InterpreterData::Array(elems) = base else {
+                    panic!("Index base is not an array!");
+                };
+                let index: usize = match index {
+                    InterpreterData::U32(val) => val as usize,
+                    InterpreterData::I32(val) => {
+                        if val < 0 {
+                            panic!("Negative array index!");
+                        }
+
+                        val as usize
+                    }
+                    _ => panic!("Index is not an integer!"),
+                };
+                if index >= elems.borrow().len() {
+                    panic!("Index out of bounds!");
+                }
+
+                if place {
+                    Ok(InterpreterData::Ref(
+                        Rc::clone(&elems.borrow()[index]),
+                        None,
+                    ))
+                } else {
+                    Ok(elems.borrow()[index]
+                        .borrow()
+                        .clone()
+                        .expect("Uninitialized array element"))
+                }
+            }
+            MIRExpressionInner::Array(elems) => {
+                let elems = elems
+                    .iter()
+                    .map(|expr| {
+                        self.eval_expr(expr, scope, false)
+                            .map(|v| Rc::new(RefCell::new(Some(v))))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(InterpreterData::Array(Rc::new(RefCell::new(elems))))
             }
         }
     }
@@ -622,7 +677,22 @@ impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
             InterpreterData::FunctionPtr(_v) => {
                 todo!("Figure out how to handle function pointers to overloaded functions")
             }
-            InterpreterData::Ref(_, expr) => MIRExpressionInner::Ref(expr),
+            InterpreterData::Ref(_, expr) => MIRExpressionInner::Ref(expr.unwrap()),
+            InterpreterData::Array(elems) => MIRExpressionInner::Array(
+                elems
+                    .borrow()
+                    .iter()
+                    .map(|expr| MIRExpression {
+                        inner: expr
+                            .borrow()
+                            .clone()
+                            .expect("Uninitialized array element!")
+                            .into(),
+                        ty: None,
+                        span: Span::empty(),
+                    })
+                    .collect(),
+            ),
         }
     }
 }

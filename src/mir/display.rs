@@ -290,6 +290,16 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::Deref(inner) => write!(f, "(*{})", inner),
             MIRExpressionInner::Member(base, field) => write!(f, "({}.{})", base, field),
             MIRExpressionInner::Index(base, index) => write!(f, "({}[{}])", base, index),
+            MIRExpressionInner::Array(elems) => {
+                write!(f, "[")?;
+                for (i, elem) in elems.iter().enumerate() {
+                    if i != 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", elem)?;
+                }
+                write!(f, "]")
+            }
         }
     }
 }

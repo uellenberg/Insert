@@ -724,6 +724,14 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
             return parse_place_expr(location, data);
         }
         Rule::boolLiteral => MIRExpressionInner::Bool(data.as_str() == "true"),
+        Rule::arrayExpr => {
+            let mut data = data.into_inner();
+            let inner = data
+                .map(|data| parse_expression(location, data))
+                .collect::<Vec<_>>();
+
+            MIRExpressionInner::Array(inner)
+        }
         Rule::expression => {
             // Expand expression span to include parenthases.
             let mut expr = parse_expression(location, data);

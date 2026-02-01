@@ -477,6 +477,11 @@ fn collect_refs(
             }
         }
 
+        MIRExpressionInner::Array(elems) => elems
+            .iter()
+            .flat_map(|expr| collect_refs(expr, relationships))
+            .collect(),
+
         // Binary ops, literals, etc: no refs flow through
         MIRExpressionInner::Add(..)
         | MIRExpressionInner::Sub(..)
@@ -581,6 +586,7 @@ fn is_ref(ty: &MIRTypeInner) -> bool {
     match ty {
         // Not references.
         MIRTypeInner::UnknownNumber
+        | MIRTypeInner::NotConstructed
         | MIRTypeInner::I32
         | MIRTypeInner::U32
         | MIRTypeInner::Bool
@@ -601,6 +607,7 @@ fn contains_ref(ty: &MIRTypeInner) -> bool {
     match ty {
         // Not references.
         MIRTypeInner::UnknownNumber
+        | MIRTypeInner::NotConstructed
         | MIRTypeInner::I32
         | MIRTypeInner::U32
         | MIRTypeInner::Bool

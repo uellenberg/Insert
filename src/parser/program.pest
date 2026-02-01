@@ -178,7 +178,11 @@ multiplication = {
 }
 
 primary = {
-    number | string | functionCallDirect | functionCallIndirect | boolLiteral | placeExpr | "(" ~ expression ~ ")"
+    number | string | functionCallDirect | functionCallIndirect | boolLiteral | placeExpr | arrayExpr | "(" ~ expression ~ ")"
+}
+
+arrayExpr = {
+    "[" ~ expression? ~ ("," ~ expression)* ~ ","? ~ "]"
 }
 
 placeExpr = {

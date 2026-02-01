@@ -60,6 +60,13 @@ impl<'a> Clone for MIRContext<'a> {
 /// optimizations, returning
 /// whether it was successful.
 pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
+    // The interpreter runs in its own scope, to avoid messing
+    // with our MIR.
+    // It applies some passes which can't be easily translated back.
+    let Ok(mut interpreter) = Interpreter::new(ctx.clone()) else {
+        return false;
+    };
+
     insert_fn_arg_args(ctx);
 
     // Args now exist as phantom variables.
@@ -74,22 +81,22 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     // Type information now exists.
 
-    if !inline_functions(ctx) {
-        return false;
-    }
-
-    // The interpreter runs in its own scope, to avoid messing
-    // with our MIR.
-    // It applies some passes which can't be easily translated back.
-    let Ok(mut interpreter) = Interpreter::new(ctx.clone()) else {
-        return false;
-    };
-
     if !const_eval(ctx, &mut interpreter) {
         return false;
     }
 
     // Constants are now only literals.
+
+    // Re-check any types, since they'll get destroyed by the interpreter.
+    if !type_check(ctx) {
+        return false;
+    }
+
+    if !inline_functions(ctx) {
+        return false;
+    }
+
+    // Inline functions are no longer called.
 
     if !inline_consts(ctx) {
         return false;
@@ -942,6 +949,10 @@ pub enum MIRExpressionInner<'a> {
 
     /// Index access (a[b]).
     Index(Box<MIRExpression<'a>>, Box<MIRExpression<'a>>),
+
+    /// An array literal.
+    /// All elements are of the same type.
+    Array(Vec<MIRExpression<'a>>),
 }
 
 /// A type written out as text.
@@ -966,6 +977,11 @@ pub enum MIRTypeInner<'a> {
     /// This is eliminated during type checking, and defaults
     /// to i32 if there's any ambiguity.
     UnknownNumber,
+
+    /// An expression with this type is essentially untyped.
+    /// For example, an empty array has this type.
+    /// This is eliminated during type checking.
+    NotConstructed,
 
     /// Signed 32-bit integer.
     I32,
@@ -1016,6 +1032,7 @@ impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
     fn from(value: MIRTypeInner<'a>) -> Self {
         match value {
             MIRTypeInner::UnknownNumber => Cow::Borrowed("number"),
+            MIRTypeInner::NotConstructed => Cow::Borrowed("not_constructed"),
             MIRTypeInner::I32 => Cow::Borrowed("i32"),
             MIRTypeInner::U32 => Cow::Borrowed("u32"),
             MIRTypeInner::Unit => Cow::Borrowed("()"),

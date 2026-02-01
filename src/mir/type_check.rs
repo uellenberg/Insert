@@ -18,30 +18,25 @@ pub fn type_check(ctx: &mut MIRContext<'_>) -> bool {
     let mut statics = ctx.program.statics.clone();
     let mut functions = ctx.program.functions.clone();
 
-    // All of these have two passes to fully resolve types.
-    // Both passes pull type information from bottom to top and
-    // from top to bottom.
-    // In effect, the first pass will propagate type information
-    // upwards, and the second pass will push it downwards.
-    // This lets us resolve code like:
-    // let val: u32 = 1 + 2;
-    // Here, the expression 1 + 2 will normally be given the type u32,
-    // but we need the downwards pass to give 1 and 2 that type as well.
+    // All of these push type information towards children, then base their
+    // final type on the child, and error on a discrepancy between what their
+    // parent said and what the child said.
+    // This allows it to all be completed in one pass.
 
     for constant in constants.values_mut() {
-        if !check_constant(ctx, constant) || !check_constant(ctx, constant) {
+        if !check_constant(ctx, constant) {
             return false;
         }
     }
 
     for static_data in statics.values_mut() {
-        if !check_static(ctx, static_data) || !check_static(ctx, static_data) {
+        if !check_static(ctx, static_data) {
             return false;
         }
     }
 
     for function in functions.values_mut() {
-        if !check_function(ctx, function) || !check_function(ctx, function) {
+        if !check_function(ctx, function) {
             return false;
         }
     }
@@ -120,18 +115,8 @@ fn print_var_does_not_exist(ctx: &MIRContext<'_>, var_name: Cow<'_, str>, var_sp
 /// Checks whether the given constant is valid,
 /// and modifies its type information to match.
 fn check_constant<'a>(ctx: &MIRContext<'a>, constant: &mut MIRConstant<'a>) -> bool {
-    let Some(expr_type) = check_expression(ctx, &mut constant.value, None) else {
-        return false;
-    };
-
-    if !types_equal(expr_type, &mut constant.ty) {
-        print_unexpected_expr_ty(
-            ctx,
-            constant.ty.clone(),
-            expr_type.clone(),
-            constant.value.span.clone(),
-        );
-
+    constant.value.ty = Some(constant.ty.clone());
+    if check_expression(ctx, &mut constant.value, None).is_none() {
         return false;
     }
 
@@ -141,18 +126,8 @@ fn check_constant<'a>(ctx: &MIRContext<'a>, constant: &mut MIRConstant<'a>) -> b
 /// Checks whether the given static is valid,
 /// and modifies its type information to match.
 fn check_static<'a>(ctx: &MIRContext<'a>, static_data: &mut MIRStatic<'a>) -> bool {
-    let Some(expr_type) = check_expression(ctx, &mut static_data.value, None) else {
-        return false;
-    };
-
-    if !types_equal(expr_type, &mut static_data.ty) {
-        print_unexpected_expr_ty(
-            ctx,
-            static_data.ty.clone(),
-            expr_type.clone(),
-            static_data.value.span.clone(),
-        );
-
+    static_data.value.ty = Some(static_data.ty.clone());
+    if check_expression(ctx, &mut static_data.value, None).is_none() {
         return false;
     }
 
@@ -196,20 +171,10 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                     }
 
                     if let Some(value) = value {
-                        let Some(ty) = check_expression(ctx, value, Some(scope)) else {
+                        value.ty = Some(var.ty.clone());
+                        if check_expression(ctx, value, Some(scope)).is_none() {
                             return false;
                         };
-
-                        if !types_equal(ty, &mut var.ty) {
-                            print_unexpected_expr_ty(
-                                ctx,
-                                var.ty.clone(),
-                                ty.clone(),
-                                value.span.clone(),
-                            );
-
-                            return false;
-                        }
                     }
                 }
 
@@ -256,18 +221,8 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         return false;
                     };
 
-                    let Some(ty) = check_expression(ctx, value, Some(scope)) else {
-                        return false;
-                    };
-
-                    if !types_equal(ty, var_ty) {
-                        print_unexpected_expr_ty(
-                            ctx,
-                            var_ty.clone(),
-                            ty.clone(),
-                            value.span.clone(),
-                        );
-
+                    value.ty = Some(var_ty.clone());
+                    if check_expression(ctx, value, Some(scope)).is_none() {
                         return false;
                     }
                 }
@@ -291,39 +246,19 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 | MIRStatement::GotoNotEqual {
                     condition, span, ..
                 } => {
-                    let Some(cond_ty) = check_expression(ctx, condition, Some(scope)) else {
-                        return false;
-                    };
-
-                    // No need for type_equal since bool can't resolve numbers.
-                    if cond_ty.ty != MIRTypeInner::Bool {
-                        print_unexpected_expr_ty(
-                            ctx,
-                            MIRType {
-                                ty: MIRTypeInner::Bool,
-                                span: Some(span.clone()),
-                            },
-                            cond_ty.clone(),
-                            condition.span.clone(),
-                        );
+                    condition.ty = Some(MIRType {
+                        ty: MIRTypeInner::Bool,
+                        span: Some(span.clone()),
+                    });
+                    if check_expression(ctx, condition, Some(scope)).is_none() {
                         return false;
                     }
                 }
 
                 MIRStatement::Return { expr, span, .. } => match expr {
                     Some(expr) => {
-                        let Some(cond_ty) = check_expression(ctx, expr, Some(scope)) else {
-                            return false;
-                        };
-
-                        if !types_equal(cond_ty, &mut function.ret_ty.clone()) {
-                            print_unexpected_expr_ty(
-                                ctx,
-                                function.ret_ty.clone(),
-                                cond_ty.clone(),
-                                expr.span.clone(),
-                            );
-
+                        expr.ty = Some(function.ret_ty.clone());
+                        if check_expression(ctx, expr, Some(scope)).is_none() {
                             return false;
                         }
                     }
@@ -566,10 +501,36 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
 
     match (ty1, ty2) {
         (to @ MIRTypeInner::UnknownNumber, from @ (MIRTypeInner::I32 | MIRTypeInner::U32))
-        | (from @ (MIRTypeInner::I32 | MIRTypeInner::U32), to @ MIRTypeInner::UnknownNumber) => {
+        | (from @ (MIRTypeInner::I32 | MIRTypeInner::U32), to @ MIRTypeInner::UnknownNumber)
+        | (to @ MIRTypeInner::NotConstructed, from)
+        | (from, to @ MIRTypeInner::NotConstructed) => {
             *to = from.clone();
 
             true
+        }
+        // Downgrading fixed array to dynamic array.
+        (to @ MIRTypeInner::Array(..), from @ MIRTypeInner::ArrayFixed(..))
+        | (to @ MIRTypeInner::ArrayFixed(..), from @ MIRTypeInner::Array(..)) => {
+            if let MIRTypeInner::Array(val1) = to
+                && let MIRTypeInner::ArrayFixed(val2, _) = from
+                && !types_equal_inner(val1, val2)
+            {
+                return false;
+            }
+            if let MIRTypeInner::ArrayFixed(val1, _) = to
+                && let MIRTypeInner::Array(val2) = from
+                && !types_equal_inner(val1, val2)
+            {
+                return false;
+            }
+
+            *to = from.clone();
+
+            true
+        }
+        (MIRTypeInner::Array(val1), MIRTypeInner::Array(val2)) => types_equal_inner(val1, val2),
+        (MIRTypeInner::ArrayFixed(val1, len1), MIRTypeInner::ArrayFixed(val2, len2)) => {
+            len1 == len2 && types_equal_inner(val1, val2)
         }
         // Recursive types need special handling to fully resolve.
         (MIRTypeInner::FunctionPtr(args1, ret1), MIRTypeInner::FunctionPtr(args2, ret2)) => {
@@ -610,6 +571,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
 
 /// Checks if two types could match (considering inference).
 pub fn types_could_match<'a>(a: &MIRTypeInner<'a>, b: &MIRTypeInner<'a>) -> bool {
+    // TODO: Properly handle recursive types (e.g., arrays).
     a == b
         || matches!(
             (a, b),
@@ -619,7 +581,8 @@ pub fn types_could_match<'a>(a: &MIRTypeInner<'a>, b: &MIRTypeInner<'a>) -> bool
             ) | (
                 MIRTypeInner::I32 | MIRTypeInner::U32,
                 MIRTypeInner::UnknownNumber
-            )
+            ) | (MIRTypeInner::NotConstructed, _)
+                | (_, MIRTypeInner::NotConstructed)
         )
 }
 
@@ -688,29 +651,8 @@ fn check_expression<'a, 'b>(
             // check_expression twice: once to propagate upwards and once to propagate
             // downwards.
             if let Some(inherit_ty) = $inherit_ty {
-                if let Some(left_ty) = &mut $left.ty
-                    && !types_equal(inherit_ty, left_ty)
-                {
-                    print_unexpected_expr_ty(
-                        ctx,
-                        inherit_ty.clone(),
-                        left_ty.clone(),
-                        $left.span.clone(),
-                    );
-                    return None;
-                }
-
-                if let Some(right_ty) = &mut $right.ty
-                    && !types_equal(inherit_ty, right_ty)
-                {
-                    print_unexpected_expr_ty(
-                        ctx,
-                        inherit_ty.clone(),
-                        right_ty.clone(),
-                        $right.span.clone(),
-                    );
-                    return None;
-                }
+                $left.ty = Some(inherit_ty.clone());
+                $right.ty = Some(inherit_ty.clone());
             }
 
             let t_left = check_expression(ctx, $left, scope)?;
@@ -736,7 +678,13 @@ fn check_expression<'a, 'b>(
         ($left:expr, $right:expr, $name:literal, $ty:expr) => {{
             // Types don't get pushed downwards from here (i.e., parent type
             // has no significance to the children).
-            simple_binary!($left, $right, $name, &mut None, internal);
+            simple_binary!(
+                $left,
+                $right,
+                $name,
+                &mut (None as Option<MIRType<'a>>),
+                internal
+            );
 
             Some(MIRType {
                 ty: $ty,
@@ -866,9 +814,9 @@ fn check_expression<'a, 'b>(
                 // Span is added after.
                 span: None,
             }),
-            MIRExpressionInner::Ref(expr) => {
+            MIRExpressionInner::Ref(inner) => {
                 if !matches!(
-                    expr.inner,
+                    inner.inner,
                     MIRExpressionInner::Variable(..)
                         | MIRExpressionInner::Index(..)
                         | MIRExpressionInner::Member(..)
@@ -877,20 +825,42 @@ fn check_expression<'a, 'b>(
                     // Maybe we can do this automatically as well.
                     eprintln_span!(
                         ctx,
-                        Some(expr.span.clone()),
-                        "References can only be made to variables, array indexes, or member access: {expr:?}"
+                        Some(inner.span.clone()),
+                        "References can only be made to variables, array indexes, or member access: {inner:?}"
                     );
                     return None;
                 }
 
-                let mut inner_ty = check_expression(ctx, expr, scope)?.clone();
+                // Resolve the inner (non-reference) type.
+                if let Some(MIRType {
+                    ty: MIRTypeInner::Ref(inherit_ty),
+                    span,
+                }) = &mut expr.ty
+                {
+                    inner.ty = Some(MIRType {
+                        ty: (**inherit_ty).clone(),
+                        span: span.clone(),
+                    });
+                }
+                let inner_ty = check_expression(ctx, inner, scope)?.clone();
 
-                inner_ty.ty = MIRTypeInner::Ref(Box::new(inner_ty.ty));
-
-                Some(inner_ty)
+                // Extract the type of the reference (outer).
+                Some(MIRType {
+                    ty: MIRTypeInner::Ref(Box::new(inner_ty.ty)),
+                    span: inner_ty.span,
+                })
             }
-            MIRExpressionInner::Deref(expr) => {
-                let mut inner_ty = check_expression(ctx, expr, scope)?.clone();
+            MIRExpressionInner::Deref(inner) => {
+                // Resolve the inner (reference) type.
+                if let Some(inherit_ty) = &mut expr.ty {
+                    inner.ty = Some(MIRType {
+                        ty: MIRTypeInner::Ref(Box::new(inherit_ty.ty.clone())),
+                        span: inherit_ty.span.clone(),
+                    });
+                }
+                let mut inner_ty = check_expression(ctx, inner, scope)?.clone();
+
+                // Extract the type of the Deref by unwrapping the reference.
                 match inner_ty.ty {
                     MIRTypeInner::Ref(value) => {
                         inner_ty.ty = *value;
@@ -898,8 +868,8 @@ fn check_expression<'a, 'b>(
                     _ => {
                         eprintln_span!(
                             ctx,
-                            Some(expr.span.clone()),
-                            "Cannot dereference non-reference type: {expr:?}"
+                            Some(inner.span.clone()),
+                            "Cannot dereference non-reference type: {inner:?}"
                         );
                         return None;
                     }
@@ -907,9 +877,63 @@ fn check_expression<'a, 'b>(
 
                 Some(inner_ty)
             }
+            MIRExpressionInner::Array(elems) => {
+                if elems.is_empty() {
+                    return Some(MIRType {
+                        ty: MIRTypeInner::ArrayFixed(Box::new(MIRTypeInner::NotConstructed), 0),
+                        span: None,
+                    });
+                }
+
+                let (first, rest) = elems.split_at_mut(1);
+
+                if let Some(MIRType {
+                    ty: MIRTypeInner::Array(box inner) | MIRTypeInner::ArrayFixed(box inner, _),
+                    span,
+                }) = &mut expr.ty
+                {
+                    first[0].ty = Some(MIRType {
+                        ty: inner.clone(),
+                        span: span.clone(),
+                    });
+                }
+                let first_ty = check_expression(ctx, &mut first[0], scope)?;
+
+                for other in rest {
+                    other.ty = Some(first_ty.clone());
+                    check_expression(ctx, other, scope)?;
+                }
+
+                Some(MIRType {
+                    ty: MIRTypeInner::ArrayFixed(Box::new(first_ty.ty.clone()), elems.len()),
+                    span: None,
+                })
+            }
+            MIRExpressionInner::Index(base, index) => {
+                let index_ty = check_expression(ctx, index, scope)?;
+                if matches!(index_ty.ty, MIRTypeInner::UnknownNumber) {
+                    index_ty.ty = MIRTypeInner::U32;
+                }
+
+                if let Some(inherit_ty) = &mut expr.ty {
+                    base.ty = Some(MIRType {
+                        ty: MIRTypeInner::Array(Box::new(inherit_ty.ty.clone())),
+                        span: inherit_ty.span.clone(),
+                    });
+                }
+                let MIRType {
+                    ty: MIRTypeInner::Array(inner),
+                    span,
+                } = check_expression(ctx, base, scope)?.clone()
+                else {
+                    panic!("Indexing a non-array!");
+                };
+
+                Some(MIRType { ty: *inner, span })
+            }
 
             // TODO: Implement type checking for place expressions.
-            MIRExpressionInner::Member(_, _) | MIRExpressionInner::Index(_, _) => todo!(),
+            MIRExpressionInner::Member(_, _) => todo!(),
         }
     })()?;
 

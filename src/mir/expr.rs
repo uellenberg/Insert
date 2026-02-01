@@ -129,6 +129,8 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
     }
 
     if !explore_expr_mut(expr, &mut |expr| {
+        let mut failed = false;
+
         let new_expr = (|| match &expr.inner {
             MIRExpressionInner::Add(left, right) => {
                 simple_binary!(left, right, Number, Number, +)
@@ -178,6 +180,25 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             // TODO: Implement member access reduction for const structs.
             MIRExpressionInner::Member(_, _) => None,
 
+            MIRExpressionInner::Index(
+                box MIRExpression {
+                    inner: MIRExpressionInner::Array(elems),
+                    ..
+                },
+                box MIRExpression {
+                    inner: MIRExpressionInner::Number(idx),
+                    ..
+                },
+            ) => {
+                if idx < &0 || idx >= &(elems.len() as i128) {
+                    eprintln!("Array index out of range!");
+                    failed = true;
+                    return None;
+                }
+
+                Some(elems[*idx as usize].inner.clone())
+            }
+
             // Already fully simplified (recursion handled by explore_expr_mut).
             MIRExpressionInner::Index(_, _)
             | MIRExpressionInner::FunctionCall(_)
@@ -187,8 +208,13 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             | MIRExpressionInner::Unit
             | MIRExpressionInner::Variable(_, _)
             | MIRExpressionInner::Ref(_)
-            | MIRExpressionInner::Deref(_) => None,
+            | MIRExpressionInner::Deref(_)
+            | MIRExpressionInner::Array(_) => None,
         })();
+
+        if failed {
+            return false;
+        }
 
         if let Some(new_expr) = new_expr {
             expr.inner = new_expr;
@@ -250,6 +276,14 @@ macro_rules! explore_expr_body {
 
                 for arg in $fn_args {
                     if !$recurse(arg, $visit) {
+                        return false;
+                    }
+                }
+            }
+
+            MIRExpressionInner::Array(elems) => {
+                for elem in elems {
+                    if !$recurse(elem, $visit) {
                         return false;
                     }
                 }
