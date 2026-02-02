@@ -8,44 +8,44 @@ static c: string = "true";
 
 // Functions: 
 
-inline function d(l (0): u32) : string {
-    let l (0): u32;
-    let m (1): string;
-    h((&m (1)), "%u", l (0))
-    return m (1);
+inline function string(input (0): u32) : string {
+    let input (0): u32;
+    let output (1): string;
+    asprintf((&output (1)), "%u", input (0))
+    return output (1);
 }
-inline function e(l (0): i32) : string {
-    let l (0): i32;
-    let m (1): string;
-    h((&m (1)), "%i", l (0))
-    return m (1);
+inline function string(input (0): i32) : string {
+    let input (0): i32;
+    let output (1): string;
+    asprintf((&output (1)), "%i", input (0))
+    return output (1);
 }
-inline function f(l (0): bool) : string {
-    let l (0): bool;
-    let m (1): string;
-    if l (0) {
-        m (1) = "true";
+inline function string(input (0): bool) : string {
+    let input (0): bool;
+    let out (1): string;
+    if input (0) {
+        out (1) = "true";
     } else {
-        m (1) = "false";
+        out (1) = "false";
     }
-    return m (1);
+    return out (1);
 }
-inline function g(l (0): string) : string {
-    let l (0): string;
-    return l (0);
+inline function string(input (0): string) : string {
+    let input (0): string;
+    return input (0);
 }
-extern function h(l (0): &string, ...) : () from "<stdio.h>";
+extern function asprintf(ptr (0): &string, ...) : () from "<stdio.h>";
 
-function i() : string {
-    let l (1): string;
-    h((&l (1)), "%u", 10)
-    return l (1);
+function d() : string {
+    let g (1): string;
+    asprintf((&g (1)), "%u", 10)
+    return g (1);
 }
-function j() : string {
-    let l (1): string;
-    h((&l (1)), "%i", -10)
-    return l (1);
+function e() : string {
+    let g (1): string;
+    asprintf((&g (1)), "%i", -10)
+    return g (1);
 }
-function k() : string {
+function f() : string {
     return "true";
 }

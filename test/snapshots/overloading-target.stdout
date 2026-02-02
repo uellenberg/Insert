@@ -1,1 +1,1 @@
-unsigned int b(unsigned int h){return 10;}int c(int h){return-10;}unsigned int f(unsigned int h){return 10;}static int a=-10;void main(){b(10);f(10);}
+unsigned int b(unsigned int e){return 10;}int c(int e){return-10;}unsigned int d(unsigned int e){return 10;}static int a=-10;void main(){b(10);d(10);}

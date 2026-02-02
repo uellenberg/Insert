@@ -4,14 +4,14 @@
 
 // Functions: 
 
-extern function a(b (0): string, ...) : () from "<stdio.h>";
+extern function printf(fmt (0): string, ...) : () from "<stdio.h>";
 
 function main() : i32 {
-    a("No args
+    printf("No args
     ")
-    a("One arg: %d
+    printf("One arg: %d
     ", 1)
-    a("Two args: %d %d
+    printf("Two args: %d %d
     ", 1, 2)
     return 0;
 }

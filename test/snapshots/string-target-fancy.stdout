@@ -1,15 +1,15 @@
 #include<stdio.h>
-char*i(){
-    char*l;
-    h(&l,"%u",10);
-    return l;
+char*d(){
+    char*g;
+    asprintf(&g,"%u",10);
+    return g;
 }
-char*j(){
-    char*l;
-    h(&l,"%i",-10);
-    return l;
+char*e(){
+    char*g;
+    asprintf(&g,"%i",-10);
+    return g;
 }
-char*k(){
+char*f(){
     return"true";
 }
 static char*a="10";static char*b="-10";static char*c="true";

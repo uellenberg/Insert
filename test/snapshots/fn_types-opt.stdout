@@ -13,10 +13,10 @@ function main() : u32 {
 function a() : u32 {
     return 10;
 }
-helper function b() : u32 {
+helper function unused() : u32 {
     return 11;
 }
-inline function c(d (0): u32) : u32 {
-    let d (0): u32;
-    return (d (0) + 1);
+inline function addOne(a (0): u32) : u32 {
+    let a (0): u32;
+    return (a (0) + 1);
 }

@@ -6,31 +6,31 @@ static a: i32 = -10;
 
 // Functions: 
 
-function b(h (0): u32) : u32 {
-    let h (0): u32;
+function b(e (0): u32) : u32 {
+    let e (0): u32;
     return 10;
 }
-function c(h (0): i32) : i32 {
-    let h (0): i32;
+function c(e (0): i32) : i32 {
+    let e (0): i32;
     return -10;
 }
-inline function d(h (0): u32) : u32 {
-    let h (0): u32;
+inline function g(value (0): u32) : u32 {
+    let value (0): u32;
     return 10;
 }
-inline function e(h (0): i32) : i32 {
-    let h (0): i32;
+inline function g(value (0): i32) : i32 {
+    let value (0): i32;
     return -10;
 }
-function f(h (0): u32) : u32 {
-    let h (0): u32;
+function d(e (0): u32) : u32 {
+    let e (0): u32;
     return 10;
 }
-helper function g(h (0): i32) : i32 {
-    let h (0): i32;
+helper function h(value (0): i32) : i32 {
+    let value (0): i32;
     return -10;
 }
 function main() : () {
     b(10)
-    f(10)
+    d(10)
 }

@@ -181,7 +181,7 @@ new_key_type! {
 }
 
 /// A declaration (base-level statement).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MIRDeclarationKey {
     Constant(MIRConstKey),
     Static(MIRStaticKey),
