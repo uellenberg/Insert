@@ -17,3 +17,19 @@ function str3() -> string {
 static str1s: string = string(10u32);
 static str2s: string = string(-10i32);
 static str3s: string = string(true);
+static str4: char = ("test")[2];
+static str5: char = str3s[1];
+
+function zeroString(inp: string, len: u32) {
+    let i: u32 = 0;
+
+    loop {
+        if i >= len {
+            break;
+        }
+
+        inp[i] = ("\0")[0];
+
+        i = i + 1;
+    }
+}

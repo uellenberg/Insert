@@ -2,21 +2,21 @@
 
 // Statics: 
 
-static test: string = string(10);
+static test: &[char] = string(10);
 
 // Functions: 
 
-inline function string(input: u32) : string {
+inline function string(input: u32) : &[char] {
     let output: string;
     asprintf((&output), "%u", input)
     return output;
 }
-inline function string(input: i32) : string {
+inline function string(input: i32) : &[char] {
     let output: string;
     asprintf((&output), "%i", input)
     return output;
 }
-inline function string(input: bool) : string {
+inline function string(input: bool) : &[char] {
     let out: string;
     if input {
         out = "true";
@@ -25,7 +25,7 @@ inline function string(input: bool) : string {
     }
     return out;
 }
-inline function string(input: string) : string {
+inline function string(input: &[char]) : &[char] {
     return input;
 }
-extern function asprintf(ptr: &string, ...) : () from "<stdio.h>";
+extern function asprintf(ptr: &&[char], ...) : () from "<stdio.h>";

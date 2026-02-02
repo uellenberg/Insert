@@ -199,12 +199,34 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
                 Some(elems[*idx as usize].inner.clone())
             }
 
+            MIRExpressionInner::Index(
+                box MIRExpression {
+                    inner: MIRExpressionInner::String(elems),
+                    ..
+                },
+                box MIRExpression {
+                    inner: MIRExpressionInner::Number(idx),
+                    ..
+                },
+            ) => {
+                if idx < &0 || idx >= &(elems.len() as i128) {
+                    eprintln!("Array index out of range!");
+                    failed = true;
+                    return None;
+                }
+
+                Some(MIRExpressionInner::Char(
+                    elems.chars().nth(*idx as usize).unwrap(),
+                ))
+            }
+
             // Already fully simplified (recursion handled by explore_expr_mut).
             MIRExpressionInner::Index(_, _)
             | MIRExpressionInner::FunctionCall(_)
             | MIRExpressionInner::Number(_)
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
+            | MIRExpressionInner::Char(_)
             | MIRExpressionInner::Unit
             | MIRExpressionInner::Variable(_, _)
             | MIRExpressionInner::Ref(_)
@@ -293,6 +315,7 @@ macro_rules! explore_expr_body {
             MIRExpressionInner::Number(_)
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
+            | MIRExpressionInner::Char(_)
             | MIRExpressionInner::Unit
             | MIRExpressionInner::Variable(_, _) => {}
         }

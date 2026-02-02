@@ -44,7 +44,8 @@ pub enum InterpreterData<'a> {
     U32(u32),
     Bool(bool),
     Unit(()),
-    String(Cow<'a, str>),
+    Char(char),
+    String(Rc<RefCell<Cow<'a, str>>>),
     FunctionPtr(MIRFunctionKey),
     /// A reference to a variable (either directly or to a field / array element).
     /// If the value behind the RefCell is None, that means the data hasn't been
@@ -300,9 +301,12 @@ impl<'a> Interpreter<'a> {
                     _ => unreachable!(),
                 }
             }
-            MIRExpressionInner::String(val) => Ok(InterpreterData::String(val.clone())),
+            MIRExpressionInner::String(val) => {
+                Ok(InterpreterData::String(Rc::new(RefCell::new(val.clone()))))
+            }
             MIRExpressionInner::Bool(val) => Ok(InterpreterData::Bool(*val)),
             MIRExpressionInner::Unit => Ok(InterpreterData::Unit(())),
+            MIRExpressionInner::Char(val) => Ok(InterpreterData::Char(*val)),
             MIRExpressionInner::Variable(name, _) => {
                 if place {
                     if let Some(data) = scope.variables.get(name) {
@@ -437,9 +441,6 @@ impl<'a> Interpreter<'a> {
                 let base = self.eval_expr(base, scope, false)?;
                 let index = self.eval_expr(index, scope, false)?;
 
-                let InterpreterData::Array(elems) = base else {
-                    panic!("Index base is not an array!");
-                };
                 let index: usize = match index {
                     InterpreterData::U32(val) => val as usize,
                     InterpreterData::I32(val) => {
@@ -451,20 +452,39 @@ impl<'a> Interpreter<'a> {
                     }
                     _ => panic!("Index is not an integer!"),
                 };
-                if index >= elems.borrow().len() {
-                    panic!("Index out of bounds!");
-                }
 
-                if place {
-                    Ok(InterpreterData::Ref(
-                        Rc::clone(&elems.borrow()[index]),
-                        None,
-                    ))
-                } else {
-                    Ok(elems.borrow()[index]
-                        .borrow()
-                        .clone()
-                        .expect("Uninitialized array element"))
+                match base {
+                    InterpreterData::Array(elems) => {
+                        if index >= elems.borrow().len() {
+                            panic!("Index out of bounds!");
+                        }
+
+                        if place {
+                            Ok(InterpreterData::Ref(
+                                Rc::clone(&elems.borrow()[index]),
+                                None,
+                            ))
+                        } else {
+                            Ok(elems.borrow()[index]
+                                .borrow()
+                                .clone()
+                                .expect("Uninitialized array element"))
+                        }
+                    }
+                    InterpreterData::String(inner) => {
+                        if index >= inner.borrow().len() {
+                            panic!("Index out of bounds!");
+                        }
+
+                        if place {
+                            todo!("Cannot take a reference to a string index!");
+                        } else {
+                            Ok(InterpreterData::Char(
+                                inner.borrow().chars().nth(index).unwrap(),
+                            ))
+                        }
+                    }
+                    _ => panic!("Index base is not an array or string!"),
                 }
             }
             MIRExpressionInner::Array(elems) => {
@@ -673,7 +693,8 @@ impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
             InterpreterData::U32(v) => MIRExpressionInner::Number(v as i128),
             InterpreterData::Bool(v) => MIRExpressionInner::Bool(v),
             InterpreterData::Unit(_) => todo!("Add a unit expression to support this"),
-            InterpreterData::String(v) => MIRExpressionInner::String(v),
+            InterpreterData::Char(v) => MIRExpressionInner::Char(v),
+            InterpreterData::String(v) => MIRExpressionInner::String(v.borrow().clone()),
             InterpreterData::FunctionPtr(_v) => {
                 todo!("Figure out how to handle function pointers to overloaded functions")
             }

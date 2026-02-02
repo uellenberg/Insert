@@ -276,6 +276,7 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::Number(val) => write!(f, "{}", val),
             // TODO: Is escaping here worth it?
             MIRExpressionInner::String(val) => write!(f, "\"{}\"", val),
+            MIRExpressionInner::Char(val) => write!(f, "'{}'", val),
             MIRExpressionInner::Bool(val) => write!(f, "{}", val),
             MIRExpressionInner::Unit => write!(f, "()"),
             MIRExpressionInner::Variable(name, idx) => {

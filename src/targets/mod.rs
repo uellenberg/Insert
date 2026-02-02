@@ -13,6 +13,9 @@ pub trait Target {
 
     /// The name of the main function, if that exists for this target.
     fn main(&self) -> Option<&'static str>;
+
+    /// Returns whether strings should be represented as arrays of characters.
+    fn str_char_arr(&self) -> bool;
 }
 
 pub struct C;
@@ -28,5 +31,9 @@ impl Target for C {
 
     fn main(&self) -> Option<&'static str> {
         Some("main")
+    }
+
+    fn str_char_arr(&self) -> bool {
+        true
     }
 }

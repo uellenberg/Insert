@@ -5,6 +5,8 @@ use crate::mir::{
 };
 use crate::parser::span::Span;
 use slotmap::SparseSecondaryMap;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub type NativeFunction =
     for<'a> fn(&[(InterpreterData<'a>, MIRTypeInner<'a>)]) -> InterpreterData<'a>;
@@ -101,9 +103,9 @@ fn string<'a>(args: &[(InterpreterData<'a>, MIRTypeInner<'a>)]) -> InterpreterDa
         (InterpreterData::U32(v), _) => format!("{v}").into(),
         (InterpreterData::I32(v), _) => format!("{v}").into(),
         (InterpreterData::Bool(v), _) => format!("{v}").into(),
-        (InterpreterData::String(s), _) => s.clone(),
+        (InterpreterData::String(s), _) => s.borrow().clone(),
         _ => unreachable!(),
     };
 
-    InterpreterData::String(val)
+    InterpreterData::String(Rc::new(RefCell::new(val)))
 }

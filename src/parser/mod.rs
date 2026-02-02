@@ -765,7 +765,7 @@ fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
     // This is handled left-to-right in the grammar, so the left-most expression
     // is at the top of the tree (evaluates last).
     if first.as_rule() == Rule::placePrefix {
-        let inner = parse_place_expr(location, data.next().unwrap());
+        let inner = parse_primary(location, data.next().unwrap());
         let expr = match first.as_str() {
             "*" => MIRExpressionInner::Deref(Box::new(inner)),
             "&" => MIRExpressionInner::Ref(Box::new(inner)),
@@ -779,14 +779,14 @@ fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
         };
     }
 
-    // Otherwise, we have a base (identifier or parenthesized placeExpr) followed by postfixes.
+    // Otherwise, we have a base (identifier or parenthesized expression) followed by postfixes.
     let mut current = match first.as_rule() {
         Rule::identifier => MIRExpression {
             inner: MIRExpressionInner::Variable(Cow::Borrowed(first.as_str()), None),
             ty: None,
             span: to_span(location, first.as_span()),
         },
-        Rule::placeExpr => parse_place_expr(location, first),
+        Rule::primary => parse_primary(location, first),
         _ => unreachable!(),
     };
 
@@ -951,6 +951,7 @@ fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {
             "bool" => MIRTypeInner::Bool,
             "()" => MIRTypeInner::Unit,
             "string" => MIRTypeInner::String,
+            "char" => MIRTypeInner::Char,
             _ => unreachable!(),
         }
     };

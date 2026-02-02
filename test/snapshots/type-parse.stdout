@@ -13,7 +13,7 @@ function type_u32(x: u32) : () {
 function type_bool(x: bool) : () {
     return;
 }
-function type_string(x: string) : () {
+function type_string(x: &[char]) : () {
     return;
 }
 function type_paren_i32(x: i32) : () {
@@ -34,7 +34,7 @@ function type_ref_u32(x: &u32) : () {
 function type_ref_bool(x: &bool) : () {
     return;
 }
-function type_ref_string(x: &string) : () {
+function type_ref_string(x: &&[char]) : () {
     return;
 }
 function type_paren_ref_i32(x: &i32) : () {
@@ -52,7 +52,7 @@ function type_array_u32(x: &[u32]) : () {
 function type_array_bool(x: &[bool]) : () {
     return;
 }
-function type_array_string(x: &[string]) : () {
+function type_array_string(x: &[&[char]]) : () {
     return;
 }
 function type_paren_array_i32(x: &[i32]) : () {
@@ -70,7 +70,7 @@ function type_fixed_array_u32(x: [u32; 5]) : () {
 function type_fixed_array_bool(x: [bool; 3]) : () {
     return;
 }
-function type_fixed_array_string(x: [string; 8]) : () {
+function type_fixed_array_string(x: [&[char]; 8]) : () {
     return;
 }
 function type_paren_fixed_array(x: [i32; 10]) : () {
@@ -175,10 +175,10 @@ function type_fn_void_to_void(x: fn() -> ()) : () {
 function type_fn_i32_to_i32(x: fn(i32) -> i32) : () {
     return;
 }
-function type_fn_multi_args(x: fn(i32, u32, bool) -> string) : () {
+function type_fn_multi_args(x: fn(i32, u32, bool) -> &[char]) : () {
     return;
 }
-function type_fn_variadic(x: fn(string, ...) -> i32) : () {
+function type_fn_variadic(x: fn(&[char], ...) -> i32) : () {
     return;
 }
 function type_fn_only_variadic(x: fn(...) -> i32) : () {

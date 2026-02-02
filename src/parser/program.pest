@@ -143,7 +143,7 @@ breakStatement = { break_ ~ ";" }
 
 continueStatement = { continue_ ~ ";" }
 
-variableType = { "i32" | "u32" | "bool" | "()" | "string" | refType | arrayType | fixedArrayType | fnType | "(" ~ variableType ~ ")" }
+variableType = { "i32" | "u32" | "bool" | "()" | "string" | "char" | refType | arrayType | fixedArrayType | fnType | "(" ~ variableType ~ ")" }
 
 refType = { "&" ~ variableType }
 arrayType = { "&" ~ "[" ~ variableType ~ "]" }
@@ -187,8 +187,8 @@ arrayExpr = {
 
 placeExpr = {
     identifier ~ placePostfix*
-    | "(" ~ placeExpr ~ ")" ~ placePostfix*
-    | placePrefix ~ placeExpr
+    | "(" ~ primary ~ ")" ~ placePostfix*
+    | placePrefix ~ primary
 }
 
 placePrefix = { "*" | "&" }

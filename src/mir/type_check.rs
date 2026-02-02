@@ -6,6 +6,7 @@ use crate::mir::{
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
 use crate::parser::span::{Span, eprintln_span};
+use crate::targets::Target;
 use ariadne::{ColorGenerator, Fmt, Label, Report, ReportKind};
 use std::borrow::Cow;
 
@@ -154,6 +155,8 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::CreateVariable {
                     var, value, span, ..
                 } => {
+                    convert_types(ctx.target, &mut var.ty.ty);
+
                     // Disallow shadowing.
                     // (Phantom) arg variables shouldn't get checked against locals, since
                     // they might be added to the scope automatically.
@@ -611,11 +614,11 @@ fn get_fn_candidate<'a>(
             let count = overloads.count_compatible(args);
 
             if count == 0 {
-                // TODO: No function found error.
+                println!("{args:?} {overloads:?}");
                 eprintln_span!(
                     ctx,
                     caller_span.cloned(),
-                    "No function found with name {name:?}"
+                    "No compatible function found with name {name:?} (other overloads exist)"
                 );
             } else {
                 // TODO: Multiple functions found error.
@@ -809,6 +812,10 @@ fn check_expression<'a, 'b>(
                 // Span is added after.
                 span: None,
             }),
+            MIRExpressionInner::Char(_) => Some(MIRType {
+                ty: MIRTypeInner::Char,
+                span: None,
+            }),
             MIRExpressionInner::Unit => Some(MIRType {
                 ty: MIRTypeInner::Unit,
                 // Span is added after.
@@ -937,6 +944,9 @@ fn check_expression<'a, 'b>(
         }
     })()?;
 
+    // Lower strings and others based on target.
+    convert_types(ctx.target, &mut ty.ty);
+
     // Ensure the type covers the
     // whole span.
     ty.span = Some(expr.span.clone());
@@ -958,4 +968,28 @@ fn check_expression<'a, 'b>(
     // Ensure that we return a type
     // whose span covers the entire expression.
     expr.ty.as_mut()
+}
+
+/// Converts types to their target versions, if necessary.
+/// For example, C strings are lowered to `&[char]`.
+pub fn convert_types(target: &dyn Target, ty: &mut MIRTypeInner) {
+    match ty {
+        MIRTypeInner::String if target.str_char_arr() => {
+            *ty = MIRTypeInner::Array(Box::new(MIRTypeInner::Char));
+        }
+        MIRTypeInner::Array(box inner)
+        | MIRTypeInner::ArrayFixed(box inner, _)
+        | MIRTypeInner::Ref(box inner) => {
+            convert_types(target, inner);
+        }
+        MIRTypeInner::FunctionPtr(args, ret) => {
+            for arg in &mut args.args {
+                convert_types(target, arg);
+            }
+
+            convert_types(target, ret);
+        }
+        MIRTypeInner::Named(_) => todo!(),
+        _ => {}
+    }
 }

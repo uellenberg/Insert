@@ -291,6 +291,9 @@ impl Codegen for CLowerer {
                 }
             }
             MIRExpressionInner::Unit => spread![Token::new("void".into())],
+            MIRExpressionInner::Char(c) => spread![Token::new(
+                ("'".to_string() + &escape_string(&c.to_string()) + "'").into()
+            )],
             MIRExpressionInner::Variable(name, _) => spread![Token::new(name.clone())],
             MIRExpressionInner::FunctionCall(call) => {
                 let args = call
@@ -350,6 +353,7 @@ impl Codegen for CLowerer {
             ),
             MIRTypeInner::Bool => (spread![Token::new("bool".into())], [].into()),
             MIRTypeInner::Unit => (spread![Token::new("void".into())], [].into()),
+            MIRTypeInner::Char => (spread![Token::new("char".into())], [].into()),
             MIRTypeInner::Named(name) => (spread![Token::new(name.clone())], [].into()),
             // Array is essentially just a ref in C, no reason to handle it differently.
             MIRTypeInner::Ref(box inner) | MIRTypeInner::Array(box inner) => {
@@ -450,6 +454,7 @@ impl Codegen for CLowerer {
             | MIRExpressionInner::String(_)
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Unit
+            | MIRExpressionInner::Char(_)
             | MIRExpressionInner::FunctionCall(_)
             | MIRExpressionInner::Array(_) => None,
 

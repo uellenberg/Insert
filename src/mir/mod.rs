@@ -18,7 +18,7 @@ use crate::mir::function::{
 use crate::mir::interpreter::Interpreter;
 use crate::mir::mangle::mangle_names;
 use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
-use crate::mir::type_check::{type_check, types_could_match};
+use crate::mir::type_check::{convert_types, type_check, types_could_match};
 use crate::mir::var::{make_vars_unique, min_vars};
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
@@ -547,21 +547,33 @@ impl<'a> MIRContext<'a> {
         }
 
         match decl {
-            MIRDeclaration::Constant(const_) => {
+            MIRDeclaration::Constant(mut const_) => {
+                convert_types(self.target, &mut const_.ty.ty);
+
                 let name = const_.name.clone();
                 let key = self.program.constants.insert(const_);
 
                 self.program.const_names.insert(name, key);
                 Some(MIRDeclarationKey::Constant(key))
             }
-            MIRDeclaration::Static(static_) => {
+            MIRDeclaration::Static(mut static_) => {
+                convert_types(self.target, &mut static_.ty.ty);
+
                 let name = static_.name.clone();
                 let key = self.program.statics.insert(static_);
 
                 self.program.static_names.insert(name, key);
                 Some(MIRDeclarationKey::Static(key))
             }
-            MIRDeclaration::Function(func) => {
+            MIRDeclaration::Function(mut func) => {
+                convert_types(self.target, &mut func.ret_ty.ty);
+                for arg in &mut func.args {
+                    convert_types(self.target, &mut arg.ty.ty);
+                }
+                for arg in &mut func.args_ty.args {
+                    convert_types(self.target, arg);
+                }
+
                 let name = func.name.clone();
                 let args_ty = func.args_ty.clone();
                 let key = self.program.functions.insert(func);
@@ -923,6 +935,9 @@ pub enum MIRExpressionInner<'a> {
     /// String literal (language-dependent).
     String(Cow<'a, str>),
 
+    /// Character literal (language-dependent).
+    Char(char),
+
     /// Bool literal.
     Bool(bool),
 
@@ -998,6 +1013,9 @@ pub enum MIRTypeInner<'a> {
     /// String (language-dependent).
     String,
 
+    /// Character (language-dependent).
+    Char,
+
     /// A function pointer, args -> return value.
     FunctionPtr(MIRFunctionArgs<'a>, Box<MIRTypeInner<'a>>),
 
@@ -1038,6 +1056,7 @@ impl<'a> From<MIRTypeInner<'a>> for Cow<'a, str> {
             MIRTypeInner::Unit => Cow::Borrowed("()"),
             MIRTypeInner::Bool => Cow::Borrowed("bool"),
             MIRTypeInner::String => Cow::Borrowed("string"),
+            MIRTypeInner::Char => Cow::Borrowed("char"),
             MIRTypeInner::FunctionPtr(args, ret) => Cow::Owned(format!(
                 "fn({}{}) -> {}",
                 args.args

@@ -1,2 +1,2 @@
 #include<stdio.h>
-char*d(){char*g;asprintf(&g,"%u",10);return g;}char*e(){char*g;asprintf(&g,"%i",-10);return g;}char*f(){return"true";}static char*a="10";static char*b="-10";static char*c="true";
+char*f(){char*j;asprintf(&j,"%u",10);return j;}char*g(){char*j;asprintf(&j,"%i",-10);return j;}char*h(){return"true";}static char*a="10";static char*b="-10";static char*c="true";static char d='s';static char e='r';void i(char*j,unsigned int k){unsigned int l;l=0;while(1){if(l>=k){break;}j[l]='\0';l=l+1;}}

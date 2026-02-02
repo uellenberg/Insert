@@ -498,6 +498,7 @@ fn collect_refs(
         | MIRExpressionInner::Number(..)
         | MIRExpressionInner::String(..)
         | MIRExpressionInner::Bool(..)
+        | MIRExpressionInner::Char(..)
         | MIRExpressionInner::Unit => HashSet::new(),
     }
 }
@@ -592,6 +593,7 @@ fn is_ref(ty: &MIRTypeInner) -> bool {
         | MIRTypeInner::Bool
         | MIRTypeInner::Unit
         | MIRTypeInner::String
+        | MIRTypeInner::Char
         | MIRTypeInner::Named(_) => false,
 
         // Technically a reference, but no mutation.
@@ -612,6 +614,7 @@ fn contains_ref(ty: &MIRTypeInner) -> bool {
         | MIRTypeInner::U32
         | MIRTypeInner::Bool
         | MIRTypeInner::Unit
+        | MIRTypeInner::Char
         | MIRTypeInner::String => false,
 
         // Technically a reference, but no mutation.

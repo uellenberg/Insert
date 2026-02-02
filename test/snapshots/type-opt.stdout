@@ -16,8 +16,8 @@ function c(Wb (0): bool) : () {
     let Wb (0): bool;
     return;
 }
-function d(Wb (0): string) : () {
-    let Wb (0): string;
+function d(Wb (0): &[char]) : () {
+    let Wb (0): &[char];
     return;
 }
 function e(Wb (0): i32) : () {
@@ -44,8 +44,8 @@ function j(Wb (0): &bool) : () {
     let Wb (0): &bool;
     return;
 }
-function k(Wb (0): &string) : () {
-    let Wb (0): &string;
+function k(Wb (0): &&[char]) : () {
+    let Wb (0): &&[char];
     return;
 }
 function l(Wb (0): &i32) : () {
@@ -68,8 +68,8 @@ function p(Wb (0): &[bool]) : () {
     let Wb (0): &[bool];
     return;
 }
-function q(Wb (0): &[string]) : () {
-    let Wb (0): &[string];
+function q(Wb (0): &[&[char]]) : () {
+    let Wb (0): &[&[char]];
     return;
 }
 function r(Wb (0): &[i32]) : () {
@@ -92,8 +92,8 @@ function v(Wb (0): [bool; 3]) : () {
     let Wb (0): [bool; 3];
     return;
 }
-function w(Wb (0): [string; 8]) : () {
-    let Wb (0): [string; 8];
+function w(Wb (0): [&[char]; 8]) : () {
+    let Wb (0): [&[char]; 8];
     return;
 }
 function x(Wb (0): [i32; 10]) : () {
@@ -232,12 +232,12 @@ function eb(Wb (0): fn(i32) -> i32) : () {
     let Wb (0): fn(i32) -> i32;
     return;
 }
-function fb(Wb (0): fn(i32, u32, bool) -> string) : () {
-    let Wb (0): fn(i32, u32, bool) -> string;
+function fb(Wb (0): fn(i32, u32, bool) -> &[char]) : () {
+    let Wb (0): fn(i32, u32, bool) -> &[char];
     return;
 }
-function gb(Wb (0): fn(string, ...) -> i32) : () {
-    let Wb (0): fn(string, ...) -> i32;
+function gb(Wb (0): fn(&[char], ...) -> i32) : () {
+    let Wb (0): fn(&[char], ...) -> i32;
     return;
 }
 function hb(Wb (0): fn(...) -> i32) : () {
