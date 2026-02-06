@@ -18,7 +18,9 @@ use crate::mir::function::{
 use crate::mir::interpreter::Interpreter;
 use crate::mir::mangle::mangle_names;
 use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
-use crate::mir::type_check::{convert_types, type_check, types_could_match};
+use crate::mir::type_check::{
+    convert_types, type_check, types_could_match, types_could_match_ordered,
+};
 use crate::mir::var::{make_vars_unique, min_vars};
 use crate::parser::file_cache::FileCache;
 use crate::parser::span::Span;
@@ -282,7 +284,8 @@ impl<'a> FunctionOverloads<'a> {
             .args
             .iter()
             .zip(call_args.iter())
-            .all(|(f, c)| types_could_match(f, c))
+            // Ordered, since we need to allow fixed length -> unknown length conversion.
+            .all(|(func_arg, call_arg)| types_could_match_ordered(func_arg, call_arg))
     }
 
     /// Checks if two function signatures could match the same call.

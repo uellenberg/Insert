@@ -33,3 +33,10 @@ inline function string(input (0): &[char]) : &[char] {
     return input (0);
 }
 extern function asprintf(ptr (0): &&[char], ...) : () from "<stdio.h>";
+
+inline function stringAppend(dest (0): &[char], source (1): &[char]) : &[char] {
+    let dest (0): &[char];
+    let source (1): &[char];
+    return strcat(dest (0), source (1));
+}
+extern function strcat(dest (0): &[char], source (1): &[char]) : &[char] from "<string.h>";

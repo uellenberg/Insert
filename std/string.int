@@ -27,4 +27,12 @@ target "C" {
     }
 
     extern function asprintf(ptr: &string, ...) from "<stdio.h>";
+
+    // Adds source to the end of dest, returning dest.
+    // Dest MUST have enough space.
+    inline function stringAppend(dest: string, source: string) -> string {
+        return strcat(dest, source);
+    }
+
+    extern function strcat(dest: string, source: string) -> string from "<string.h>";
 }

@@ -573,20 +573,69 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
 }
 
 /// Checks if two types could match (considering inference).
-pub fn types_could_match<'a>(a: &MIRTypeInner<'a>, b: &MIRTypeInner<'a>) -> bool {
-    // TODO: Properly handle recursive types (e.g., arrays).
-    a == b
-        || matches!(
-            (a, b),
-            (
-                MIRTypeInner::UnknownNumber,
-                MIRTypeInner::I32 | MIRTypeInner::U32
-            ) | (
-                MIRTypeInner::I32 | MIRTypeInner::U32,
-                MIRTypeInner::UnknownNumber
-            ) | (MIRTypeInner::NotConstructed, _)
-                | (_, MIRTypeInner::NotConstructed)
-        )
+/// from and to refer to the direction of the types.
+/// For example, when calling a function, from refers to the
+/// function arg type, and to refers to the type of the expression
+/// passed to the function arg.
+/// For variable sets, from is the type of the variable, to is the type
+/// of the expression.
+pub fn types_could_match_ordered<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<'a>) -> bool {
+    if from == to {
+        return true;
+    }
+
+    match (from, to) {
+        (MIRTypeInner::UnknownNumber, MIRTypeInner::I32 | MIRTypeInner::U32)
+        | (MIRTypeInner::I32 | MIRTypeInner::U32, MIRTypeInner::UnknownNumber)
+        | (MIRTypeInner::NotConstructed, _)
+        | (_, MIRTypeInner::NotConstructed) => true,
+        // We can't convert an unknown sized array to a fixed sized array, but we can
+        // convert a fixed size array to an unknown size array.
+        (MIRTypeInner::Array(ty1), MIRTypeInner::ArrayFixed(ty2, _))
+        | (MIRTypeInner::Array(ty1), MIRTypeInner::Array(ty2))
+            if types_could_match_ordered(ty1, ty2) =>
+        {
+            true
+        }
+        // Array sizes MUST match.
+        (MIRTypeInner::ArrayFixed(ty1, count1), MIRTypeInner::ArrayFixed(ty2, count2))
+            if count1 == count2 && types_could_match_ordered(ty1, ty2) =>
+        {
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Checks if two types could match (considering inference).
+/// This is true in more cases than types_could_match, and should
+/// only be used to prevent conflicts.
+pub fn types_could_match<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<'a>) -> bool {
+    if from == to {
+        return true;
+    }
+
+    match (from, to) {
+        (MIRTypeInner::UnknownNumber, MIRTypeInner::I32 | MIRTypeInner::U32)
+        | (MIRTypeInner::I32 | MIRTypeInner::U32, MIRTypeInner::UnknownNumber)
+        | (MIRTypeInner::NotConstructed, _)
+        | (_, MIRTypeInner::NotConstructed) => true,
+        // Allow fixed size <-> unknown size, since these conflict with each other.
+        (MIRTypeInner::ArrayFixed(ty1, _), MIRTypeInner::Array(ty2))
+        | (MIRTypeInner::Array(ty1), MIRTypeInner::ArrayFixed(ty2, _))
+        | (MIRTypeInner::Array(ty1), MIRTypeInner::Array(ty2))
+            if types_could_match(ty1, ty2) =>
+        {
+            true
+        }
+        // Array sizes MUST match.
+        (MIRTypeInner::ArrayFixed(ty1, count1), MIRTypeInner::ArrayFixed(ty2, count2))
+            if count1 == count2 && types_could_match(ty1, ty2) =>
+        {
+            true
+        }
+        _ => false,
+    }
 }
 
 /// Tries to find a function that matches the given name and arguments.

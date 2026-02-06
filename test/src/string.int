@@ -33,3 +33,12 @@ function zeroString(inp: string, len: u32) {
         i = i + 1;
     }
 }
+
+function addTwoStrings() -> string {
+    let str1: [char; 100];
+    let str2: [char; 10];
+
+    zeroString(str1, 10);
+    zeroString(str2, 10);
+    return stringAppend(str1, str2);
+}
