@@ -178,7 +178,7 @@ multiplication = {
 }
 
 primary = {
-    number | string | functionCallDirect | functionCallIndirect | boolLiteral | placeExpr | arrayExpr | "(" ~ expression ~ ")"
+    number | string | char | functionCallDirect | functionCallIndirect | boolLiteral | placeExpr | arrayExpr | "(" ~ expression ~ ")"
 }
 
 arrayExpr = {
@@ -223,11 +223,13 @@ number = @{
     ("i32" | "u32")?
 }
 
-string  = ${ "\"" ~ (stringInner | stringEscape)* ~ "\"" }
+string  = ${ "\"" ~ (stringInner | charEscape)* ~ "\"" }
+char  = ${ "'" ~ (charInner | charEscape) ~ "'" }
+charInner = ${ (!("\"" | "\\") ~ ANY) }
 stringInner = ${ (!("\"" | "\\") ~ ANY)+ }
-stringEscape = ${ "\\" ~ (stringNormal | stringUnicode) }
-stringNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
-stringUnicode = ${ "u" ~ ASCII_HEX_DIGIT{4} }
+charEscape = ${ "\\" ~ (charNormal | charUnicode) }
+charNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
+charUnicode = ${ "u" ~ ASCII_HEX_DIGIT{4} }
 
 boolLiteral = { true_ | false_ }
 

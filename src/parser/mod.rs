@@ -684,6 +684,7 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
             MIRExpressionInner::Number(res.0)
         }
         Rule::string => MIRExpressionInner::String(Cow::Owned(parse_string(data))),
+        Rule::char => MIRExpressionInner::Char(parse_char(data)),
         Rule::functionCallDirect => {
             let mut data = data.into_inner();
 
@@ -848,38 +849,58 @@ fn parse_string<'a>(value: Pair<'a, Rule>) -> String {
                 // No escape sequences.
                 output += part.as_str();
             }
-            Rule::stringEscape => {
-                // Skip the "\"
-                let escaped = part.into_inner().next().unwrap();
-                match escaped.as_rule() {
-                    Rule::stringUnicode => {
-                        // Skip the "u"
-                        let code = u32::from_str_radix(&escaped.as_str()[1..], 16).unwrap();
-                        output.push(char::from_u32(code).unwrap());
-                    }
-                    Rule::stringNormal => {
-                        // "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
-                        let c = match escaped.as_str() {
-                            "\"" => '"',
-                            "\\" => '\\',
-                            "/" => '/',
-                            "n" => '\n',
-                            "r" => '\r',
-                            "t" => '\t',
-                            "0" => '\0',
-                            _ => unreachable!(),
-                        };
-
-                        output.push(c);
-                    }
-                    _ => unreachable!(),
-                }
+            Rule::charEscape => {
+                output.push(parse_char_escape(part));
             }
             _ => unreachable!(),
         }
     }
 
     output
+}
+
+fn parse_char<'a>(value: Pair<'a, Rule>) -> char {
+    assert_eq!(value.as_rule(), Rule::char);
+
+    let mut parts = value.into_inner();
+
+    let part = parts.next().unwrap();
+    match part.as_rule() {
+        Rule::charInner => {
+            // No escape sequences.
+            part.as_str().chars().nth(0).unwrap()
+        }
+        Rule::charEscape => parse_char_escape(part),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_char_escape<'a>(value: Pair<'a, Rule>) -> char {
+    assert_eq!(value.as_rule(), Rule::charEscape);
+
+    // Skip the "\"
+    let escaped = value.into_inner().next().unwrap();
+    match escaped.as_rule() {
+        Rule::charUnicode => {
+            // Skip the "u"
+            let code = u32::from_str_radix(&escaped.as_str()[1..], 16).unwrap();
+            char::from_u32(code).unwrap()
+        }
+        Rule::charNormal => {
+            // "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
+            match escaped.as_str() {
+                "\"" => '"',
+                "\\" => '\\',
+                "/" => '/',
+                "n" => '\n',
+                "r" => '\r',
+                "t" => '\t',
+                "0" => '\0',
+                _ => unreachable!(),
+            }
+        }
+        _ => unreachable!(),
+    }
 }
 
 fn parse_type<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRType<'a> {

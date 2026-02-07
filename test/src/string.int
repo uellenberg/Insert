@@ -28,7 +28,7 @@ function zeroString(inp: string, len: u32) {
             break;
         }
 
-        inp[i] = ("\0")[0];
+        inp[i] = '\0';
 
         i = i + 1;
     }
