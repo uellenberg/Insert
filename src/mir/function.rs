@@ -157,6 +157,7 @@ pub fn mark_reachable(ctx: &mut MIRContext<'_>) {
     }
 
     ctx.program.required_imports.extend(imports);
+    ctx.program.required_imports.sort();
 }
 
 /// Recursively tracks all functions that are called from
