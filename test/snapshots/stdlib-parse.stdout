@@ -1,11 +1,4 @@
-// Constants: 
-
-// Statics: 
-
 static test: &[char] = string(10);
-
-// Functions: 
-
 inline function string(input: u32) : &[char] {
     let output: string;
     asprintf((&output), "%u", input)
@@ -28,9 +21,6 @@ inline function string(input: bool) : &[char] {
 inline function string(input: &[char]) : &[char] {
     return input;
 }
-extern function asprintf(ptr: &&[char], ...) : () from "<stdio.h>";
-
 inline function stringAppend(dest: &[char], source: &[char]) : &[char] {
     return strcat(dest, source);
 }
-extern function strcat(dest: &[char], source: &[char]) : &[char] from "<string.h>";

@@ -680,6 +680,13 @@ impl<'a> Interpreter<'a> {
             | MIRStatement::BreakStatement { .. } => {
                 panic!("This statement type cannot exist at this phase!");
             }
+            MIRStatement::MarkerStatement { .. } => {
+                // Markers don't do anything on their own.
+                // The quine statement uses them, but we don't
+                // allow it here.
+                // The chunk statement writes to them, and that's
+                // interpreter-only, so we must handle it here.
+            }
         }
 
         Ok(None)

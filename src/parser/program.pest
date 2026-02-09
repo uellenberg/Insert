@@ -13,6 +13,7 @@ declaration = _{
     | externFunctionDeclaration
     | importDeclaration
     | targetDeclaration
+    | markerStatement
 }
 
 staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
@@ -94,6 +95,7 @@ functionStatement = _{
     | continueStatement
     | breakStatement
     | setVariable
+    | markerStatement
 }
 
 createVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ ";" }
@@ -142,6 +144,8 @@ loopStatement = {
 breakStatement = { break_ ~ ";" }
 
 continueStatement = { continue_ ~ ";" }
+
+markerStatement = { marker ~ space ~ identifier ~ ";" }
 
 variableType = { "i32" | "u32" | "bool" | "()" | "string" | "char" | refType | arrayType | fixedArrayType | fnType | "(" ~ variableType ~ ")" }
 
@@ -259,6 +263,7 @@ target = _{ "target" }
 extern_ = _{ "extern" }
 from_ = _{ "from" }
 fn_ = _{ "fn" }
+marker = _{ "marker" }
 
 inlineOut = { inline }
 helperOut = { helper }

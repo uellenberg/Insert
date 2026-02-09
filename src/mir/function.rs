@@ -30,6 +30,7 @@ pub fn resolve_fns_to_vars(ctx: &mut MIRContext<'_>) {
                     MIRStatement::ContinueStatement { .. } => {}
                     MIRStatement::BreakStatement { .. } => {}
                     MIRStatement::LoopStatement { .. } => {}
+                    MIRStatement::MarkerStatement { .. } => {}
 
                     MIRStatement::CreateVariable {
                         value: Some(value), ..

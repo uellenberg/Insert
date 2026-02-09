@@ -1,11 +1,4 @@
-// Constants: 
-
-// Statics: 
-
 static eval: u32 = main();
-
-// Functions: 
-
 function ref1(a: &u32, b: &&u32) : () {
     (*b) = a;
 }

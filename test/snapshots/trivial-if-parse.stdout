@@ -1,9 +1,3 @@
-// Constants: 
-
-// Statics: 
-
-// Functions: 
-
 function main() : u32 {
     if true {
         return 1;

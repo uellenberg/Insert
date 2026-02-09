@@ -1,0 +1,5 @@
+//@error
+marker a;
+function main() {
+    marker a;
+}

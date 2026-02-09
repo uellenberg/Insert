@@ -1,13 +1,5 @@
-// Constants: 
-
 const max: u32 = 10;
-
-// Statics: 
-
 static a: u32 = 0;
-
-// Functions: 
-
 function main() : () {
     let b (0): u32;
     let c (1): u32;

@@ -1,15 +1,7 @@
-// Constants: 
-
 const val1: u32 = 10;
 const val2: u32 = 15;
-
-// Statics: 
-
 static a: u32 = 21;
 static b: bool = false;
-
-// Functions: 
-
 function main() : () {
     a = 5;
     a = 25;

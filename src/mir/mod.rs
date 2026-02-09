@@ -180,6 +180,7 @@ new_key_type! {
     pub struct MIRConstKey;
     pub struct MIRStaticKey;
     pub struct MIRFunctionKey;
+    pub struct MIRMarkerKey;
 }
 
 /// A declaration (base-level statement).
@@ -188,6 +189,7 @@ pub enum MIRDeclarationKey {
     Constant(MIRConstKey),
     Static(MIRStaticKey),
     Function(MIRFunctionKey),
+    Marker(MIRMarkerKey),
 }
 
 /// A list of function overloads for a single function name.
@@ -350,6 +352,9 @@ pub struct MIRProgram<'a> {
     /// Name -> Args -> Function data.
     pub functions: SlotMap<MIRFunctionKey, MIRFunction<'a>>,
 
+    /// A list of markers in the program.
+    pub markers: SlotMap<MIRMarkerKey, MIRMarker<'a>>,
+
     /// Name -> Constant.
     pub const_names: HashMap<Cow<'a, str>, MIRConstKey>,
 
@@ -358,6 +363,9 @@ pub struct MIRProgram<'a> {
 
     /// Name -> Function overloads.
     pub function_names: HashMap<Cow<'a, str>, FunctionOverloads<'a>>,
+
+    /// Name -> Marker.
+    pub marker_names: HashMap<Cow<'a, str>, MIRMarkerKey>,
 
     /// Imports required by used extern functions.
     pub required_imports: Vec<Cow<'a, str>>,
@@ -370,11 +378,14 @@ impl<'a> MIRContext<'a> {
     /// This doesn't modify the usage site of this declaration, so just
     /// calling this by itself will leave the program in an invalid state.
     pub fn try_rename(&mut self, key: MIRDeclarationKey, name: Cow<'a, str>) -> bool {
-        if self.program.const_names.contains_key(&name)
+        // Markers cannot be renamed.
+        if matches!(key, MIRDeclarationKey::Marker(_)) {
+            return false;
+        } else if self.program.const_names.contains_key(&name)
             || self.program.static_names.contains_key(&name)
             // Functions can overload if there isn't already an exact match for the args.
             || (!matches!(key, MIRDeclarationKey::Function(_))
-                && self.program.function_names.contains_key(&name))
+            && self.program.function_names.contains_key(&name))
         {
             return false;
         }
@@ -418,6 +429,13 @@ impl<'a> MIRContext<'a> {
                     .or_default()
                     .push(args_ty, key);
             }
+            MIRDeclarationKey::Marker(key) => {
+                self.program
+                    .marker_names
+                    .remove(&self.program.markers[key].name);
+                self.program.markers[key].name = name.clone();
+                self.program.marker_names.insert(name, key);
+            }
         }
 
         true
@@ -451,6 +469,11 @@ impl<'a> MIRContext<'a> {
                         .decls
                         .retain(|val| val != &MIRDeclarationKey::Function(key));
                 }
+                MIRDeclarationKey::Marker(key) => {
+                    self.program
+                        .decls
+                        .retain(|val| val != &MIRDeclarationKey::Marker(key));
+                }
             }
         }
     }
@@ -460,6 +483,7 @@ impl<'a> MIRContext<'a> {
     ///
     /// If the input is a function, args should be specified.
     /// If it's a const/static, None should be given instead.
+    /// Markers have their own namespace and are checked separately.
     fn check_no_duplicates(
         &self,
         name: &str,
@@ -524,6 +548,40 @@ impl<'a> MIRContext<'a> {
         false
     }
 
+    /// Checks if the given marker name is already in use.
+    /// Markers have their own namespace separate from other declarations.
+    fn check_no_duplicate_markers(&self, name: &str, span: &Span<'a>) -> bool {
+        let Some(var) = self.program.marker_names.get(name) else {
+            // No duplicates.
+            return true;
+        };
+
+        let defined_span = self.program.markers[*var].span.clone();
+
+        let mut colors = ColorGenerator::new();
+
+        let prev = colors.next();
+        let cur = colors.next();
+
+        Report::build(ReportKind::Error, span.clone())
+            .with_message("Duplicate marker".to_string())
+            .with_label(
+                Label::new(defined_span)
+                    .with_message(format!("Marker with name {name} previously defined here"))
+                    .with_color(prev),
+            )
+            .with_label(
+                Label::new(span.clone())
+                    .with_message("Redeclaration here".to_string())
+                    .with_color(cur),
+            )
+            .finish()
+            .eprint(self.file_cache.clone())
+            .unwrap();
+
+        false
+    }
+
     /// Registers a declaration in the program.
     /// This doesn't add it to the list of declarations ([decls]),
     /// which is the caller's responsibility.
@@ -542,6 +600,10 @@ impl<'a> MIRContext<'a> {
             }
             MIRDeclaration::Function(func) => {
                 self.check_no_duplicates(&func.name, Some(&func.args_ty), &func.span)
+            }
+            MIRDeclaration::Marker(marker) => {
+                // Markers have their own namespace.
+                self.check_no_duplicate_markers(&marker.name, &marker.span)
             }
         };
         if !no_duplicates {
@@ -588,6 +650,13 @@ impl<'a> MIRContext<'a> {
                     .push(args_ty, key);
                 Some(MIRDeclarationKey::Function(key))
             }
+            MIRDeclaration::Marker(marker) => {
+                let name = marker.name.clone();
+                let key = self.program.markers.insert(marker);
+
+                self.program.marker_names.insert(name, key);
+                Some(MIRDeclarationKey::Marker(key))
+            }
         }
     }
 
@@ -618,6 +687,7 @@ pub enum MIRDeclaration<'a> {
     Constant(MIRConstant<'a>),
     Static(MIRStatic<'a>),
     Function(MIRFunction<'a>),
+    Marker(MIRMarker<'a>),
 }
 
 /// A constant variable.
@@ -652,6 +722,21 @@ pub struct MIRStatic<'a> {
 
     /// The constant's value.
     pub value: MIRExpression<'a>,
+
+    /// The code that created
+    /// this item.
+    pub span: Span<'a>,
+}
+
+/// A marker declaration.
+/// Markers are named points in the program,
+/// which can be used to manipulate the output tokens.
+#[derive(Debug, Clone)]
+pub struct MIRMarker<'a> {
+    /// The marker's name.
+    /// This MUST not be changed, since it's
+    /// in sync with MIRStatement.
+    pub name: Cow<'a, str>,
 
     /// The code that created
     /// this item.
@@ -869,6 +954,18 @@ pub enum MIRStatement<'a> {
     BreakStatement {
         /// The code that created
         /// this item.
+        span: Span<'a>,
+    },
+
+    /// A marker statement within a function body.
+    /// This only stores
+    MarkerStatement {
+        /// The marker's name.
+        /// This MUST not be changed, since it's
+        /// in sync with MIRMarker.
+        name: Cow<'a, str>,
+
+        /// The code that created this item.
         span: Span<'a>,
     },
 }

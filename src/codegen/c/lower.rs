@@ -4,7 +4,7 @@ use crate::codegen::c::token::{
     INDENT, LEFT_BRACKET, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, NEWLINE_REQUIRED, RIGHT_BRACKET,
     RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, escape_string,
 };
-use crate::codegen::token::{Token, TokenInfo, Tokens, spread, strip_fancy_tokens};
+use crate::codegen::token::{Token, TokenInfo, TokenStyle, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
     MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction,
     MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
@@ -43,12 +43,22 @@ impl Codegen for CLowerer {
                 }
                 // Constants are never exported.
                 MIRDeclarationKey::Constant(_) => {}
+                MIRDeclarationKey::Marker(key) => {
+                    let marker = &program.markers[*key];
+
+                    output.push(Token {
+                        text: Some(marker.name.clone()),
+                        style: TokenStyle::Marker,
+                    });
+                }
             }
         }
 
         if !options.fancy {
             strip_fancy_tokens(&mut output);
         }
+        // TODO: Use markers to inform merging and generate an index list.
+        output.retain(|token| token.style != TokenStyle::Marker);
         self.merge_tokens(&mut output);
 
         let mut output_str = String::new();
@@ -235,6 +245,11 @@ impl Codegen for CLowerer {
             }
 
             MIRStatement::BreakStatement { .. } => Some(spread![Token::new("break".into()), SEMI]),
+
+            MIRStatement::MarkerStatement { name, .. } => Some(spread![Token {
+                text: Some(name.clone()),
+                style: TokenStyle::Marker,
+            }]),
         }
     }
 

@@ -1,9 +1,3 @@
-// Constants: 
-
-// Statics: 
-
-// Functions: 
-
 function main() : bool {
     other(10, 11, 12, 13, 14, 15)
     let my_val: bool = bools(true, false, false, false, false, bools(true, false, false, false, false, false));

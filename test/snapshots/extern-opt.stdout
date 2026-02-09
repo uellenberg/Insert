@@ -1,11 +1,3 @@
-// Constants: 
-
-// Statics: 
-
-// Functions: 
-
-extern function printf(fmt (0): &[char], ...) : () from "<stdio.h>";
-
 function main() : i32 {
     printf("No args
     ")

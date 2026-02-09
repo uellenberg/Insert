@@ -62,7 +62,11 @@ pub fn remove_dead_code(function: &mut MIRFunction) -> (bool, bool) {
         &mut function.body,
         &mut |statement, scope, values| {
             // One of the previous statements was a return/continue/break.
-            if scope.scope_data.is_dead {
+            // We can't remove markers though, since they aren't really "code",
+            // and it will lead to unexpected results if we do so.
+            if scope.scope_data.is_dead
+                && !matches!(statement, MIRStatement::MarkerStatement { .. })
+            {
                 modified = true;
                 return true;
             }

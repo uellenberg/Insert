@@ -1,15 +1,8 @@
-// Constants: 
-
-// Statics: 
-
 static a: u32 = 10;
-static b: u32 = 13;
-
-// Functions: 
-
 function c() : u32 {
     return (a + 2);
 }
 function d() : u32 {
     return (c() + 1);
 }
+static b: u32 = 13;

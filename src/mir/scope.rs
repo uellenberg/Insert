@@ -122,6 +122,7 @@ macro_rules! explore_recurse {
             MIRStatement::GotoNotEqual { .. } => {}
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
+            MIRStatement::MarkerStatement { .. } => {}
 
             MIRStatement::LoopStatement { body, .. } => {
                 let $list = body;
@@ -213,6 +214,7 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
             MIRStatement::LoopStatement { .. } => {}
+            MIRStatement::MarkerStatement { .. } => {}
 
             MIRStatement::CreateVariable { var, .. } => {
                 scope.variables.insert(var.name.clone(), var.clone());

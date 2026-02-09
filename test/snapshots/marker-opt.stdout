@@ -1,0 +1,8 @@
+marker main;
+function main() : () {
+    marker mainInner;
+    return;
+    marker mainOuter;
+}
+marker mainEnd;
+static a: u32 = 10;

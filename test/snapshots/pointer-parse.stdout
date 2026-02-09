@@ -1,12 +1,3 @@
-// Constants: 
-
-// Statics: 
-
-static testVal: i32 = test(1);
-static testVal2: &i32 = (&testVal);
-
-// Functions: 
-
 function mul(a: &i32, b: i32) : () {
     (*a) = ((*a) * b);
 }
@@ -18,3 +9,5 @@ function test(val: i32) : i32 {
     mul(val3, 3)
     return ((*val1) + (*val3));
 }
+static testVal: i32 = test(1);
+static testVal2: &i32 = (&testVal);

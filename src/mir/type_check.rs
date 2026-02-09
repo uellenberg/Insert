@@ -151,6 +151,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::ContinueStatement { .. } => {}
                 MIRStatement::BreakStatement { .. } => {}
                 MIRStatement::LoopStatement { .. } => {}
+                MIRStatement::MarkerStatement { .. } => {}
 
                 MIRStatement::CreateVariable {
                     var, value, span, ..

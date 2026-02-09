@@ -2,9 +2,9 @@ pub mod file_cache;
 pub mod span;
 
 use crate::mir::{
-    MIRConstant, MIRContext, MIRDeclaration, MIRExpression, MIRExpressionInner, MIRFnCall,
-    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRStatement, MIRStatic, MIRType,
-    MIRTypeInner, MIRVariable,
+    MIRConstant, MIRContext, MIRDeclaration, MIRDeclarationKey, MIRExpression, MIRExpressionInner,
+    MIRFnCall, MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRMarker, MIRStatement,
+    MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
 use pest::Parser;
 use pest::iterators::Pair;
@@ -43,7 +43,7 @@ pub fn parse_file<'a>(location: &'a Path, ctx: &mut MIRContext<'a>) -> bool {
 fn parse_data<'a>(
     location: &'a Path,
     data: &'a str,
-    ctx: &MIRContext<'a>,
+    ctx: &mut MIRContext<'a>,
 ) -> Option<Vec<MIRDeclaration<'a>>> {
     let ast = match InsertParser::parse(Rule::program, data) {
         Ok(ast) => ast,
@@ -69,7 +69,7 @@ fn parse_data<'a>(
 fn parse_declarations<'a>(
     location: &'a Path,
     value: Pair<'a, Rule>,
-    ctx: &MIRContext<'a>,
+    ctx: &mut MIRContext<'a>,
 ) -> Option<Vec<MIRDeclaration<'a>>> {
     assert_eq!(value.as_rule(), Rule::declarations);
 
@@ -84,7 +84,9 @@ fn parse_declarations<'a>(
                 res.push(MIRDeclaration::Static(parse_static(location, pair)));
             }
             Rule::functionDeclaration => {
-                res.push(MIRDeclaration::Function(parse_function(location, pair)));
+                res.push(MIRDeclaration::Function(parse_function(
+                    location, pair, ctx,
+                )?));
             }
             Rule::externFunctionDeclaration => {
                 res.push(MIRDeclaration::Function(parse_extern_function(
@@ -96,6 +98,9 @@ fn parse_declarations<'a>(
             }
             Rule::targetDeclaration => {
                 res.extend(parse_target(location, pair, ctx)?);
+            }
+            Rule::markerStatement => {
+                res.push(MIRDeclaration::Marker(parse_marker(location, pair)));
             }
             _ => unreachable!(),
         }
@@ -122,6 +127,20 @@ fn parse_static<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRStatic<'a> 
     }
 }
 
+fn parse_marker<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRMarker<'a> {
+    assert_eq!(value.as_rule(), Rule::markerStatement);
+
+    let span = to_span(location, value.as_span());
+    let mut data = value.into_inner();
+
+    let identifier = data.next().unwrap().as_str();
+
+    MIRMarker {
+        name: Cow::Borrowed(identifier),
+        span,
+    }
+}
+
 fn parse_constant<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRConstant<'a> {
     assert_eq!(value.as_rule(), Rule::constDeclaration);
 
@@ -140,7 +159,11 @@ fn parse_constant<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRConstant<
     }
 }
 
-fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<'a> {
+fn parse_function<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> Option<MIRFunction<'a>> {
     assert_eq!(value.as_rule(), Rule::functionDeclaration);
 
     let span = to_span(location, value.as_span());
@@ -179,7 +202,7 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
             }
             Rule::functionBody => {
                 // Function body is the last item.
-                return MIRFunction {
+                return Some(MIRFunction {
                     name: Cow::Borrowed(identifier),
                     fn_type,
                     args_ty: MIRFunctionArgs {
@@ -188,10 +211,10 @@ fn parse_function<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRFunction<
                     },
                     args,
                     ret_ty: ret,
-                    body: parse_function_body(location, pair),
+                    body: parse_function_body(location, pair, ctx)?,
                     span,
                     extern_import: None,
-                };
+                });
             }
             _ => unreachable!(),
         }
@@ -288,7 +311,7 @@ fn parse_extern_function_args<'a>(
 fn parse_import<'a>(
     location: &'a Path,
     value: Pair<'a, Rule>,
-    ctx: &MIRContext<'a>,
+    ctx: &mut MIRContext<'a>,
 ) -> Option<Vec<MIRDeclaration<'a>>> {
     assert_eq!(value.as_rule(), Rule::importDeclaration);
 
@@ -328,7 +351,7 @@ fn parse_import<'a>(
 fn parse_target<'a>(
     location: &'a Path,
     value: Pair<'a, Rule>,
-    ctx: &MIRContext<'a>,
+    ctx: &mut MIRContext<'a>,
 ) -> Option<Vec<MIRDeclaration<'a>>> {
     assert_eq!(value.as_rule(), Rule::targetDeclaration);
 
@@ -343,7 +366,11 @@ fn parse_target<'a>(
     parse_declarations(location, values.next().unwrap(), ctx)
 }
 
-fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRStatement<'a>> {
+fn parse_function_body<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> Option<Vec<MIRStatement<'a>>> {
     assert_eq!(value.as_rule(), Rule::functionBody);
 
     let mut body = vec![];
@@ -441,7 +468,7 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
                 span,
             }),
             Rule::ifStatement => {
-                body.push(parse_if_statement(location, pair));
+                body.push(parse_if_statement(location, pair, ctx)?);
             }
             Rule::continueStatement => {
                 body.push(MIRStatement::ContinueStatement { span });
@@ -452,21 +479,38 @@ fn parse_function_body<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
             Rule::loopStatement => {
                 let mut data = pair.into_inner();
 
-                let loop_body = parse_function_body(location, data.next().unwrap());
+                let loop_body = parse_function_body(location, data.next().unwrap(), ctx)?;
 
                 body.push(MIRStatement::LoopStatement {
                     body: loop_body,
                     span,
                 });
             }
+            Rule::markerStatement => {
+                let marker = parse_marker(location, pair);
+                // Even though markers can live inside functions, they're
+                // always global/unique.
+                //
+                // We need to manually register it here, since only
+                // global/outer declarations are automatically registered.
+                ctx.register(MIRDeclaration::Marker(marker.clone()))?;
+                body.push(MIRStatement::MarkerStatement {
+                    name: marker.name,
+                    span: marker.span,
+                });
+            }
             _ => unreachable!(),
         }
     }
 
-    body
+    Some(body)
 }
 
-fn parse_if_statement<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRStatement<'a> {
+fn parse_if_statement<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> Option<MIRStatement<'a>> {
     assert_eq!(value.as_rule(), Rule::ifStatement);
 
     let span = to_span(location, value.as_span());
@@ -474,25 +518,32 @@ fn parse_if_statement<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRState
     let mut data = value.into_inner();
 
     let condition = parse_expression(location, data.next().unwrap());
-    let on_true = parse_function_body(location, data.next().unwrap());
-    let on_false = data.next().map_or(vec![], |v| parse_if_else(location, v));
+    let on_true = parse_function_body(location, data.next().unwrap(), ctx)?;
+    let on_false = data
+        .next()
+        .and_then(|v| parse_if_else(location, v, ctx))
+        .unwrap_or(vec![]);
 
-    MIRStatement::IfStatement {
+    Some(MIRStatement::IfStatement {
         condition,
         on_true,
         on_false,
         span,
-    }
+    })
 }
 
-fn parse_if_else<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRStatement<'a>> {
+fn parse_if_else<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> Option<Vec<MIRStatement<'a>>> {
     assert_eq!(value.as_rule(), Rule::ifElse);
 
     let data = value.into_inner().next().unwrap();
 
     match data.as_rule() {
-        Rule::ifStatement => vec![parse_if_statement(location, data)],
-        Rule::functionBody => parse_function_body(location, data),
+        Rule::ifStatement => Some(vec![parse_if_statement(location, data, ctx)?]),
+        Rule::functionBody => parse_function_body(location, data, ctx),
         _ => unreachable!(),
     }
 }

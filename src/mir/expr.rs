@@ -413,6 +413,7 @@ macro_rules! extract_expr_body {
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
             MIRStatement::LoopStatement { .. } => {}
+            MIRStatement::MarkerStatement { .. } => {}
 
             MIRStatement::CreateVariable {
                 value: Some(value), ..

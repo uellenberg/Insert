@@ -56,6 +56,11 @@ pub enum TokenStyle {
 
     /// A non-essential token used for fancy output, likely incompatible with quines.
     Fancy,
+
+    /// A marker that designates all tokens until the next marker
+    /// as within it.
+    /// The text part of the marker shouldn't be output.
+    Marker,
 }
 
 /// Contains target-specific rules for how tokens need to be handled.
@@ -69,6 +74,10 @@ pub trait TokenInfo {
     /// Returns whether merging succeeded.
     #[must_use]
     fn try_merge<'a>(&self, left: &mut Token<'a>, right: &Token<'a>) -> bool {
+        if left.style == TokenStyle::Marker || right.style == TokenStyle::Marker {
+            return false;
+        }
+
         let needs_space = self.needs_space_between(left, right);
 
         let Some(left) = &mut left.text else {

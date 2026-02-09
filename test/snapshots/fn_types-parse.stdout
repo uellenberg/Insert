@@ -1,11 +1,4 @@
-// Constants: 
-
 const val1: u32 = used();
-
-// Statics: 
-
-// Functions: 
-
 function main() : u32 {
     let val: u32 = val1;
     val = addOne(val);

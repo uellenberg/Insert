@@ -1,11 +1,4 @@
-// Constants: 
-
-// Statics: 
-
 static a: u32 = 250;
-
-// Functions: 
-
 function b(d (0): &u32, e (1): &&u32) : () {
     let d (0): &u32;
     let e (1): &&u32;

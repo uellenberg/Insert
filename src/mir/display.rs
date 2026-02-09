@@ -1,39 +1,32 @@
 use crate::mir::{
-    MIRConstant, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
-    MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRConstant, MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
+    MIRFunction, MIRFunctionType, MIRMarker, MIRProgram, MIRStatement, MIRStatic, MIRType,
+    MIRTypeInner,
 };
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 
 impl<'a> Display for MIRProgram<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "// Constants: \n\n")?;
-
-        for (_name, constant) in &self.constants {
-            constant.fmt(f)?;
-            writeln!(f)?;
-        }
-
-        if !self.constants.is_empty() {
-            writeln!(f)?;
-        }
-
-        write!(f, "// Statics: \n\n")?;
-
-        for (_name, static_data) in &self.statics {
-            static_data.fmt(f)?;
-            writeln!(f)?;
-        }
-
-        if !self.statics.is_empty() {
-            writeln!(f)?;
-        }
-
-        write!(f, "// Functions: \n\n")?;
-
-        for function in self.functions.values() {
-            function.fmt(f)?;
-            writeln!(f)?;
+        for decl in &self.decls {
+            match decl {
+                MIRDeclarationKey::Constant(key) => {
+                    self.constants[*key].fmt(f)?;
+                    writeln!(f)?;
+                }
+                MIRDeclarationKey::Static(key) => {
+                    self.statics[*key].fmt(f)?;
+                    writeln!(f)?;
+                }
+                MIRDeclarationKey::Function(key) => {
+                    self.functions[*key].fmt(f)?;
+                    writeln!(f)?;
+                }
+                MIRDeclarationKey::Marker(key) => {
+                    self.markers[*key].fmt(f)?;
+                    writeln!(f)?;
+                }
+            }
         }
 
         Ok(())
@@ -61,6 +54,14 @@ impl<'a> Display for MIRStatic<'a> {
         self.value.fmt(f)?;
 
         write!(f, ";")?;
+
+        Ok(())
+    }
+}
+
+impl<'a> Display for MIRMarker<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "marker {};", &self.name)?;
 
         Ok(())
     }
@@ -240,6 +241,13 @@ impl<'a> Display for MIRStatement<'a> {
             }
             MIRStatement::BreakStatement { span, .. } => {
                 write!(f, "break;")?;
+
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::MarkerStatement { name, span, .. } => {
+                write!(f, "marker {name};")?;
 
                 if f.alternate() {
                     writeln!(f, " /* {span} */")?;

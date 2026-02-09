@@ -1,0 +1,6 @@
+void main(){
+    
+    return;
+    
+}
+static unsigned int a=10;
