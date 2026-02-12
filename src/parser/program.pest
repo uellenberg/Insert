@@ -229,7 +229,7 @@ number = @{
 
 string  = ${ "\"" ~ (stringInner | charEscape)* ~ "\"" }
 char  = ${ "'" ~ (charInner | charEscape) ~ "'" }
-charInner = ${ (!("\"" | "\\") ~ ANY) }
+charInner = ${ (!("'" | "\\") ~ ANY) }
 stringInner = ${ (!("\"" | "\\") ~ ANY)+ }
 charEscape = ${ "\\" ~ (charNormal | charUnicode) }
 charNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
