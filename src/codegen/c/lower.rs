@@ -2,7 +2,7 @@ use crate::codegen::Codegen;
 use crate::codegen::LowerOptions;
 use crate::codegen::c::token::{
     INDENT, LEFT_BRACKET, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, NEWLINE_REQUIRED, RIGHT_BRACKET,
-    RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, escape_string,
+    RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, escape_char, escape_string,
 };
 use crate::codegen::token::{Token, TokenInfo, TokenStyle, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
@@ -11,13 +11,20 @@ use crate::mir::{
 };
 use std::borrow::Cow;
 
-pub const C: &'static dyn Codegen = &CLowerer { indent_level: 0 };
+pub const C: &'static dyn Codegen = &CLowerer {
+    indent_level: 0,
+    explicit_array: false,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct CLowerer {
     /// The current indentation level.
     /// This represents the number of tabs of indentation (not the number of spaces).
     indent_level: u32,
+
+    /// Whether to explicitly declare the next type to lower as an array.
+    /// Non-recursive.
+    explicit_array: bool,
 }
 
 impl Codegen for CLowerer {
@@ -125,6 +132,14 @@ impl Codegen for CLowerer {
             | MIRStatement::DropVariable(..) => None,
 
             MIRStatement::CreateVariable { var, value, .. } => {
+                // Array initializers require explicit array type.
+                self.explicit_array = matches!(
+                    value,
+                    Some(MIRExpression {
+                        inner: MIRExpressionInner::Array(_),
+                        ..
+                    },)
+                );
                 let decorated = self.decorate_with_type(var.name.clone(), &var.ty);
 
                 if let Some(value) = value {
@@ -254,6 +269,14 @@ impl Codegen for CLowerer {
     }
 
     fn lower_static<'a>(&mut self, val: &MIRStatic<'a>) -> Tokens<'a> {
+        // Array initializers require explicit array type.
+        self.explicit_array = matches!(
+            val.value,
+            MIRExpression {
+                inner: MIRExpressionInner::Array(_),
+                ..
+            },
+        );
         let decorated = self.decorate_with_type(val.name.clone(), &val.ty);
         let expr = self.lower_expression(&val.value);
 
@@ -307,7 +330,7 @@ impl Codegen for CLowerer {
             }
             MIRExpressionInner::Unit => spread![Token::new("void".into())],
             MIRExpressionInner::Char(c) => spread![Token::new(
-                ("'".to_string() + &escape_string(&c.to_string()) + "'").into()
+                ("'".to_string() + &escape_char(&c.to_string()) + "'").into()
             )],
             MIRExpressionInner::Variable(name, _) => spread![Token::new(name.clone())],
             MIRExpressionInner::FunctionCall(call) => {
@@ -355,6 +378,10 @@ impl Codegen for CLowerer {
     }
 
     fn lower_datatype<'a>(&mut self, ty: &MIRTypeInner<'a>) -> (Tokens<'a>, Tokens<'a>) {
+        // Used to prevent converting [] to *.
+        let explicit_array = self.explicit_array;
+        self.explicit_array = false;
+
         match ty {
             MIRTypeInner::UnknownNumber | MIRTypeInner::NotConstructed => unreachable!(),
             MIRTypeInner::I32 => (spread![Token::new("int".into())], [].into()),
@@ -371,7 +398,10 @@ impl Codegen for CLowerer {
             MIRTypeInner::Char => (spread![Token::new("char".into())], [].into()),
             MIRTypeInner::Named(name) => (spread![Token::new(name.clone())], [].into()),
             // Array is essentially just a ref in C, no reason to handle it differently.
-            MIRTypeInner::Ref(box inner) | MIRTypeInner::Array(box inner) => {
+            // However, the caller may sometimes tell us to not do this.
+            MIRTypeInner::Ref(box inner) | MIRTypeInner::Array(box inner)
+                if !matches!(inner, MIRTypeInner::Array(..)) || !explicit_array =>
+            {
                 let (mut left, right) = self.lower_datatype(inner);
 
                 // Only wrap parentheses if we haven't already.
@@ -393,6 +423,12 @@ impl Codegen for CLowerer {
                     }
                     (left, right)
                 }
+            }
+            MIRTypeInner::Ref(_) => unreachable!("Should have been handled above!"),
+            MIRTypeInner::Array(box inner) => {
+                let (left, right) = self.lower_datatype(inner);
+                // Prepend [] to right
+                (left, spread![LEFT_BRACKET, RIGHT_BRACKET, ...right])
             }
             MIRTypeInner::ArrayFixed(box inner, size) => {
                 let (left, right) = self.lower_datatype(inner);

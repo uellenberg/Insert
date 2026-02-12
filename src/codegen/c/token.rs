@@ -64,30 +64,52 @@ fn is_punct_char(c: char) -> bool {
 pub fn escape_string(s: &str) -> String {
     let mut output = String::with_capacity(s.len());
     for c in s.chars() {
-        let add = match c {
-            '\"' => "\\\"",
-            '\\' => "\\",
-            '\n' => "\\n",
-            '\r' => "\\r",
-            '\t' => "\\t",
-            '\0' => "\\0",
-            c => {
-                if c.is_control() {
-                    if c.is_ascii() && (c as u32) <= 0o777 {
-                        // \nnn in octal
-                        &format!("\\{:03o}", c as u32)
-                    } else {
-                        // \uhhhh in hex
-                        &format!("\\u{:04x}", c as u32)
-                    }
-                } else {
-                    &c.to_string()
-                }
-            }
-        };
-
-        output.push_str(add);
+        match c {
+            '"' => output.push_str("\\\""),
+            c => append_escape(&mut output, c),
+        }
     }
 
     output
+}
+
+/// Escapes a char for use in a C char literal.
+pub fn escape_char(s: &str) -> String {
+    let mut output = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\'' => output.push_str("\\'"),
+            c => append_escape(&mut output, c),
+        }
+    }
+
+    output
+}
+
+/// Generic escape for strings and chars.
+/// Doesn't include escaping for ' / ".
+pub fn append_escape(append: &mut String, c: char) {
+    let add = match c {
+        '\\' => "\\\\",
+        '\n' => "\\n",
+        '\r' => "\\r",
+        '\t' => "\\t",
+        '\0' => "\\0",
+        c => {
+            if c.is_control() {
+                if c.is_ascii() && (c as u32) <= 0o777 {
+                    // \nnn in octal
+                    &format!("\\{:03o}", c as u32)
+                } else {
+                    // \uhhhh in hex
+                    &format!("\\u{:04x}", c as u32)
+                }
+            } else {
+                append.push(c);
+                return;
+            }
+        }
+    };
+
+    append.push_str(add);
 }
