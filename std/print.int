@@ -1,0 +1,6 @@
+target "C" {
+    extern function puts(c: char) from "<stdio.h>";
+    extern function putchar(c: char) from "<stdio.h>";
+    extern function putchar(c: i32) from "<stdio.h>";
+    extern function printf(format: string, ...) from "<stdio.h>";
+}
