@@ -181,35 +181,44 @@ fn mark_visited<'a>(
         imports.insert(import.clone());
     }
 
-    for statement in &function.body {
-        if let MIRStatement::FunctionCall(MIRFnCall {
-            source: MIRFnSource::Direct(name, ..),
-            args_ty,
-            ..
-        }) = statement
-        {
-            // Statement call.
-            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
-        } else {
-            // TODO: Visit function pointers in expressions.
-            find_exprs(statement, &mut |expr, _| {
-                explore_expr(expr, &mut |expr| {
-                    if let MIRExpressionInner::FunctionCall(box MIRFnCall {
-                        source, args_ty, ..
-                    }) = &expr.inner
-                        && let MIRFnSource::Direct(name, ..) = source
-                    {
-                        // Expression call.
-                        mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
-                    }
+    <StatementExplorer>::explore_block(
+        &function.body,
+        &mut |statement, _| {
+            if let MIRStatement::FunctionCall(MIRFnCall {
+                source: MIRFnSource::Direct(name, ..),
+                args_ty,
+                ..
+            }) = statement
+            {
+                // Statement call.
+                mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
+            } else {
+                // TODO: Visit function pointers in expressions.
+                find_exprs(statement, &mut |expr, _| {
+                    explore_expr(expr, &mut |expr| {
+                        if let MIRExpressionInner::FunctionCall(box MIRFnCall {
+                            source,
+                            args_ty,
+                            ..
+                        }) = &expr.inner
+                            && let MIRFnSource::Direct(name, ..) = source
+                        {
+                            // Expression call.
+                            mark_visited(ctx, get_fn_key(ctx, name, args_ty), visited, imports);
+                        }
+
+                        true
+                    });
 
                     true
                 });
+            }
 
-                true
-            });
-        }
-    }
+            true
+        },
+        &|_, _| true,
+        &|_, _| true,
+    );
 }
 
 /// Copies the source of inline functions directly into their callers.
