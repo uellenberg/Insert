@@ -1,0 +1,25 @@
+function main() : () {
+    let i: i32 = 0;
+    loop {
+        if (i > 10) {
+            break;
+        }
+        let val1: i32 = 0;
+        let j: i32 = 0;
+        loop {
+            if (j > 10) {
+                break;
+            }
+            let k: i32 = 0;
+            loop {
+                if (k > 10) {
+                    break;
+                }
+                val1 = (val1 + k);
+                k = (k + 1);
+            }
+            j = (j + 1);
+        }
+        i = (i + 1);
+    }
+}

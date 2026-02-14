@@ -22,6 +22,9 @@ use std::rc::Rc;
 /// - Drops won't be inserted if one already exists at a later point.
 ///   This means user-created drops can extend the lifetime of variables.
 ///
+/// Variables which are completely dead are removed entirely, although
+/// their drops may remain.
+///
 /// This must be run after var_idx is assigned.
 pub fn add_live_drops(ctx: &mut MIRContext) {
     for (_, function) in &mut ctx.program.functions {
@@ -95,6 +98,19 @@ struct DropParentData {
     /// All other variables must be hoisted up to the parent
     /// by setting inject_drops.
     inner_vars: HashSet<usize>,
+
+    /// When pre_run encounters a LoopStatement, it overwrites
+    /// is_loop and inner_vars with the child loop's context
+    /// (for children to inherit via scope.child()). However,
+    /// for_each runs at the enclosing scope level and needs the
+    /// original values for its hoisting decisions. This field
+    /// saves the original is_loop and inner_vars before the
+    /// overwrite.
+    ///
+    /// Only consulted in for_each when the current statement is
+    /// a LoopStatement (the only case where is_loop/inner_vars
+    /// have been overwritten).
+    enclosing_loop: Option<(bool, HashSet<usize>)>,
 }
 
 /// Adds drops to the block, according to the relationships computed earlier.
@@ -138,15 +154,6 @@ fn add_drops(block: &mut Vec<MIRStatement>, relationships: &HashMap<usize, HashS
                 return true;
             }
 
-            let mut drop_after: HashSet<usize> = HashSet::new();
-
-            // If our children dropped something, we need to propagate it upwards.
-            // Otherwise, we might try to drop it again, which would lead to issues.
-            {
-                let data = &mut *scope.scope_data.0.borrow_mut();
-                data.dropped.extend(data.to_drop.iter());
-            }
-
             // Because if statements have parallel branches, we need to make sure that
             // drops occur in both.
             // If a variable is unused in one branch, we can just add a drop to the very top,
@@ -162,6 +169,17 @@ fn add_drops(block: &mut Vec<MIRStatement>, relationships: &HashMap<usize, HashS
                 inject_drops_on_unused(on_true, &data.to_drop);
                 inject_drops_on_unused(on_false, &data.to_drop);
             }
+
+            // If this statement's children dropped something, we need to
+            // mark those as dropped so we don't try to drop them again.
+            {
+                let data = &mut *scope.scope_data.0.borrow_mut();
+                // Drain to ensure to_drop doesn't leak between statements in the
+                // same scope, since it's used for, e.g., if statements.
+                data.dropped.extend(data.to_drop.drain());
+            }
+
+            let mut drop_after: HashSet<usize> = HashSet::new();
 
             // Any undropped variables we encounter will be their last usage, so we should
             // drop them immediately after this statement.
@@ -210,15 +228,44 @@ fn add_drops(block: &mut Vec<MIRStatement>, relationships: &HashMap<usize, HashS
             // That's because the loop runs multiple times, so the variables will
             // be used after a drop otherwise.
             //
-            // If there's no parent, then we're at the top-level scope as a LoopStatement, so
-            // no more hoisting is needed.
-            // For inner loops modifying variables defined in outer loop, they'll host up to the outer loop,
-            // then keep the drops there, since those variables are in the inner_vars list.
-            if scope.parent_data.is_loop
-                && let Some(parent) = scope.scope_data.0.borrow().parent.as_ref()
-            {
-                let drop_in_parent =
-                    drop_after.extract_if(|val| !scope.parent_data.inner_vars.contains(val));
+            // When this statement is a LoopStatement, pre_run will have overwritten
+            // is_loop/inner_vars with the child loop's context (this statement).
+            // We need to use the context of the outer loop instead (which is the same
+            // as what any other non-loop statement would use).
+            //
+            // loop a { <-- inner_vars = {val}
+            //     let val = 1; <-- inner_vars = {val}
+            //     loop b { <-- inner_vars = {innerval}
+            //         let innerval = 2; <-- inner_vars = {innerval}
+            //         val = 20; <-- inner_vars = {innerval}
+            //     }
+            // }
+            //
+            // If we're in loop b, our children will have requested us to hoist up the drop
+            // for val.
+            // However, inner_vals refers to our own context, even though we're going to place
+            // the drop into loop a's context.
+            // So we need to use enclosing_loop (inner_vars = {val}) instead, which is loop a's context.
+            let (hoist_is_loop, hoist_inner_vars) =
+                if matches!(statement, MIRStatement::LoopStatement { .. }) {
+                    scope
+                        .parent_data
+                        .enclosing_loop
+                        .as_ref()
+                        .map(|(is_loop, vars)| (*is_loop, vars))
+                        .unwrap_or((scope.parent_data.is_loop, &scope.parent_data.inner_vars))
+                } else {
+                    (scope.parent_data.is_loop, &scope.parent_data.inner_vars)
+                };
+
+            if hoist_is_loop {
+                let scope_data = scope.scope_data.0.borrow();
+                let parent = scope_data
+                    .parent
+                    .as_ref()
+                    .expect("Loop must have a parent scope");
+
+                let drop_in_parent = drop_after.extract_if(|val| !hoist_inner_vars.contains(val));
                 parent.0.borrow_mut().inject_drops.extend(drop_in_parent);
             }
 
@@ -279,8 +326,14 @@ fn invalidate_loop_writes<'a>(
             return false;
         }
 
-        // Sub-loops must not inherit these inner vars, since they are subject
-        // to the same issues.
+        // We need to save the enclosing loop, since parent_data affects
+        // both the loop's body as well as the loop statement itself.
+        // The loop statement must know the inner_vars of its enclosing loop,
+        // to determine which ones can be dropped and which need to be hoisted.
+        scope.parent_data.enclosing_loop = Some((
+            scope.parent_data.is_loop,
+            scope.parent_data.inner_vars.clone(),
+        ));
         scope.parent_data.inner_vars = inner_vars;
         scope.parent_data.is_loop = true;
     }
