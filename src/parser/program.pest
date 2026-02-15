@@ -182,7 +182,7 @@ multiplication = {
 }
 
 primary = {
-    number | string | char | functionCallDirect | functionCallIndirect | boolLiteral | placeExpr | arrayExpr | "(" ~ expression ~ ")"
+    number | string | char | functionCallDirect | functionCallIndirect | boolLiteral | quineLen | quine | placeExpr | arrayExpr | "(" ~ expression ~ ")"
 }
 
 arrayExpr = {
@@ -236,6 +236,9 @@ charNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
 charUnicode = ${ "u" ~ ASCII_HEX_DIGIT{4} }
 
 boolLiteral = { true_ | false_ }
+
+quine = { "$quine" }
+quineLen = { "$quineLen" }
 
 space = _{ WHITESPACE* }
 

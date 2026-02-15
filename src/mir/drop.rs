@@ -552,7 +552,9 @@ fn collect_refs(
         | MIRExpressionInner::String(..)
         | MIRExpressionInner::Bool(..)
         | MIRExpressionInner::Char(..)
-        | MIRExpressionInner::Unit => HashSet::new(),
+        | MIRExpressionInner::Unit
+        | MIRExpressionInner::Quine
+        | MIRExpressionInner::QuineLen => HashSet::new(),
     }
 }
 

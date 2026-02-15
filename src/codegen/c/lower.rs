@@ -65,8 +65,65 @@ impl Codegen for CLowerer {
             strip_fancy_tokens(&mut output);
         }
         // TODO: Use markers to inform merging and generate an index list.
-        output.retain(|token| token.style != TokenStyle::Marker);
         self.merge_tokens(&mut output);
+
+        // We need to know the length of the quine upfront, since we have to
+        // inject quine_len into it.
+        // TODO: Can we avoid this creating a new element just for quine_len itself?
+        let quine_len = output
+            .iter()
+            .filter(|token| {
+                token.style != TokenStyle::Marker
+                    || matches!(token.text.as_deref(), Some("$quine") | Some("$quineLen"))
+            })
+            .count();
+
+        // This gives us a view of the output, where
+        // each marker is its own element.
+        // An empty string is a reference back to this array.
+        let quine = output
+            .iter()
+            .flat_map(|token| match token.style {
+                TokenStyle::Marker => {
+                    match token.text.as_deref() {
+                        Some("$quine") => {
+                            // Empty string is interpreted as inserting the quine array
+                            // at runtime.
+                            Some("".to_string())
+                        }
+                        Some("$quineLen") => Some(quine_len.to_string()),
+                        _ => None,
+                    }
+                }
+                _ => token.text.as_ref().map(|t| t.to_string()),
+            })
+            .map(|s| format!("\"{}\"", escape_string(&s)))
+            .collect::<Vec<_>>();
+
+        assert_eq!(quine.len(), quine_len);
+
+        // Inject generated expressions.
+        for token in &mut output {
+            if token.style == TokenStyle::Marker {
+                match token.text.as_deref() {
+                    Some("$quine") => {
+                        *token = Token {
+                            style: TokenStyle::Required,
+                            text: Some(quine.join(",").into()),
+                        }
+                    }
+                    Some("$quineLen") => {
+                        *token = Token {
+                            style: TokenStyle::Required,
+                            text: Some(quine_len.to_string().into()),
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        output.retain(|token| token.style != TokenStyle::Marker);
 
         let mut output_str = String::new();
         let mut iter = output.iter().peekable();
@@ -273,7 +330,7 @@ impl Codegen for CLowerer {
         self.explicit_array = matches!(
             val.value,
             MIRExpression {
-                inner: MIRExpressionInner::Array(_),
+                inner: MIRExpressionInner::Array(_) | MIRExpressionInner::Quine,
                 ..
             },
         );
@@ -363,6 +420,22 @@ impl Codegen for CLowerer {
                     .flatten()
                     .collect::<Tokens<'a>>();
                 spread![LEFT_SQUIGGLE, ...elems, RIGHT_SQUIGGLE]
+            }
+            MIRExpressionInner::Quine => {
+                spread![
+                    LEFT_SQUIGGLE,
+                    Token {
+                        text: Some("$quine".into()),
+                        style: TokenStyle::Marker,
+                    },
+                    RIGHT_SQUIGGLE
+                ]
+            }
+            MIRExpressionInner::QuineLen => {
+                spread![Token {
+                    text: Some("$quineLen".into()),
+                    style: TokenStyle::Marker,
+                },]
             }
         }
     }
@@ -507,7 +580,9 @@ impl Codegen for CLowerer {
             | MIRExpressionInner::Unit
             | MIRExpressionInner::Char(_)
             | MIRExpressionInner::FunctionCall(_)
-            | MIRExpressionInner::Array(_) => None,
+            | MIRExpressionInner::Array(_)
+            | MIRExpressionInner::Quine
+            | MIRExpressionInner::QuineLen => None,
 
             MIRExpressionInner::Member(..) | MIRExpressionInner::Index(..) => Some(1),
 

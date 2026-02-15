@@ -87,10 +87,9 @@ pub trait TokenInfo {
             return false;
         };
 
-        // We can't merge if spaces must be inserted, as these
-        // are incompatible tokens.
+        // Spaces need to be added to disambiguate.
         if needs_space {
-            return false;
+            *left.to_mut() += " ";
         }
 
         *left.to_mut() += right;

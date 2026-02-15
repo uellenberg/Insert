@@ -309,6 +309,8 @@ impl<'a> Display for MIRExpressionInner<'a> {
                 }
                 write!(f, "]")
             }
+            MIRExpressionInner::Quine => write!(f, "$quine"),
+            MIRExpressionInner::QuineLen => write!(f, "$quineLen"),
         }
     }
 }

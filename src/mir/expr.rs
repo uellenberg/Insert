@@ -9,29 +9,28 @@ use crate::mir::{
 /// whether it was successful.
 pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a>) -> bool {
     for (const_name, const_key) in &ctx.program.const_names {
-        let Ok(value) = interpreter.eval_const(const_name) else {
-            return false;
+        // If an error occurs, ignore it, since this is an optional step.
+        // This includes errors which the user may have to intervene with, or
+        // errors caused by us being unable to evaluate the constant.
+        if let Ok(value) = interpreter.eval_const(const_name) {
+            ctx.program
+                .constants
+                .get_mut(*const_key)
+                .unwrap()
+                .value
+                .inner = value.into();
         };
-
-        ctx.program
-            .constants
-            .get_mut(*const_key)
-            .unwrap()
-            .value
-            .inner = value.into();
     }
 
     for (static_name, static_key) in &ctx.program.static_names {
-        let Ok(value) = interpreter.eval_static(static_name) else {
-            return false;
-        };
-
-        ctx.program
-            .statics
-            .get_mut(*static_key)
-            .unwrap()
-            .value
-            .inner = value.into();
+        if let Ok(value) = interpreter.eval_static(static_name) {
+            ctx.program
+                .statics
+                .get_mut(*static_key)
+                .unwrap()
+                .value
+                .inner = value.into();
+        }
     }
 
     true
@@ -231,7 +230,9 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             | MIRExpressionInner::Variable(_, _)
             | MIRExpressionInner::Ref(_)
             | MIRExpressionInner::Deref(_)
-            | MIRExpressionInner::Array(_) => None,
+            | MIRExpressionInner::Array(_)
+            | MIRExpressionInner::Quine
+            | MIRExpressionInner::QuineLen => None,
         })();
 
         if failed {
@@ -317,7 +318,9 @@ macro_rules! explore_expr_body {
             | MIRExpressionInner::Bool(_)
             | MIRExpressionInner::Char(_)
             | MIRExpressionInner::Unit
-            | MIRExpressionInner::Variable(_, _) => {}
+            | MIRExpressionInner::Variable(_, _)
+            | MIRExpressionInner::Quine
+            | MIRExpressionInner::QuineLen => {}
         }
 
         if !$visit($expr) {

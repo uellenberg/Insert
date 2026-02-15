@@ -498,6 +498,10 @@ impl<'a> Interpreter<'a> {
 
                 Ok(InterpreterData::Array(Rc::new(RefCell::new(elems))))
             }
+            MIRExpressionInner::Quine | MIRExpressionInner::QuineLen => {
+                // We can't handle these expressions.
+                Err(())
+            }
         }
     }
 

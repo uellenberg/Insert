@@ -988,6 +988,14 @@ fn check_expression<'a, 'b>(
 
                 Some(MIRType { ty: *inner, span })
             }
+            MIRExpressionInner::Quine => Some(MIRType {
+                ty: MIRTypeInner::Array(Box::new(MIRTypeInner::String)),
+                span: None,
+            }),
+            MIRExpressionInner::QuineLen => Some(MIRType {
+                ty: MIRTypeInner::UnknownNumber,
+                span: None,
+            }),
 
             // TODO: Implement type checking for place expressions.
             MIRExpressionInner::Member(_, _) => todo!(),

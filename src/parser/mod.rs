@@ -776,6 +776,8 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
             return parse_place_expr(location, data);
         }
         Rule::boolLiteral => MIRExpressionInner::Bool(data.as_str() == "true"),
+        Rule::quine => MIRExpressionInner::Quine,
+        Rule::quineLen => MIRExpressionInner::QuineLen,
         Rule::arrayExpr => {
             let mut data = data.into_inner();
             let inner = data

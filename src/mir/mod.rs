@@ -1068,6 +1068,20 @@ pub enum MIRExpressionInner<'a> {
     /// An array literal.
     /// All elements are of the same type.
     Array(Vec<MIRExpression<'a>>),
+
+    /// A quine expression.
+    /// This is lowered to the target with the following rules:
+    /// - This expression returns a string array of pieces, with each
+    ///   piece corresponding to markers.
+    /// - An empty string corresponds to the inner elements of
+    ///   the expression (excluding the initializer brackets).
+    /// - Concatenating the string (and formatting empty strings correctly)
+    ///   gives the original source code of the output.
+    /// - Padding may be inserted anywhere between elements in the array.
+    Quine,
+
+    /// An expression returning the length of the Quine string.
+    QuineLen,
 }
 
 /// A type written out as text.
