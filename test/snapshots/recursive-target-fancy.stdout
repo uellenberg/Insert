@@ -1,7 +1,5 @@
 unsigned int a(unsigned int b){
-    if(b<=1){
-        return b;
-    }
+    if(b<=1)return b;
     return a(b-1)+a(b-2);
 }
 void main(){

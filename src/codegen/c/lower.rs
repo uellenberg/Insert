@@ -259,7 +259,17 @@ impl Codegen for CLowerer {
                 ..
             } => {
                 let cond = self.lower_expression(condition);
-                let true_block = self.lower_block(on_true);
+                let true_part = if on_true.len() == 1 {
+                    self.lower_statement(&on_true[0])?
+                } else {
+                    spread![
+                        LEFT_SQUIGGLE,
+                        NEWLINE,
+                        ...self.lower_block(on_true),
+                        ...indent_tokens(indent),
+                        RIGHT_SQUIGGLE,
+                    ]
+                };
 
                 if on_false.is_empty() {
                     Some(spread![
@@ -267,16 +277,10 @@ impl Codegen for CLowerer {
                         LEFT_PAREN,
                         ...cond,
                         RIGHT_PAREN,
-                        LEFT_SQUIGGLE,
-                        NEWLINE,
-                        ...true_block,
-                        ...indent_tokens(indent),
-                        RIGHT_SQUIGGLE,
+                        ...true_part,
                     ])
                 } else {
-                    let else_part = if on_false.len() == 1
-                        && matches!(on_false[0], MIRStatement::IfStatement { .. })
-                    {
+                    let else_part = if on_false.len() == 1 {
                         self.lower_statement(&on_false[0])?
                     } else {
                         spread![
@@ -293,11 +297,9 @@ impl Codegen for CLowerer {
                         LEFT_PAREN,
                         ...cond,
                         RIGHT_PAREN,
-                        LEFT_SQUIGGLE,
+                        ...true_part,
                         NEWLINE,
-                        ...true_block,
                         ...indent_tokens(indent),
-                        RIGHT_SQUIGGLE,
                         Token::new("else".into()),
                         ...else_part,
                     ])
@@ -305,18 +307,24 @@ impl Codegen for CLowerer {
             }
 
             MIRStatement::LoopStatement { body, .. } => {
-                let loop_body = self.lower_block(body);
+                let loop_body = if body.len() == 1 {
+                    self.lower_statement(&body[0])?
+                } else {
+                    spread![
+                        LEFT_SQUIGGLE,
+                        NEWLINE,
+                        ...self.lower_block(body),
+                        ...indent_tokens(indent),
+                        RIGHT_SQUIGGLE,
+                    ]
+                };
 
                 Some(spread![
                     Token::new("while".into()),
                     LEFT_PAREN,
                     Token::new("1".into()),
                     RIGHT_PAREN,
-                    LEFT_SQUIGGLE,
-                    NEWLINE,
                     ...loop_body,
-                    ...indent_tokens(indent),
-                    RIGHT_SQUIGGLE,
                 ])
             }
 

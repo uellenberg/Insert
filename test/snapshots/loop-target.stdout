@@ -1,1 +1,1 @@
-static unsigned int a=0;void main(){unsigned int b;unsigned int c;b=0;c=0;while(1){if(c>10){break;}b=b+c;c=c+1;}a=b;}
+static unsigned int a=0;void main(){unsigned int b;unsigned int c;b=0;c=0;while(1){if(c>10)break;b=b+c;c=c+1;}a=b;}

@@ -1,1 +1,1 @@
-void main(){int a;int b;int c;int d;a=0;while(1){if(a>10){break;}b=0;c=0;while(1){if(c>10){break;}d=0;while(1){if(d>10){break;}b=b+d;d=d+1;}c=c+1;}a=a+1;}}
+void main(){int a;int b;int c;int d;a=0;while(1){if(a>10)break;b=0;c=0;while(1){if(c>10)break;d=0;while(1){if(d>10)break;b=b+d;d=d+1;}c=c+1;}a=a+1;}}

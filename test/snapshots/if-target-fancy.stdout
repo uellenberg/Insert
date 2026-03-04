@@ -2,9 +2,7 @@ void main(){
     unsigned int a;
     a=10;
     while(1){
-        if(a==0){
-            break;
-        }
+        if(a==0)break;
         a=a-1;
     }
 }
