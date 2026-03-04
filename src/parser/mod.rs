@@ -78,10 +78,12 @@ fn parse_declarations<'a>(
     for pair in value.into_inner() {
         match pair.as_rule() {
             Rule::constDeclaration => {
-                res.push(MIRDeclaration::Constant(parse_constant(location, pair)));
+                res.push(MIRDeclaration::Constant(parse_constant(
+                    location, pair, ctx,
+                )));
             }
             Rule::staticDeclaration => {
-                res.push(MIRDeclaration::Static(parse_static(location, pair)));
+                res.push(MIRDeclaration::Static(parse_static(location, pair, ctx)));
             }
             Rule::functionDeclaration => {
                 res.push(MIRDeclaration::Function(parse_function(
@@ -109,7 +111,11 @@ fn parse_declarations<'a>(
     Some(res)
 }
 
-fn parse_static<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRStatic<'a> {
+fn parse_static<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRStatic<'a> {
     assert_eq!(value.as_rule(), Rule::staticDeclaration);
 
     let span = to_span(location, value.as_span());
@@ -117,7 +123,7 @@ fn parse_static<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRStatic<'a> 
 
     let identifier = data.next().unwrap().as_str();
     let ty = parse_type(location, data.next().unwrap());
-    let expr = parse_expression(location, data.next().unwrap());
+    let expr = parse_expression(location, data.next().unwrap(), ctx);
 
     MIRStatic {
         name: Cow::Borrowed(identifier),
@@ -141,7 +147,11 @@ fn parse_marker<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRMarker<'a> 
     }
 }
 
-fn parse_constant<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRConstant<'a> {
+fn parse_constant<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRConstant<'a> {
     assert_eq!(value.as_rule(), Rule::constDeclaration);
 
     let span = to_span(location, value.as_span());
@@ -149,7 +159,7 @@ fn parse_constant<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRConstant<
 
     let identifier = data.next().unwrap().as_str();
     let ty = parse_type(location, data.next().unwrap());
-    let expr = parse_expression(location, data.next().unwrap());
+    let expr = parse_expression(location, data.next().unwrap(), ctx);
 
     MIRConstant {
         name: Cow::Borrowed(identifier),
@@ -194,7 +204,7 @@ fn parse_function<'a>(
     for pair in data {
         match pair.as_rule() {
             Rule::functionArgs => {
-                args = parse_function_args(location, pair);
+                args = parse_function_args(location, pair, ctx);
             }
             Rule::functionReturn => {
                 // functionReturn([type])
@@ -402,7 +412,7 @@ fn parse_function_body<'a>(
 
                 let identifier = data.next().unwrap().as_str();
                 let ty = parse_type(location, data.next().unwrap());
-                let value = parse_expression(location, data.next().unwrap());
+                let value = parse_expression(location, data.next().unwrap(), ctx);
 
                 body.push(MIRStatement::CreateVariable {
                     var: MIRVariable {
@@ -419,8 +429,8 @@ fn parse_function_body<'a>(
             Rule::setVariable => {
                 let mut data = pair.into_inner();
 
-                let place = parse_place_expr(location, data.next().unwrap());
-                let value = parse_expression(location, data.next().unwrap());
+                let place = parse_place_expr(location, data.next().unwrap(), ctx);
+                let value = parse_expression(location, data.next().unwrap(), ctx);
 
                 body.push(MIRStatement::SetVariable { place, value, span });
             }
@@ -431,7 +441,7 @@ fn parse_function_body<'a>(
                 let name = name_data.as_str();
                 let args = data
                     .next()
-                    .map_or(vec![], |args| parse_function_call_args(location, args));
+                    .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
 
                 body.push(MIRStatement::FunctionCall(MIRFnCall {
                     source: MIRFnSource::Direct(
@@ -447,10 +457,10 @@ fn parse_function_body<'a>(
             Rule::functionCallIndirect => {
                 let mut data = pair.into_inner();
 
-                let ptr = parse_expression(location, data.next().unwrap());
+                let ptr = parse_expression(location, data.next().unwrap(), ctx);
                 let args = data
                     .next()
-                    .map_or(vec![], |args| parse_function_call_args(location, args));
+                    .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
 
                 body.push(MIRStatement::FunctionCall(MIRFnCall {
                     source: MIRFnSource::Indirect(ptr),
@@ -464,7 +474,7 @@ fn parse_function_body<'a>(
                 expr: pair
                     .into_inner()
                     .next()
-                    .map(|v| parse_expression(location, v)),
+                    .map(|v| parse_expression(location, v, ctx)),
                 span,
             }),
             Rule::ifStatement => {
@@ -517,7 +527,7 @@ fn parse_if_statement<'a>(
 
     let mut data = value.into_inner();
 
-    let condition = parse_expression(location, data.next().unwrap());
+    let condition = parse_expression(location, data.next().unwrap(), ctx);
     let on_true = parse_function_body(location, data.next().unwrap(), ctx)?;
     let on_false = data
         .next()
@@ -548,7 +558,11 @@ fn parse_if_else<'a>(
     }
 }
 
-fn parse_function_args<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIRVariable<'a>> {
+fn parse_function_args<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    _ctx: &mut MIRContext<'a>,
+) -> Vec<MIRVariable<'a>> {
     assert_eq!(value.as_rule(), Rule::functionArgs);
 
     let mut args = vec![];
@@ -581,6 +595,7 @@ fn parse_function_args<'a>(location: &'a Path, value: Pair<'a, Rule>) -> Vec<MIR
 fn parse_function_call_args<'a>(
     location: &'a Path,
     value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
 ) -> Vec<MIRExpression<'a>> {
     assert_eq!(value.as_rule(), Rule::functionCallArgs);
 
@@ -591,7 +606,7 @@ fn parse_function_call_args<'a>(
 
         match pair.as_rule() {
             Rule::expression => {
-                exprs.push(parse_expression(location, pair));
+                exprs.push(parse_expression(location, pair, ctx));
             }
             _ => unreachable!(),
         }
@@ -600,25 +615,33 @@ fn parse_function_call_args<'a>(
     exprs
 }
 
-fn parse_expression<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_expression<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::expression);
 
-    parse_logical(location, value.into_inner().next().unwrap())
+    parse_logical(location, value.into_inner().next().unwrap(), ctx)
 }
 
-fn parse_logical<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_logical<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::logical);
 
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let comp = parse_comparison(location, data.next().unwrap());
+    let comp = parse_comparison(location, data.next().unwrap(), ctx);
 
     let Some(op) = data.next() else {
         return comp;
     };
 
-    let log = parse_logical(location, data.next().unwrap());
+    let log = parse_logical(location, data.next().unwrap(), ctx);
 
     let expr = match op.as_str() {
         "&&" => MIRExpressionInner::BoolAnd(Box::new(comp), Box::new(log)),
@@ -633,19 +656,23 @@ fn parse_logical<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
     }
 }
 
-fn parse_comparison<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_comparison<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::comparison);
 
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let add = parse_addition(location, data.next().unwrap());
+    let add = parse_addition(location, data.next().unwrap(), ctx);
 
     let Some(op) = data.next() else {
         return add;
     };
 
-    let comp = parse_comparison(location, data.next().unwrap());
+    let comp = parse_comparison(location, data.next().unwrap(), ctx);
 
     let expr = match op.as_str() {
         "==" => MIRExpressionInner::Equal(Box::new(add), Box::new(comp)),
@@ -664,19 +691,23 @@ fn parse_comparison<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
     }
 }
 
-fn parse_addition<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_addition<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::addition);
 
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let mul = parse_multiplication(location, data.next().unwrap());
+    let mul = parse_multiplication(location, data.next().unwrap(), ctx);
 
     let Some(op) = data.next() else {
         return mul;
     };
 
-    let add = parse_addition(location, data.next().unwrap());
+    let add = parse_addition(location, data.next().unwrap(), ctx);
 
     let expr = match op.as_str() {
         "+" => MIRExpressionInner::Add(Box::new(mul), Box::new(add)),
@@ -691,19 +722,23 @@ fn parse_addition<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpressio
     }
 }
 
-fn parse_multiplication<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_multiplication<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::multiplication);
 
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let pri = parse_primary(location, data.next().unwrap());
+    let pri = parse_primary(location, data.next().unwrap(), ctx);
 
     let Some(op) = data.next() else {
         return pri;
     };
 
-    let mul = parse_multiplication(location, data.next().unwrap());
+    let mul = parse_multiplication(location, data.next().unwrap(), ctx);
 
     let expr = match op.as_str() {
         "*" => MIRExpressionInner::Mul(Box::new(pri), Box::new(mul)),
@@ -718,7 +753,11 @@ fn parse_multiplication<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExp
     }
 }
 
-fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_primary<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::primary);
 
     let span = to_span(location, value.as_span());
@@ -743,7 +782,7 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
             let name = name_data.as_str();
             let args = data
                 .next()
-                .map_or(vec![], |args| parse_function_call_args(location, args));
+                .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
 
             MIRExpressionInner::FunctionCall(Box::new(MIRFnCall {
                 source: MIRFnSource::Direct(
@@ -759,10 +798,10 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
         Rule::functionCallIndirect => {
             let mut data = data.into_inner();
 
-            let ptr = parse_expression(location, data.next().unwrap());
+            let ptr = parse_expression(location, data.next().unwrap(), ctx);
             let args = data
                 .next()
-                .map_or(vec![], |args| parse_function_call_args(location, args));
+                .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
 
             MIRExpressionInner::FunctionCall(Box::new(MIRFnCall {
                 source: MIRFnSource::Indirect(ptr),
@@ -773,22 +812,22 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
             }))
         }
         Rule::placeExpr => {
-            return parse_place_expr(location, data);
+            return parse_place_expr(location, data, ctx);
         }
         Rule::boolLiteral => MIRExpressionInner::Bool(data.as_str() == "true"),
         Rule::quine => MIRExpressionInner::Quine,
         Rule::quineLen => MIRExpressionInner::QuineLen,
         Rule::arrayExpr => {
-            let mut data = data.into_inner();
             let inner = data
-                .map(|data| parse_expression(location, data))
+                .into_inner()
+                .map(|data| parse_expression(location, data, ctx))
                 .collect::<Vec<_>>();
 
             MIRExpressionInner::Array(inner)
         }
         Rule::expression => {
             // Expand expression span to include parenthases.
-            let mut expr = parse_expression(location, data);
+            let mut expr = parse_expression(location, data, ctx);
             expr.span = span;
 
             return expr;
@@ -806,7 +845,11 @@ fn parse_primary<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression
     }
 }
 
-fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpression<'a> {
+fn parse_place_expr<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::placeExpr);
 
     let span_orig = value.as_span();
@@ -819,7 +862,7 @@ fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
     // This is handled left-to-right in the grammar, so the left-most expression
     // is at the top of the tree (evaluates last).
     if first.as_rule() == Rule::placePrefix {
-        let inner = parse_primary(location, data.next().unwrap());
+        let inner = parse_primary(location, data.next().unwrap(), ctx);
         let expr = match first.as_str() {
             "*" => MIRExpressionInner::Deref(Box::new(inner)),
             "&" => MIRExpressionInner::Ref(Box::new(inner)),
@@ -840,7 +883,7 @@ fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
             ty: None,
             span: to_span(location, first.as_span()),
         },
-        Rule::primary => parse_primary(location, first),
+        Rule::primary => parse_primary(location, first, ctx),
         _ => unreachable!(),
     };
 
@@ -876,7 +919,8 @@ fn parse_place_expr<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRExpress
                 }
             }
             Rule::indexAccess => {
-                let index_expr = parse_expression(location, inner.into_inner().next().unwrap());
+                let index_expr =
+                    parse_expression(location, inner.into_inner().next().unwrap(), ctx);
                 MIRExpression {
                     inner: MIRExpressionInner::Index(Box::new(current), Box::new(index_expr)),
                     ty: None,
