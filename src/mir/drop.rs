@@ -4,7 +4,7 @@ use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRStatement, MIRTypeInner,
     MIRVariable,
 };
-use crate::parser::span::Span;
+use crate::parser::span::{Span, eprintln_span};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -26,14 +26,16 @@ use std::rc::Rc;
 /// their drops may remain.
 ///
 /// This must be run after var_idx is assigned.
-pub fn add_live_drops(ctx: &mut MIRContext) {
+pub fn add_live_drops(ctx: &mut MIRContext) -> bool {
     for (_, function) in &mut ctx.program.functions {
         // We need to track which variables reference which other
         // variables, since we can only drop a variable once all its
         // references have been dropped.
         // This maps variables (var_idx) to the variables they reference.
         let mut relationships = HashMap::new();
-        compute_var_relationships(&function.body, &mut relationships);
+        if !compute_var_relationships(&function.body, &mut relationships) {
+            return false;
+        }
 
         // It isn't enough to just look at direct references.
         // We also need to compute it transitively, since we can access
@@ -43,6 +45,8 @@ pub fn add_live_drops(ctx: &mut MIRContext) {
         // Now, we can add drops based on these relationships.
         add_drops(&mut function.body, &relationships);
     }
+
+    true
 }
 
 #[derive(Default, Debug)]
@@ -386,7 +390,7 @@ fn inject_drops_on_unused(block: &mut Vec<MIRStatement>, drops: &HashSet<usize>)
 fn compute_var_relationships(
     body: &[MIRStatement],
     relationships: &mut HashMap<usize, HashSet<usize>>,
-) {
+) -> bool {
     <StatementExplorer>::explore_block(
         body,
         &mut |statement, _scope| {
@@ -435,15 +439,21 @@ fn compute_var_relationships(
                     let var_idx = extract_place_var(place);
 
                     if place.ty.as_ref().is_some_and(|ty| is_ref(&ty.ty)) {
-                        // No var_idx means we're writing to a static, which is UB.
-                        // We can be nice and report it (doing a span error requires restructuring, though).
-                        let Some(var_idx) = var_idx else {
-                            eprintln!("Reference escapes to static {statement}!");
-                            return false;
-                        };
-
                         let referenced = collect_refs(value, relationships);
                         if !referenced.is_empty() {
+                            // No var_idx means we're writing to a static, which is UB.
+                            // We can be nice and report it (doing a span error requires restructuring, though).
+                            // If the reference isn't pointing to a variable though, it's fine.
+                            // That's why we do the check here (when referenced is not empty, meaning
+                            // it does point to a variable).
+                            let Some(var_idx) = var_idx else {
+                                eprintln_span!(
+                                    Some(span.clone()),
+                                    "Reference escapes to static {statement}!"
+                                );
+                                return false;
+                            };
+
                             relationships.entry(var_idx).or_default().extend(referenced);
                         }
                     }
@@ -461,7 +471,7 @@ fn compute_var_relationships(
         },
         &|_, _| true,
         &|_, _| true,
-    );
+    )
 }
 
 /// Finds the variable being references in a place expression.
