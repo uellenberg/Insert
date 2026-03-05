@@ -80,12 +80,10 @@ pub trait TokenInfo {
 
         let needs_space = self.needs_space_between(left, right);
 
-        let Some(left) = &mut left.text else {
-            return false;
-        };
-        let Some(right) = &right.text else {
-            return false;
-        };
+        // This is required because otherwise, markers don't have a consistent
+        // index.
+        let left = left.text.as_mut().expect("Token text is required");
+        let right = right.text.as_ref().expect("Token text is required");
 
         // Spaces need to be added to disambiguate.
         if needs_space {

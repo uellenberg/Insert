@@ -1,9 +1,13 @@
 //@check
 
+static incrVal: i32 = binding incrValMarker (0);
+
 static quineStr: &[string] = $quine;
 
 import "std/quine.int";
 
 function main() {
+    // TODO: Use quineStr[incrValMarker]
+    quineStr[1] = string(incrVal + 1);
     printQuine(quineStr, $quineLen);
 }

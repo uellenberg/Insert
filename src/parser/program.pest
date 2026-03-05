@@ -182,7 +182,7 @@ multiplication = {
 }
 
 primary = {
-    number | string | char | functionCallDirect | functionCallIndirect | boolLiteral | quineLen | quine | placeExpr | arrayExpr | "(" ~ expression ~ ")"
+    number | string | char | functionCallDirect | functionCallIndirect | boolLiteral | quineLen | quine | bindingExpr | placeExpr | arrayExpr | "(" ~ expression ~ ")"
 }
 
 arrayExpr = {
@@ -239,6 +239,7 @@ boolLiteral = { true_ | false_ }
 
 quine = { "$quine" }
 quineLen = { "$quineLen" }
+bindingExpr = { binding ~ space ~ identifier ~ "(" ~ expression ~ ")" }
 
 space = _{ WHITESPACE* }
 
@@ -267,6 +268,7 @@ extern_ = _{ "extern" }
 from_ = _{ "from" }
 fn_ = _{ "fn" }
 marker = _{ "marker" }
+binding = _{ "binding" }
 
 inlineOut = { inline }
 helperOut = { helper }

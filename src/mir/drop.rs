@@ -520,7 +520,8 @@ fn collect_refs(
         // We only consider the base, as the index isn't where the data is stored.
         MIRExpressionInner::Index(inner, _)
         | MIRExpressionInner::Member(inner, _)
-        | MIRExpressionInner::Deref(inner) => collect_refs(inner, relationships),
+        | MIRExpressionInner::Deref(inner)
+        | MIRExpressionInner::Binding(_, inner, _) => collect_refs(inner, relationships),
 
         // If this returns a reference, then that reference could come from any of the args.
         MIRExpressionInner::FunctionCall(fn_call) => {

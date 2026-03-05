@@ -1,4 +1,5 @@
 use crate::mir::expr::{explore_expr, explore_expr_mut, find_exprs, find_exprs_mut};
+use crate::mir::quine::ensure_no_markers_block;
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{MIRExpression, MIRExpressionInner, MIRFunction, MIRStatement, MIRVariable};
 use std::cell::RefCell;
@@ -26,8 +27,12 @@ pub fn remove_trivial_ifs(function: &mut MIRFunction) -> (bool, bool) {
                 } => {
                     if cond {
                         values.extend(on_true);
+                        // We're dropping the else block, so if there are markers,
+                        // we need to error.
+                        ensure_no_markers_block(&on_false);
                     } else {
                         values.extend(on_false);
+                        ensure_no_markers_block(&on_true);
                     }
 
                     modified = true;
@@ -354,6 +359,9 @@ fn process_var_write<'a>(
             // invalidate any writes that read themselves back (e.g., a = a + 1).
             // That's because inlining has a different meaning after the statement compared
             // to within it.
+            //
+            // Binding cannot be used here, otherwise we'll duplicate the markers and
+            // make it impossible for quines to properly replace them.
             MIRExpressionInner::Number(_)
                 | MIRExpressionInner::Bool(_)
                 | MIRExpressionInner::String(_)

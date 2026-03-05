@@ -818,6 +818,25 @@ fn parse_primary<'a>(
         Rule::boolLiteral => MIRExpressionInner::Bool(data.as_str() == "true"),
         Rule::quine => MIRExpressionInner::Quine,
         Rule::quineLen => MIRExpressionInner::QuineLen,
+        Rule::bindingExpr => {
+            let mut inner = data.into_inner();
+            let name = inner.next().unwrap().as_str();
+            let expr = parse_expression(location, inner.next().unwrap(), ctx);
+
+            let left = MIRMarker {
+                name: name.into(),
+                span: span.clone(),
+            };
+            let right = MIRMarker {
+                name: Cow::Owned(format!("$binding_right_{name}")),
+                span: span.clone(),
+            };
+
+            ctx.register(MIRDeclaration::Marker(left.clone()));
+            ctx.register(MIRDeclaration::Marker(right.clone()));
+
+            MIRExpressionInner::Binding(left, Box::new(expr), right)
+        }
         Rule::arrayExpr => {
             let inner = data
                 .into_inner()

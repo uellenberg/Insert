@@ -977,6 +977,14 @@ fn check_expression<'a, 'b>(
                 ty: MIRTypeInner::UnknownNumber,
                 span: None,
             }),
+            MIRExpressionInner::Binding(_, inner, _) => {
+                if let Some(ty) = &mut expr.ty {
+                    inner.ty = Some(ty.clone());
+                }
+
+                let inner_ty = check_expression(ctx, inner, scope)?;
+                Some(inner_ty.clone())
+            }
 
             // TODO: Implement type checking for place expressions.
             MIRExpressionInner::Member(_, _) => todo!(),

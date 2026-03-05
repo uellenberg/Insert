@@ -5,6 +5,7 @@ mod function;
 mod interpreter;
 mod mangle;
 mod opt;
+mod quine;
 mod scope;
 mod type_check;
 mod var;
@@ -18,6 +19,7 @@ use crate::mir::function::{
 use crate::mir::interpreter::Interpreter;
 use crate::mir::mangle::mangle_names;
 use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
+use crate::mir::quine::check_markers;
 use crate::mir::type_check::{
     convert_types, type_check, types_could_match, types_could_match_ordered,
 };
@@ -64,6 +66,10 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     let Ok(mut interpreter) = Interpreter::new(ctx.clone()) else {
         return false;
     };
+
+    check_markers(ctx);
+
+    // Markers are now always used safely.
 
     insert_fn_arg_args(ctx);
 
@@ -144,7 +150,9 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         }
     }
 
-    add_live_drops(ctx);
+    if !add_live_drops(ctx) {
+        return false;
+    }
 
     // All variables are now dropped, including
     // arg variables.
@@ -1078,6 +1086,14 @@ pub enum MIRExpressionInner<'a> {
 
     /// An expression returning the length of the Quine string.
     QuineLen,
+
+    /// A binding creates an expression which can be manipulated
+    /// programmatically in the quine. It makes the expression a
+    /// dedicated item in the quine array.
+    ///
+    /// To do this, a left and right marker are needed to separate
+    /// it. The left marker points to the item in the array.
+    Binding(MIRMarker<'a>, Box<MIRExpression<'a>>, MIRMarker<'a>),
 }
 
 /// A type written out as text.

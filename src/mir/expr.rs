@@ -232,7 +232,8 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             | MIRExpressionInner::Deref(_)
             | MIRExpressionInner::Array(_)
             | MIRExpressionInner::Quine
-            | MIRExpressionInner::QuineLen => None,
+            | MIRExpressionInner::QuineLen
+            | MIRExpressionInner::Binding(_, _, _) => None,
         })();
 
         if failed {
@@ -309,6 +310,12 @@ macro_rules! explore_expr_body {
                     if !$recurse(elem, $visit) {
                         return false;
                     }
+                }
+            }
+
+            MIRExpressionInner::Binding(_, inner, _) => {
+                if !$recurse(inner, $visit) {
+                    return false;
                 }
             }
 

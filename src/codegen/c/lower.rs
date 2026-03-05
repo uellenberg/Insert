@@ -453,6 +453,20 @@ impl Codegen for CLowerer {
                     style: TokenStyle::Marker,
                 },]
             }
+            MIRExpressionInner::Binding(left, inner, right) => {
+                let inner = self.lower_expression(inner);
+                spread![
+                    Token {
+                        text: Some(left.name.clone()),
+                        style: TokenStyle::Marker,
+                    },
+                    ...inner,
+                    Token {
+                        text: Some(right.name.clone()),
+                        style: TokenStyle::Marker,
+                    },
+                ]
+            }
         }
     }
 
@@ -618,6 +632,8 @@ impl Codegen for CLowerer {
             MIRExpressionInner::BoolAnd(..) => Some(8),
 
             MIRExpressionInner::BoolOr(..) => Some(9),
+
+            MIRExpressionInner::Binding(_, _, _) => todo!(),
         }
     }
 
