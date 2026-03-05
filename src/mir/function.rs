@@ -256,7 +256,6 @@ fn inline_function<'a>(
 ) -> bool {
     if visited.contains(&func) {
         eprintln_span!(
-            ctx,
             Some(ctx.program.functions[func].span.clone()),
             "Inline cycle detected: {:?}",
             visited
@@ -438,7 +437,6 @@ fn rewrite_inline_function<'a>(
                 // with complex control flow.
                 MIRStatement::Return { span, .. } => {
                     eprintln_span!(
-                        ctx,
                         Some(span.clone()),
                         "Return statement found in inline function body!"
                     );

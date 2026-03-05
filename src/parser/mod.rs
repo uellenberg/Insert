@@ -2,10 +2,11 @@ pub mod file_cache;
 pub mod span;
 
 use crate::mir::{
-    MIRConstant, MIRContext, MIRDeclaration, MIRDeclarationKey, MIRExpression, MIRExpressionInner,
-    MIRFnCall, MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRMarker, MIRStatement,
-    MIRStatic, MIRType, MIRTypeInner, MIRVariable,
+    MIRConstant, MIRContext, MIRDeclaration, MIRExpression, MIRExpressionInner, MIRFnCall,
+    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRMarker, MIRStatement, MIRStatic,
+    MIRType, MIRTypeInner, MIRVariable,
 };
+use crate::parser::file_cache::file_cache;
 use pest::Parser;
 use pest::iterators::Pair;
 use pest_derive::Parser;
@@ -20,7 +21,7 @@ struct InsertParser;
 /// Parses a file into MIR,
 /// returning whether it was successful.
 pub fn parse_file<'a>(location: &'a Path, ctx: &mut MIRContext<'a>) -> bool {
-    let data = ctx.file_cache.get(location).unwrap();
+    let data = file_cache().get(location).unwrap();
     let Some(decls) = parse_data(location, data, ctx) else {
         return false;
     };
@@ -347,13 +348,13 @@ fn parse_import<'a>(
         .normalize_lexically()
         .expect("Failed to normalize import path!");
 
-    if ctx.file_cache.exists(&import_path) {
+    if file_cache().exists(&import_path) {
         // We already imported this file, so return
         // nothing here to avoid duplicating declarations.
         return Some(vec![]);
     }
 
-    let data = ctx.file_cache.get(&import_path).unwrap();
+    let data = file_cache().get(&import_path).unwrap();
     // Leaking is okay here, since we only do it once per file.
     parse_data(import_path.leak(), data, ctx)
 }

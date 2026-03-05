@@ -22,7 +22,7 @@ use crate::mir::type_check::{
     convert_types, type_check, types_could_match, types_could_match_ordered,
 };
 use crate::mir::var::{make_vars_unique, min_vars};
-use crate::parser::file_cache::FileCache;
+use crate::parser::file_cache::file_cache;
 use crate::parser::span::Span;
 use crate::targets::Target;
 use ariadne::{ColorGenerator, Label, Report, ReportKind};
@@ -42,9 +42,6 @@ pub struct MIRContext<'a> {
     /// An instance of the lowerer for the target
     /// we're compiling for.
     pub lowerer: Box<dyn Codegen>,
-
-    /// A cache of files that have been loaded.
-    pub file_cache: FileCache,
 }
 
 impl<'a> Clone for MIRContext<'a> {
@@ -53,7 +50,6 @@ impl<'a> Clone for MIRContext<'a> {
             program: self.program.clone(),
             target: self.target,
             lowerer: self.target.lowerer().new(),
-            file_cache: self.file_cache.clone(),
         }
     }
 }
@@ -542,7 +538,7 @@ impl<'a> MIRContext<'a> {
                     .with_color(cur),
             )
             .finish()
-            .eprint(self.file_cache.clone())
+            .eprint(file_cache())
             .unwrap();
 
         false
@@ -576,7 +572,7 @@ impl<'a> MIRContext<'a> {
                     .with_color(cur),
             )
             .finish()
-            .eprint(self.file_cache.clone())
+            .eprint(file_cache())
             .unwrap();
 
         false

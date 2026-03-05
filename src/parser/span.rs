@@ -1,4 +1,4 @@
-use crate::mir::MIRContext;
+use crate::parser::file_cache::file_cache;
 use ariadne::{Label, Report, ReportKind};
 use std::fmt::Display;
 use std::ops::Range;
@@ -40,7 +40,7 @@ impl<'a> Display for Span<'a> {
     }
 }
 
-pub fn print_with_span<'a>(file_cache: &FileCache, span: Option<Span<'a>>, msg: &str) {
+pub fn print_with_span<'a>(span: Option<Span<'a>>, msg: &str) {
     let Some(span) = span else {
         eprintln!("{msg}");
         return;
@@ -50,17 +50,16 @@ pub fn print_with_span<'a>(file_cache: &FileCache, span: Option<Span<'a>>, msg: 
         .with_message(msg)
         .with_label(Label::new(span).with_message("The error occurred here"))
         .finish()
-        .eprint(file_cache.clone())
+        .eprint(file_cache())
         .unwrap();
 }
 
 /// Prints a message alongside the given span.
 /// Pass the span as an option.
 macro_rules! eprintln_span {
-    ($ctx:expr, $span:expr, $($arg:tt)*) => {
-        $crate::parser::span::print_with_span(&$ctx.file_cache, $span, &format!($($arg)*));
+    ($span:expr, $($arg:tt)*) => {
+        $crate::parser::span::print_with_span($span, &format!($($arg)*));
     };
 }
 
-use crate::parser::file_cache::FileCache;
 pub(crate) use eprintln_span;

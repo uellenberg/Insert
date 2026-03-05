@@ -16,8 +16,20 @@ static PROJECT_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/std");
 /// static cache.
 #[derive(Debug, Default, Clone)]
 pub struct FileCache {
-    files: Rc<RefCell<HashMap<PathBuf, &'static str>>>,
-    sources: Rc<RefCell<HashMap<PathBuf, &'static Source<&'static str>>>>,
+    files: RefCell<HashMap<PathBuf, &'static str>>,
+    sources: RefCell<HashMap<PathBuf, &'static Source<&'static str>>>,
+}
+
+thread_local! {
+    /// The global file cache.
+    /// Any cached modified shouldn't be modified
+    /// while the compiler is running.
+    pub static FILE_CACHE: &'static FileCache = Box::leak(Box::new(FileCache::default()));
+}
+
+/// Returns the global file cache (thread-local).
+pub fn file_cache() -> &'static FileCache {
+    FILE_CACHE.with(|v| *v)
 }
 
 impl FileCache {
@@ -97,7 +109,7 @@ impl FileCache {
     }
 }
 
-impl Cache<Path> for FileCache {
+impl Cache<Path> for &FileCache {
     type Storage = &'static str;
 
     fn fetch(&mut self, path: &Path) -> Result<&Source<&'static str>, impl Debug> {

@@ -333,7 +333,6 @@ impl<'a> Interpreter<'a> {
                         let data = data.borrow();
                         let Some(data) = data.as_ref() else {
                             eprintln_span!(
-                                self.ctx,
                                 Some(expr.span.clone()),
                                 "Variable has not been set!"
                             );

@@ -64,7 +64,7 @@ pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) -> bool {
 
                     MIRStatement::ContinueStatement { span } => {
                         let Some(loop_data) = scope.parent_data.loop_labels.as_ref() else {
-                            eprintln_span!(ctx, Some(span), "Continue only works inside of loops!");
+                            eprintln_span!(Some(span), "Continue only works inside of loops!");
                             return false;
                         };
 
@@ -80,7 +80,7 @@ pub fn flatten_loops<'a>(ctx: &mut MIRContext<'a>) -> bool {
 
                     MIRStatement::BreakStatement { span } => {
                         let Some(loop_data) = scope.parent_data.loop_labels.as_ref() else {
-                            eprintln_span!(ctx, Some(span), "Break only works inside of loops!");
+                            eprintln_span!(Some(span), "Break only works inside of loops!");
                             return false;
                         };
 

@@ -71,7 +71,6 @@ fn main() {
         lowerer: target.lowerer().new(),
         target,
         program: Default::default(),
-        file_cache: Default::default(),
     };
 
     if !parse_file(&input_path, &mut mir_ctx) {

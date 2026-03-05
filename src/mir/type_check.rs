@@ -5,6 +5,7 @@ use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
 };
+use crate::parser::file_cache::file_cache;
 use crate::parser::span::{Span, eprintln_span};
 use crate::targets::Target;
 use ariadne::{ColorGenerator, Fmt, Label, Report, ReportKind};
@@ -52,7 +53,6 @@ pub fn type_check(ctx: &mut MIRContext<'_>) -> bool {
 /// Prints an error for when an expression
 /// returns an unexpected type.
 fn print_unexpected_expr_ty(
-    ctx: &MIRContext<'_>,
     expected_ty: MIRType<'_>,
     actual_ty: MIRType<'_>,
     error_expr_span: Span<'_>,
@@ -87,13 +87,13 @@ fn print_unexpected_expr_ty(
                 .with_color(actual),
         )
         .finish()
-        .eprint(ctx.file_cache.clone())
+        .eprint(file_cache())
         .unwrap();
 }
 
 /// Prints an error for when an expression
 /// returns an unexpected type.
-fn print_var_does_not_exist(ctx: &MIRContext<'_>, var_name: Cow<'_, str>, var_span: Span<'_>) {
+fn print_var_does_not_exist(var_name: Cow<'_, str>, var_span: Span<'_>) {
     let mut colors = ColorGenerator::new();
 
     let var_color = colors.next();
@@ -109,7 +109,7 @@ fn print_var_does_not_exist(ctx: &MIRContext<'_>, var_name: Cow<'_, str>, var_sp
         .with_message(format!("Variable {var_name_str} does not exist"))
         .with_help("Maybe this variable was defined in a different scope?")
         .finish()
-        .eprint(ctx.file_cache.clone())
+        .eprint(file_cache())
         .unwrap();
 }
 
@@ -166,7 +166,6 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         || ctx.program.const_names.contains_key(&var.name)
                     {
                         eprintln_span!(
-                            ctx,
                             Some(span.clone()),
                             "Cannot shadow existing variable {}",
                             var.name
@@ -191,7 +190,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         if let MIRExpressionInner::Variable(var, _) = &expr.inner
                             && ctx.program.const_names.contains_key(var)
                         {
-                            eprintln_span!(ctx, Some(expr.span.clone()), "Cannot set constants!");
+                            eprintln_span!(Some(expr.span.clone()), "Cannot set constants!");
                             return false;
                         }
 
@@ -215,7 +214,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         && let Some(scope_var) = scope.get_variable(var)
                         && scope_var.arg
                     {
-                        eprintln_span!(ctx, Some(place.span.clone()), "Cannot set args!");
+                        eprintln_span!(Some(place.span.clone()), "Cannot set args!");
                         return false;
                     }
 
@@ -270,7 +269,6 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                         // No need for type_equal since unit can't resolve numbers.
                         if function.ret_ty.ty != MIRTypeInner::Unit {
                             print_unexpected_expr_ty(
-                                ctx,
                                 function.ret_ty.clone(),
                                 MIRType {
                                     ty: MIRTypeInner::Unit,
@@ -372,7 +370,7 @@ fn check_fn_call<'a>(
 
     // Ensure that we have a function type.
     let MIRTypeInner::FunctionPtr(expected_args, expected_ret_ty) = &mut expected_ty.ty else {
-        print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
+        print_unexpected_expr_ty(expected_ty, actual_ty, span.clone());
         return false;
     };
     let mut expected_args = expected_args.clone();
@@ -391,13 +389,13 @@ fn check_fn_call<'a>(
     if expected_args.variadic {
         // Variadic functions need at least as many args as fixed params.
         if actual_args.len() < fixed_arg_count {
-            print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
+            print_unexpected_expr_ty(expected_ty, actual_ty, span.clone());
             return false;
         }
     } else {
         // Non-variadic functions need exactly the right number of args.
         if actual_args.len() != fixed_arg_count {
-            print_unexpected_expr_ty(ctx, expected_ty, actual_ty, span.clone());
+            print_unexpected_expr_ty(expected_ty, actual_ty, span.clone());
             return false;
         }
     }
@@ -411,7 +409,6 @@ fn check_fn_call<'a>(
     {
         if !types_equal_inner(&mut actual.ty, expected) {
             print_unexpected_expr_ty(
-                ctx,
                 MIRType {
                     ty: expected.clone(),
                     span: expected_ty.span.clone(),
@@ -442,7 +439,6 @@ fn check_fn_call<'a>(
 /// requires left and right operands to
 /// be equal, but they aren't.
 fn print_left_right_unequal(
-    ctx: &MIRContext<'_>,
     op_name: &str,
     left_ty: MIRType<'_>,
     right_ty: MIRType<'_>,
@@ -483,7 +479,7 @@ fn print_left_right_unequal(
             "{op_name} requires the left and right operands to have the same type."
         ))
         .finish()
-        .eprint(ctx.file_cache.clone())
+        .eprint(file_cache())
         .unwrap();
 }
 
@@ -649,11 +645,7 @@ fn get_fn_candidate<'a>(
 ) -> Option<MIRFunctionKey> {
     let Some(overloads) = ctx.program.function_names.get(name) else {
         // TODO: No function found error.
-        eprintln_span!(
-            ctx,
-            caller_span.cloned(),
-            "No function found with name {name:?}"
-        );
+        eprintln_span!(caller_span.cloned(), "No function found with name {name:?}");
         return None;
     };
 
@@ -666,14 +658,12 @@ fn get_fn_candidate<'a>(
             if count == 0 {
                 println!("{args:?} {overloads:?}");
                 eprintln_span!(
-                    ctx,
                     caller_span.cloned(),
                     "No compatible function found with name {name:?} (other overloads exist)"
                 );
             } else {
                 // TODO: Multiple functions found error.
                 eprintln_span!(
-                    ctx,
                     caller_span.cloned(),
                     "Multiple functions found with name {name:?}. Disambiguate arguments with type annotations."
                 );
@@ -712,13 +702,7 @@ fn check_expression<'a, 'b>(
             let t_right = check_expression(ctx, $right, scope)?;
 
             if !types_equal(t_left, t_right) {
-                print_left_right_unequal(
-                    ctx,
-                    $name,
-                    t_left.clone(),
-                    t_right.clone(),
-                    expr.span.clone(),
-                );
+                print_left_right_unequal($name, t_left.clone(), t_right.clone(), expr.span.clone());
                 return None;
             }
 
@@ -807,14 +791,13 @@ fn check_expression<'a, 'b>(
                     .is_some_and(|v| !v.is_empty())
                 {
                     eprintln_span!(
-                        ctx,
                         Some(expr.span.clone()),
                         "Cannot directly access function as value (use a reference): {expr:?}"
                     );
                     return None;
                 }
 
-                print_var_does_not_exist(ctx, name.clone(), expr.span.clone());
+                print_var_does_not_exist(name.clone(), expr.span.clone());
                 None
             }
             MIRExpressionInner::FunctionCall(fn_data) => {
@@ -881,7 +864,6 @@ fn check_expression<'a, 'b>(
                     // Some languages will inject temporaries.
                     // Maybe we can do this automatically as well.
                     eprintln_span!(
-                        ctx,
                         Some(inner.span.clone()),
                         "References can only be made to variables, array indexes, or member access: {inner:?}"
                     );
@@ -924,7 +906,6 @@ fn check_expression<'a, 'b>(
                     }
                     _ => {
                         eprintln_span!(
-                            ctx,
                             Some(inner.span.clone()),
                             "Cannot dereference non-reference type: {inner:?}"
                         );
@@ -1015,7 +996,7 @@ fn check_expression<'a, 'b>(
     if let Some(existing_ty) = &mut expr.ty
         && !types_equal(existing_ty, &mut ty)
     {
-        print_unexpected_expr_ty(ctx, existing_ty.clone(), ty.clone(), expr.span.clone());
+        print_unexpected_expr_ty(existing_ty.clone(), ty.clone(), expr.span.clone());
         return None;
     }
 
