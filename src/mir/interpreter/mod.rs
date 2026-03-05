@@ -9,6 +9,7 @@ use crate::mir::{
     MIRStatement, MIRTypeInner,
 };
 use crate::parser::span::{Span, eprintln_span};
+use num_traits::ToPrimitive;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -42,6 +43,7 @@ type VariableData<'a> = Rc<RefCell<Option<InterpreterData<'a>>>>;
 pub enum InterpreterData<'a> {
     I32(i32),
     U32(u32),
+    UnknownNumber(i128),
     Bool(bool),
     Unit(()),
     Char(char),
@@ -298,6 +300,7 @@ impl<'a> Interpreter<'a> {
                             *val as u32
                         },
                     )),
+                    MIRTypeInner::UnknownNumber => Ok(InterpreterData::UnknownNumber(*val)),
                     _ => unreachable!(),
                 }
             }
@@ -332,10 +335,7 @@ impl<'a> Interpreter<'a> {
                     if let Some(data) = scope.variables.get(name) {
                         let data = data.borrow();
                         let Some(data) = data.as_ref() else {
-                            eprintln_span!(
-                                Some(expr.span.clone()),
-                                "Variable has not been set!"
-                            );
+                            eprintln_span!(Some(expr.span.clone()), "Variable has not been set!");
                             return Err(());
                         };
 
@@ -448,6 +448,9 @@ impl<'a> Interpreter<'a> {
                         }
 
                         val as usize
+                    }
+                    InterpreterData::UnknownNumber(val) => {
+                        val.to_usize().expect("Array index too large!")
                     }
                     _ => panic!("Index is not an integer!"),
                 };
@@ -703,6 +706,7 @@ impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
         match value {
             InterpreterData::I32(v) => MIRExpressionInner::Number(v as i128),
             InterpreterData::U32(v) => MIRExpressionInner::Number(v as i128),
+            InterpreterData::UnknownNumber(v) => MIRExpressionInner::Number(v),
             InterpreterData::Bool(v) => MIRExpressionInner::Bool(v),
             InterpreterData::Unit(_) => todo!("Add a unit expression to support this"),
             InterpreterData::Char(v) => MIRExpressionInner::Char(v),

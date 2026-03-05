@@ -1,9 +1,9 @@
-Error: Duplicate marker
+Error: Duplicate identifier
    ╭─[ ./test/src/marker-dup.int:2:1 ]
    │
  4 │     marker a;
    │     ────┬────  
-   │         ╰────── Marker with name a previously defined here
+   │         ╰────── Item with name a previously defined here
    │
    ├─[ ./test/src/marker-dup.int:2:1 ]
    │

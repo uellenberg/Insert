@@ -1,7 +1,5 @@
 //@check
 
-marker main;
-
 function main() {
     marker mainInner;
     return;

@@ -19,7 +19,7 @@ use crate::mir::function::{
 use crate::mir::interpreter::Interpreter;
 use crate::mir::mangle::mangle_names;
 use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
-use crate::mir::quine::check_markers;
+use crate::mir::quine::{check_markers, ensure_no_first_marker};
 use crate::mir::type_check::{
     convert_types, type_check, types_could_match, types_could_match_ordered,
 };
@@ -69,7 +69,7 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
 
     check_markers(ctx);
 
-    // Markers are now always used safely.
+    // Markers are now always used safely (except for one case below).
 
     insert_fn_arg_args(ctx);
 
@@ -176,6 +176,12 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
     mangle_names(ctx);
 
     // All identifiers are now short mangled names.
+
+    if !ensure_no_first_marker(ctx) {
+        return false;
+    }
+
+    // Markers indices are now correct.
 
     true
 }
@@ -552,40 +558,6 @@ impl<'a> MIRContext<'a> {
         false
     }
 
-    /// Checks if the given marker name is already in use.
-    /// Markers have their own namespace separate from other declarations.
-    fn check_no_duplicate_markers(&self, name: &str, span: &Span<'a>) -> bool {
-        let Some(var) = self.program.marker_names.get(name) else {
-            // No duplicates.
-            return true;
-        };
-
-        let defined_span = self.program.markers[*var].span.clone();
-
-        let mut colors = ColorGenerator::new();
-
-        let prev = colors.next();
-        let cur = colors.next();
-
-        Report::build(ReportKind::Error, span.clone())
-            .with_message("Duplicate marker".to_string())
-            .with_label(
-                Label::new(defined_span)
-                    .with_message(format!("Marker with name {name} previously defined here"))
-                    .with_color(prev),
-            )
-            .with_label(
-                Label::new(span.clone())
-                    .with_message("Redeclaration here".to_string())
-                    .with_color(cur),
-            )
-            .finish()
-            .eprint(file_cache())
-            .unwrap();
-
-        false
-    }
-
     /// Registers a declaration in the program.
     /// This doesn't add it to the list of declarations ([decls]),
     /// which is the caller's responsibility.
@@ -606,8 +578,9 @@ impl<'a> MIRContext<'a> {
                 self.check_no_duplicates(&func.name, Some(&func.args_ty), &func.span)
             }
             MIRDeclaration::Marker(marker) => {
-                // Markers have their own namespace.
-                self.check_no_duplicate_markers(&marker.name, &marker.span)
+                // Markers automatically create constants by the same name,
+                // so we can just use the const check.
+                self.check_no_duplicates(&marker.name, None, &marker.span)
             }
         };
         if !no_duplicates {
@@ -656,9 +629,33 @@ impl<'a> MIRContext<'a> {
             }
             MIRDeclaration::Marker(marker) => {
                 let name = marker.name.clone();
+                let span = marker.span.clone();
                 let key = self.program.markers.insert(marker);
+                self.program.marker_names.insert(name.clone(), key);
 
-                self.program.marker_names.insert(name, key);
+                // Markers need a const to refer to the index in the
+                // quine array.
+                // This index is always to the right of the marker (i.e.,
+                // the first marker is index 1).
+                let marker_idx = self.program.markers.len();
+
+                // Constants don't end up in decls anyway, so we can just
+                // discard the key.
+                self.register(MIRDeclaration::Constant(MIRConstant {
+                    name,
+                    ty: MIRType {
+                        // Keep it flexible.
+                        ty: MIRTypeInner::UnknownNumber,
+                        span: Some(span.clone()),
+                    },
+                    value: MIRExpression {
+                        inner: MIRExpressionInner::Number(marker_idx as i128),
+                        span: span.clone(),
+                        ty: None,
+                    },
+                    span,
+                }));
+
                 Some(MIRDeclarationKey::Marker(key))
             }
         }

@@ -1,11 +1,16 @@
 use crate::mir::expr::{explore_expr, find_exprs};
 use crate::mir::scope::StatementExplorer;
-use crate::mir::{MIRContext, MIRExpression, MIRExpressionInner, MIRFunctionType, MIRStatement};
+use crate::mir::{
+    MIRContext, MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFunctionType, MIRStatement,
+};
 use crate::parser::span::{Span, eprintln_span};
 
 /// Gives an error if a marker/binding is used in an invalid location.
 /// An invalid location is any location where the marker would get
 /// duplicated.
+///
+/// This needs to run before any such duplication or removal can occur (i.e.,
+/// before compile passes start modifying MIR).
 ///
 /// Returns true if it succeeded (i.e., no errors).
 pub fn check_markers(ctx: &MIRContext) -> bool {
@@ -71,4 +76,27 @@ pub fn ensure_no_markers_expression(expr: &MIRExpression) -> bool {
 
         true
     })
+}
+
+/// Ensures that the first declaration isn't a marker.
+/// This should be run after the declaration array stops being modified,
+/// since optimizations might remove statements and cause a marker to become the first.
+///
+/// The reason this is bad is that marker indices are predicated on the assumption that
+/// the first marker refers to index 1. If there isn't any output before that first marker,
+/// then it'll actually refer to index 0.
+/// It's possible to handle this automatically, but requires deep integration with all compile
+/// passes that remove declarations. Throwing an error is far easier.
+pub fn ensure_no_first_marker(ctx: &MIRContext) -> bool {
+    if let Some(MIRDeclarationKey::Marker(marker_key)) = ctx.program.decls.first() {
+        let marker = &ctx.program.markers[*marker_key];
+
+        eprintln_span!(
+            Some(marker.span.clone()),
+            "The first statement cannot be a marker (use index 0 to refer to the first segment in the quine array)"
+        );
+        return false;
+    }
+
+    true
 }
