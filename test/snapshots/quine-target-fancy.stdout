@@ -1,7 +1,6 @@
 #include<stdio.h>
-static int a=0;static char*b[]={"#include<stdio.h>\nstatic int a=","0",";static char*b[]={","","};void c(char*f){\n    int g;\n    g=0;\n    while(1){\n        if(f[g]=='\\0')break;\n        if(f[g]=='\"')printf(\"\\\\\\\"\");\n        else if(f[g]=='\\n')printf(\"\\\\n\");\n        else if(f[g]=='\\\\')printf(\"\\\\\\\\\");\n        else putchar(f[g]);\n        g=g+1;\n    }\n}\nvoid d(char* *f,int g){\n    int h;\n    h=0;\n    while(1){\n        if(h>=g)break;\n        if(h!=0)putchar(',');\n        putchar('\"');\n        c(f[h]);\n        putchar('\"');\n        h=h+1;\n    }\n}\nvoid e(char* *f,int g){\n    int h;\n    h=0;\n    while(1){\n        if(h>=g)break;\n        if(f[h][0]=='\\0')d(f,g);\n        else printf(\"%s\",f[h]);\n        h=h+1;\n    }\n}\nvoid main(){\n    int f;\n    char*g;\n    f=a+1;\n    asprintf(&g,\"%i\",f);\n    b[1]=g;\n    e(b,","7",");\n}\n"};void c(char*f){
-    int g;
-    g=0;
+static int a=0;static char*b[]={"#include<stdio.h>\nstatic int a=","0",";static char*b[]={","","};void c(char*f){\n    int g=0;\n    while(1){\n        if(f[g]=='\\0')break;\n        if(f[g]=='\"')printf(\"\\\\\\\"\");\n        else if(f[g]=='\\n')printf(\"\\\\n\");\n        else if(f[g]=='\\\\')printf(\"\\\\\\\\\");\n        else putchar(f[g]);\n        g=g+1;\n    }\n}\nvoid d(char* *f,int g){\n    int h=0;\n    while(1){\n        if(h>=g)break;\n        if(h!=0)putchar(',');\n        putchar('\"');\n        c(f[h]);\n        putchar('\"');\n        h=h+1;\n    }\n}\nvoid e(char* *f,int g){\n    int h=0;\n    while(1){\n        if(h>=g)break;\n        if(f[h][0]=='\\0')d(f,g);\n        else printf(\"%s\",f[h]);\n        h=h+1;\n    }\n}\nvoid main(){\n    char*f;\n    int g=a+1;\n    asprintf(&f,\"%i\",g);\n    b[1]=f;\n    e(b,","7",");\n}\n"};void c(char*f){
+    int g=0;
     while(1){
         if(f[g]=='\0')break;
         if(f[g]=='"')printf("\\\"");
@@ -12,8 +11,7 @@ static int a=0;static char*b[]={"#include<stdio.h>\nstatic int a=","0",";static 
     }
 }
 void d(char* *f,int g){
-    int h;
-    h=0;
+    int h=0;
     while(1){
         if(h>=g)break;
         if(h!=0)putchar(',');
@@ -24,8 +22,7 @@ void d(char* *f,int g){
     }
 }
 void e(char* *f,int g){
-    int h;
-    h=0;
+    int h=0;
     while(1){
         if(h>=g)break;
         if(f[h][0]=='\0')d(f,g);
@@ -34,10 +31,9 @@ void e(char* *f,int g){
     }
 }
 void main(){
-    int f;
-    char*g;
-    f=a+1;
-    asprintf(&g,"%i",f);
-    b[1]=g;
+    char*f;
+    int g=a+1;
+    asprintf(&f,"%i",g);
+    b[1]=f;
     e(b,7);
 }

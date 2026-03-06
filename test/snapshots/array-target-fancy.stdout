@@ -1,8 +1,6 @@
 static int*a={1,2,3};static int b[3]={1,2,3};static int c=2;static int*d=&a[1];static int e=2;static int*f={};int h(){
-    int i;
-    unsigned int j;
-    i=0;
-    j=0;
+    int i=0;
+    unsigned int j=0;
     while(1){
         if(j>=3)break;
         i=i+a[j];

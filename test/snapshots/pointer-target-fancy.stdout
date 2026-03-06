@@ -2,8 +2,7 @@ void c(int*e,int f){
     *e=*e*f;
 }
 int d(int e){
-    int f;
-    f=e+1;
+    int f=e+1;
     c(&e,2);
     c(&f,3);
     return e+f;

@@ -14,8 +14,7 @@ char*h(){
     return"true";
 }
 static char*a="10";static char*b="-10";static char*c="true";static char d='s';static char e='r';void i(char*k,unsigned int l){
-    unsigned int m;
-    m=0;
+    unsigned int m=0;
     while(1){
         if(m>=l)break;
         k[m]='\0';
@@ -25,11 +24,9 @@ static char*a="10";static char*b="-10";static char*c="true";static char d='s';st
 char*j(){
     char k[100];
     char l[10];
-    char*m;
-    char*n;
     i(k,10);
     i(l,10);
-    m=k;
-    n=l;
+    char*m=k;
+    char*n=l;
     return strcat(m, n);
 }

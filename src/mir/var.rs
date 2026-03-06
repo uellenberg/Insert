@@ -1,4 +1,6 @@
-use crate::mir::expr::{explore_expr_mut, explore_outer_place, find_exprs_mut};
+use crate::mir::expr::{
+    explore_expr, explore_expr_mut, explore_outer_place, find_exprs, find_exprs_mut,
+};
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRStatement, MIRTypeInner, MIRVariable,
@@ -6,6 +8,7 @@ use crate::mir::{
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::slice;
 
 /// Gives each variable a unique name and assigns the var_idx.
 /// This MUST be ran after all passes which create new variables.
@@ -198,6 +201,121 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
         // Any created variables must be prepended to the start, since they can be used at any
         // point in the function.
         function.body.splice(0..0, creates);
+    }
+
+    // Clean up the messy CreateVariable and SetVariable splitting.
+    if !merge_var_declarations(ctx) {
+        return false;
+    }
+
+    true
+}
+
+/// This merges CreateVariable and SetVariable into a single CreateVariable,
+/// wherever possible.
+/// This is especially important because min_vars always splits variables like
+/// this, leading to a lot of redundant code.
+///
+/// This should be run after min_vars, as it only considers top-level declarations
+/// and is very coupled with its implementation.
+fn merge_var_declarations(ctx: &mut MIRContext) -> bool {
+    for function in ctx.program.functions.values_mut() {
+        // All hoisted creates (from min_vars) sit at the very front of the body
+        // with value: None.
+        // This makes it easy, as we don't have to deal with as much data flow
+        // analysis.
+        let num_hoisted = function
+            .body
+            .iter()
+            .take_while(|s| matches!(s, MIRStatement::CreateVariable { value: None, .. }))
+            .count();
+
+        if num_hoisted == 0 {
+            continue;
+        }
+
+        // All vars we should consider (excluding virtual arg vars).
+        // var_idx -> its definition.
+        let mut candidates: HashMap<usize, MIRVariable> = function.body[..num_hoisted]
+            .iter()
+            .filter_map(|s| match s {
+                MIRStatement::CreateVariable {
+                    var, value: None, ..
+                } if !var.arg => Some((var.var_idx.unwrap(), var.clone())),
+                _ => None,
+            })
+            .collect();
+
+        let mut merged: HashSet<usize> = HashSet::new();
+
+        for stmt in &mut function.body[num_hoisted..] {
+            if candidates.is_empty() {
+                break;
+            }
+
+            // Check if this is a set we want to merge.
+            let merge_var_idx = if let MIRStatement::SetVariable { place, .. } = &*stmt
+                // Sets through refs / arrays are too complex to analyze.
+                && let MIRExpressionInner::Variable(_, Some(idx)) = &place.inner
+            {
+                Some(*idx)
+            } else {
+                None
+            };
+
+            if let Some(var_idx) = merge_var_idx
+                // We need to remove it from the list of candidates to prevent
+                // accidental double merging.
+                && let Some(var) = candidates.remove(&var_idx)
+            {
+                let MIRStatement::SetVariable { value, span, .. } = stmt else {
+                    unreachable!()
+                };
+                *stmt = MIRStatement::CreateVariable {
+                    var,
+                    value: Some(value.clone()),
+                    span: span.clone(),
+                };
+                merged.insert(var_idx);
+                continue;
+            }
+
+            // If we access any variables in this statement, we need
+            // to invalidate them from the candidates list, since that
+            // candidate now has data flow which is harder to analyze.
+            <StatementExplorer>::explore_block(
+                slice::from_ref(stmt),
+                &mut |stmt, _| {
+                    find_exprs(stmt, &mut |expr, _| {
+                        explore_expr(expr, &mut |expr| {
+                            if let MIRExpressionInner::Variable(_, Some(idx)) = &expr.inner {
+                                candidates.remove(idx);
+                            }
+
+                            true
+                        });
+
+                        true
+                    });
+
+                    true
+                },
+                &|_, _| true,
+                &|_, _| true,
+            );
+        }
+
+        if merged.is_empty() {
+            continue;
+        }
+
+        // Remove the now-redundant hoisted creates for merged variables.
+        function.body.retain(|stmt| match stmt {
+            MIRStatement::CreateVariable {
+                var, value: None, ..
+            } => !merged.contains(&var.var_idx.unwrap()),
+            _ => true,
+        });
     }
 
     true

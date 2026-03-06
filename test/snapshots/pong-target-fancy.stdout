@@ -1,7 +1,6 @@
 #include<stdio.h>
-static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>\nstatic int a=","1",";static int b=","1",";static int c=","1",";static int d=","1",";static char*e[]={","","};void f(char*i){\n    int j;\n    j=0;\n    while(1){\n        if(i[j]=='\\0')break;\n        if(i[j]=='\"')printf(\"\\\\\\\"\");\n        else if(i[j]=='\\n')printf(\"\\\\n\");\n        else if(i[j]=='\\\\')printf(\"\\\\\\\\\");\n        else putchar(i[j]);\n        j=j+1;\n    }\n}\nvoid g(char* *i,int j){\n    int k;\n    k=0;\n    while(1){\n        if(k>=j)break;\n        if(k!=0)putchar(',');\n        putchar('\"');\n        f(i[k]);\n        putchar('\"');\n        k=k+1;\n    }\n}\nvoid h(char* *i,int j){\n    int k;\n    k=0;\n    while(1){\n        if(k>=j)break;\n        if(i[k][0]=='\\0')g(i,j);\n        else printf(\"%s\",i[k]);\n        k=k+1;\n    }\n}\nint main(){\n    int i;\n    int j;\n    int k;\n    char*l;\n    i=a+c;\n    j=b+d;\n    if(i<0||i>77){\n        if(i<0)i=0;\n        else i=77;\n        c=-1*c;\n    }\n    if(j<0||j>7){\n        if(j<0)j=0;\n        else j=7;\n        d=-1*d;\n    }\n    k=i;\n    asprintf(&l,\"%i\",k);\n    e[1]=l;\n    i=j;\n    asprintf(&l,\"%i\",i);\n    e[3]=l;\n    i=c;\n    asprintf(&l,\"%i\",i);\n    e[5]=l;\n    i=d;\n    asprintf(&l,\"%i\",i);\n    e[7]=l;\n    h(e,","13",");\n    printf(\"/*\\n\");\n    i=0;\n    while(1){\n        if(i==10)break;\n        j=0;\n        while(1){\n            if(j==80)break;\n            if(j>=a&&i>=b&&j-a<3&&i-b<3)putchar('#');\n            else putchar(' ');\n            j=j+1;\n        }\n        putchar('\\n');\n        i=i+1;\n    }\n    printf(\"*/\\n\");\n}\n"};void f(char*i){
-    int j;
-    j=0;
+static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>\nstatic int a=","1",";static int b=","1",";static int c=","1",";static int d=","1",";static char*e[]={","","};void f(char*i){\n    int j=0;\n    while(1){\n        if(i[j]=='\\0')break;\n        if(i[j]=='\"')printf(\"\\\\\\\"\");\n        else if(i[j]=='\\n')printf(\"\\\\n\");\n        else if(i[j]=='\\\\')printf(\"\\\\\\\\\");\n        else putchar(i[j]);\n        j=j+1;\n    }\n}\nvoid g(char* *i,int j){\n    int k=0;\n    while(1){\n        if(k>=j)break;\n        if(k!=0)putchar(',');\n        putchar('\"');\n        f(i[k]);\n        putchar('\"');\n        k=k+1;\n    }\n}\nvoid h(char* *i,int j){\n    int k=0;\n    while(1){\n        if(k>=j)break;\n        if(i[k][0]=='\\0')g(i,j);\n        else printf(\"%s\",i[k]);\n        k=k+1;\n    }\n}\nint main(){\n    char*i;\n    int j=a+c;\n    int k=b+d;\n    if(j<0||j>77){\n        if(j<0)j=0;\n        else j=77;\n        c=-1*c;\n    }\n    if(k<0||k>7){\n        if(k<0)k=0;\n        else k=7;\n        d=-1*d;\n    }\n    int l=j;\n    asprintf(&i,\"%i\",l);\n    e[1]=i;\n    j=k;\n    asprintf(&i,\"%i\",j);\n    e[3]=i;\n    j=c;\n    asprintf(&i,\"%i\",j);\n    e[5]=i;\n    j=d;\n    asprintf(&i,\"%i\",j);\n    e[7]=i;\n    h(e,","13",");\n    printf(\"/*\\n\");\n    j=0;\n    while(1){\n        if(j==10)break;\n        k=0;\n        while(1){\n            if(k==80)break;\n            if(k>=a&&j>=b&&k-a<3&&j-b<3)putchar('#');\n            else putchar(' ');\n            k=k+1;\n        }\n        putchar('\\n');\n        j=j+1;\n    }\n    printf(\"*/\\n\");\n}\n"};void f(char*i){
+    int j=0;
     while(1){
         if(i[j]=='\0')break;
         if(i[j]=='"')printf("\\\"");
@@ -12,8 +11,7 @@ static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#i
     }
 }
 void g(char* *i,int j){
-    int k;
-    k=0;
+    int k=0;
     while(1){
         if(k>=j)break;
         if(k!=0)putchar(',');
@@ -24,8 +22,7 @@ void g(char* *i,int j){
     }
 }
 void h(char* *i,int j){
-    int k;
-    k=0;
+    int k=0;
     while(1){
         if(k>=j)break;
         if(i[k][0]=='\0')g(i,j);
@@ -34,48 +31,45 @@ void h(char* *i,int j){
     }
 }
 int main(){
-    int i;
-    int j;
-    int k;
-    char*l;
-    i=a+c;
-    j=b+d;
-    if(i<0||i>77){
-        if(i<0)i=0;
-        else i=77;
+    char*i;
+    int j=a+c;
+    int k=b+d;
+    if(j<0||j>77){
+        if(j<0)j=0;
+        else j=77;
         c=-1*c;
     }
-    if(j<0||j>7){
-        if(j<0)j=0;
-        else j=7;
+    if(k<0||k>7){
+        if(k<0)k=0;
+        else k=7;
         d=-1*d;
     }
-    k=i;
-    asprintf(&l,"%i",k);
-    e[1]=l;
-    i=j;
-    asprintf(&l,"%i",i);
-    e[3]=l;
-    i=c;
-    asprintf(&l,"%i",i);
-    e[5]=l;
-    i=d;
-    asprintf(&l,"%i",i);
-    e[7]=l;
+    int l=j;
+    asprintf(&i,"%i",l);
+    e[1]=i;
+    j=k;
+    asprintf(&i,"%i",j);
+    e[3]=i;
+    j=c;
+    asprintf(&i,"%i",j);
+    e[5]=i;
+    j=d;
+    asprintf(&i,"%i",j);
+    e[7]=i;
     h(e,13);
     printf("/*\n");
-    i=0;
+    j=0;
     while(1){
-        if(i==10)break;
-        j=0;
+        if(j==10)break;
+        k=0;
         while(1){
-            if(j==80)break;
-            if(j>=a&&i>=b&&j-a<3&&i-b<3)putchar('#');
+            if(k==80)break;
+            if(k>=a&&j>=b&&k-a<3&&j-b<3)putchar('#');
             else putchar(' ');
-            j=j+1;
+            k=k+1;
         }
         putchar('\n');
-        i=i+1;
+        j=j+1;
     }
     printf("*/\n");
 }

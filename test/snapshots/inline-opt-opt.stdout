@@ -1,6 +1,5 @@
 function main() : u32 {
-    let a (3): u32;
-    a (3) = 20;
+    let a (3): u32 = 20;
     loop {
         if (a (3) == 30) {
             a (3) = 10;

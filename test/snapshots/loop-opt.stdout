@@ -1,10 +1,8 @@
 const max: u32 = 10;
 static a: u32 = 0;
 function main() : () {
-    let b (0): u32;
-    let c (1): u32;
-    b (0) = 0;
-    c (1) = 0;
+    let b (0): u32 = 0;
+    let c (1): u32 = 0;
     loop {
         if (c (1) > 10) {
             break;

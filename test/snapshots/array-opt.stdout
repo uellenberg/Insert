@@ -5,10 +5,8 @@ static d: &i32 = (&(a[1]));
 static e: i32 = 2;
 static f: &[i32] = [];
 function h() : i32 {
-    let i (0): i32;
-    let j (1): u32;
-    i (0) = 0;
-    j (1) = 0;
+    let i (0): i32 = 0;
+    let j (1): u32 = 0;
     loop {
         if (j (1) >= 3) {
             break;

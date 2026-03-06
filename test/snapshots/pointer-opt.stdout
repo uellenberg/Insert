@@ -5,8 +5,7 @@ function c(e (0): &i32, f (1): i32) : () {
 }
 function d(e (0): i32) : i32 {
     let e (0): i32;
-    let f (2): i32;
-    f (2) = (e (0) + 1);
+    let f (2): i32 = (e (0) + 1);
     c((&e (0)), 2)
     c((&f (2)), 3)
     return (e (0) + f (2));
