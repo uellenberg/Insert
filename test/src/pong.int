@@ -1,0 +1,84 @@
+//@check
+
+const WIDTH: i32 = 80;
+const HEIGHT: i32 = 10;
+const BALL_RADIUS: i32 = 3;
+
+static ballX: i32 = binding ballXMarker (1);
+static ballY: i32 = binding ballYMarker (1);
+static ballSpeedX: i32 = binding ballSpeedXMarker (1);
+static ballSpeedY: i32 = binding ballSpeedYMarker (1);
+
+static quineStr: &[string] = $quine;
+
+import "std/quine.int";
+import "std/print.int";
+import "std/string.int";
+
+inline function drawWindow() {
+    printf("/*\n");
+
+    let row: i32 = 0;
+    loop {
+        if row == HEIGHT {
+            break;
+        }
+
+        let col: i32 = 0;
+        loop {
+            if col == WIDTH {
+                break;
+            }
+
+            if col >= ballX && row >= ballY && col - ballX < BALL_RADIUS && row - ballY < BALL_RADIUS {
+                putchar('#');
+            } else {
+                putchar(' ');
+            }
+
+            col = col + 1;
+        }
+
+        putchar('\n');
+
+        row = row + 1;
+    }
+
+    printf("*/\n");
+}
+
+function main() -> i32 {
+    // Update the game state for the next frame.
+    // Speed isn't used for drawing the new frame,
+    // so we can update it directly and save a variable.
+    let newBallX: i32 = ballX + ballSpeedX;
+    let newBallY: i32 = ballY + ballSpeedY;
+
+    if newBallX < 0 || newBallX > WIDTH - BALL_RADIUS {
+        if newBallX < 0 {
+            newBallX = 0;
+        } else {
+            newBallX = WIDTH - BALL_RADIUS;
+        }
+
+        ballSpeedX = -1 * ballSpeedX;
+    }
+
+    if newBallY < 0 || newBallY > HEIGHT - BALL_RADIUS {
+        if newBallY < 0 {
+            newBallY = 0;
+        } else {
+            newBallY = HEIGHT - BALL_RADIUS;
+        }
+
+        ballSpeedY = -1 * ballSpeedY;
+    }
+
+    quineStr[ballXMarker] = string(newBallX);
+    quineStr[ballYMarker] = string(newBallY);
+    quineStr[ballSpeedXMarker] = string(ballSpeedX);
+    quineStr[ballSpeedYMarker] = string(ballSpeedY);
+    printQuine(quineStr, $quineLen);
+
+    drawWindow();
+}
