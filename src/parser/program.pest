@@ -92,6 +92,8 @@ functionStatement = _{
     | returnStmt
     | ifStatement
     | loopStatement
+    | whileStatement
+    | forStatement
     | continueStatement
     | breakStatement
     | setVariable
@@ -140,6 +142,16 @@ ifElse = {
 loopStatement = {
     loop_ ~ "{" ~ functionBody ~ "}"
 }
+
+whileStatement = {
+    while_ ~ expression ~ "{" ~ functionBody ~ "}"
+}
+
+forStatement = {
+    for_ ~ (functionStatement | forLoopEmpty) ~ (expression ~ ";" | forLoopEmpty) ~ (functionStatement | forLoopEmpty) ~ "{" ~ functionBody ~ "}"
+}
+
+forLoopEmpty = { ";" }
 
 breakStatement = { break_ ~ ";" }
 
@@ -269,8 +281,10 @@ from_ = _{ "from" }
 fn_ = _{ "fn" }
 marker = _{ "marker" }
 binding = _{ "binding" }
+while_ = _{ "while" }
+for_ = _{ "for" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ | fn_ }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | while_ | for_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ | fn_ }

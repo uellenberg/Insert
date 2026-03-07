@@ -3,14 +3,14 @@ void main(){
     int b;
     int c;
     int d=0;
-    while(1){
+    for(;;){
         if(d>10)break;
         a=0;
         b=0;
-        while(1){
+        for(;;){
             if(b>10)break;
             c=0;
-            while(1){
+            for(;;){
                 if(c>10)break;
                 a=a+c;
                 c=c+1;

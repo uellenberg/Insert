@@ -150,8 +150,23 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::Label { .. } => {}
                 MIRStatement::ContinueStatement { .. } => {}
                 MIRStatement::BreakStatement { .. } => {}
-                MIRStatement::LoopStatement { .. } => {}
+                MIRStatement::LoopStatement { condition: None, .. } => {}
+                MIRStatement::ScopeStatement { .. } => {}
                 MIRStatement::MarkerStatement { .. } => {}
+
+                MIRStatement::LoopStatement {
+                    condition: Some(condition),
+                    span,
+                    ..
+                } => {
+                    condition.ty = Some(MIRType {
+                        ty: MIRTypeInner::Bool,
+                        span: Some(span.clone()),
+                    });
+                    if check_expression(ctx, condition, Some(scope)).is_none() {
+                        return false;
+                    }
+                }
 
                 MIRStatement::CreateVariable {
                     var, value, span, ..

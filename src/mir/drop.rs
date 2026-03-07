@@ -8,6 +8,7 @@ use crate::parser::span::{Span, eprintln_span};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::slice;
 
 /// Performs variable liveness analysis and inserts drops as early
 /// as possible, according to the following rules:
@@ -308,11 +309,11 @@ fn invalidate_loop_writes<'a>(
     // For loops, we can't drop a variable created outside the loop inside it,
     // since that would cause multiple drops.
     // This finds the inner variables which the loop is allowed to drop.
-    if let MIRStatement::LoopStatement { body, .. } = statement {
+    if matches!(statement, MIRStatement::LoopStatement { .. }) {
         let mut inner_vars = HashSet::new();
 
         if !<StatementExplorer>::explore_block(
-            body,
+            slice::from_ref(statement),
             &mut |statement, _scope| {
                 if let MIRStatement::CreateVariable {
                     var: MIRVariable { var_idx, .. },

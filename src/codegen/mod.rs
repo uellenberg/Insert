@@ -32,7 +32,16 @@ pub trait Codegen: TokenInfo {
     fn lower_function<'a>(&mut self, func: &MIRFunction<'a>) -> Tokens<'a>;
 
     /// Converts a block of statements from MIR to the target language.
-    fn lower_block<'a>(&mut self, block: &[MIRStatement<'a>]) -> Tokens<'a>;
+    /// increase_indent causes the output to be returned at an increased
+    /// indent level.
+    /// is_enclosed means that there are lines above and below this statement
+    /// and indentation and newlines should be inserted to account for them.
+    fn lower_block<'a>(
+        &mut self,
+        block: &[MIRStatement<'a>],
+        increase_indent: bool,
+        is_enclosed: bool,
+    ) -> Tokens<'a>;
 
     /// Converts a statement from MIR to the target language.
     /// Returns None if the statement should be ignored (e.g., analysis-only statements).

@@ -153,24 +153,47 @@ impl Codegen for CLowerer {
             .intersperse(spread![Token::new(",".into())])
             .flatten()
             .collect::<Tokens<'a>>();
-        let block = self.lower_block(&func.body);
+        let block = self.lower_block(&func.body, true, true);
 
         spread![...decorated, LEFT_PAREN, ...args, RIGHT_PAREN, LEFT_SQUIGGLE, NEWLINE, ...block, RIGHT_SQUIGGLE, NEWLINE]
     }
 
-    fn lower_block<'a>(&mut self, block: &[MIRStatement<'a>]) -> Tokens<'a> {
+    fn lower_block<'a>(
+        &mut self,
+        block: &[MIRStatement<'a>],
+        increase_indent: bool,
+        is_enclosed: bool,
+    ) -> Tokens<'a> {
         // Items inside a block ({ ... }) should be indented.
         let pre_indent = self.indent_level;
-        self.indent_level = pre_indent + 1;
+        if increase_indent {
+            self.indent_level += 1;
+        }
 
-        let indent = indent_tokens(pre_indent + 1);
+        let indent = indent_tokens(self.indent_level);
 
-        let ret = block
+        let mut ret = block
             .iter()
             // Remove None values.
             .filter_map(|v| self.lower_statement(v))
-            .flat_map(|v| spread![...indent.clone(), ...v, NEWLINE])
+            .enumerate()
+            .flat_map(|(i, v)| {
+                if i == 0 && !is_enclosed {
+                    // If we aren't enclosed, then we can't print out
+                    // the first indent, since it will already exist
+                    // from the caller.
+                    spread![...v, NEWLINE]
+                } else {
+                    spread![...&indent, ...v, NEWLINE]
+                }
+            })
             .collect::<Tokens<'a>>();
+
+        if !is_enclosed && !ret.is_empty() {
+            // If we're not enclosed, the caller will print out a newline
+            // as well, so we need to remove ours to prevent duplicates.
+            ret.pop();
+        }
 
         self.indent_level = pre_indent;
 
@@ -265,7 +288,7 @@ impl Codegen for CLowerer {
                     spread![
                         LEFT_SQUIGGLE,
                         NEWLINE,
-                        ...self.lower_block(on_true),
+                        ...self.lower_block(on_true, true, true),
                         ...indent_tokens(indent),
                         RIGHT_SQUIGGLE,
                     ]
@@ -286,7 +309,7 @@ impl Codegen for CLowerer {
                         spread![
                             LEFT_SQUIGGLE,
                             NEWLINE,
-                            ...self.lower_block(on_false),
+                            ...self.lower_block(on_false, true, true),
                             ...indent_tokens(indent),
                             RIGHT_SQUIGGLE,
                         ]
@@ -306,26 +329,101 @@ impl Codegen for CLowerer {
                 }
             }
 
-            MIRStatement::LoopStatement { body, .. } => {
+            MIRStatement::LoopStatement {
+                condition,
+                body,
+                iterate,
+                ..
+            } => {
                 let loop_body = if body.len() == 1 {
                     self.lower_statement(&body[0])?
                 } else {
                     spread![
                         LEFT_SQUIGGLE,
                         NEWLINE,
-                        ...self.lower_block(body),
+                        ...self.lower_block(body, true, true),
                         ...indent_tokens(indent),
                         RIGHT_SQUIGGLE,
                     ]
                 };
 
+                let cond = if let Some(condition) = condition {
+                    self.lower_expression(condition)
+                } else {
+                    spread![]
+                };
+
+                let iterate = if !iterate.is_empty() {
+                    if iterate.len() != 1 {
+                        panic!("Loop iterate body can only be a single statement!");
+                    }
+
+                    let mut tokens = self.lower_statement(&iterate[0])?;
+                    // The iterate part can't have a semicolon at the end.
+                    if tokens.last() == Some(&SEMI) {
+                        tokens.pop();
+                    }
+
+                    tokens
+                } else {
+                    spread![]
+                };
+
                 Some(spread![
-                    Token::new("while".into()),
+                    Token::new("for".into()),
                     LEFT_PAREN,
-                    Token::new("1".into()),
+                    // For loops with initializers are handled by ScopeStatement.
+                    SEMI,
+                    ...cond,
+                    SEMI,
+                    ...iterate,
                     RIGHT_PAREN,
                     ...loop_body,
                 ])
+            }
+
+            MIRStatement::ScopeStatement { body, .. } => {
+                // Optimization: if the scope contains just a statement and Loop (for-loop),
+                // then we can merge them together.
+                if let Some(initializer) = body.first()
+                    && let Some(loop_ @ MIRStatement::LoopStatement { .. }) = body.get(1)
+                {
+                    let mut initializer = self.lower_statement(initializer)?;
+                    let loop_ = self.lower_statement(loop_)?;
+
+                    // Loop will always be ["for", "(", ";"].
+                    // We want to inject between the parentheses and ";"
+                    // for the initializer.
+                    //
+                    // It might have a trailing semicolon, though.
+                    if initializer.last() == Some(&SEMI) {
+                        initializer.pop();
+                    }
+
+                    if loop_[0] != Token::new("for".into())
+                        || loop_[1] != LEFT_PAREN
+                        || loop_[2] != SEMI
+                    {
+                        panic!("Loop statement is not in the correct format!");
+                    }
+
+                    let for_ = loop_[0].clone();
+                    let paren = loop_[1].clone();
+                    let remaining_loop = &loop_[2..];
+
+                    Some(spread![
+                        for_,
+                        paren,
+                        ...initializer,
+                        ...remaining_loop,
+                    ])
+                } else {
+                    // No extra ident here, since the scope effectively just
+                    // exists for drop analysis.
+                    // We also don't want to indent the first line, since this statement
+                    // will have already been indented by the caller.
+                    Some(self.lower_block(body, false, false))
+                }
             }
 
             MIRStatement::ContinueStatement { .. } => {

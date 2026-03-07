@@ -1,6 +1,6 @@
 void main(){
     unsigned int a=10;
-    while(1){
+    for(;;){
         if(a==0)break;
         a=a-1;
     }

@@ -2,6 +2,8 @@
 
 const max: u32 = 10;
 static sum: u32 = 0;
+static while_sum: u32 = 0;
+static for_sum: u32 = 0;
 
 function main() {
     let acc: u32 = 0;
@@ -17,4 +19,16 @@ function main() {
     }
 
     sum = acc;
+
+    let w_acc: u32 = 0;
+    let w_i: u32 = 0;
+    while w_i <= max {
+        w_acc = w_acc + w_i;
+        w_i = w_i + 1;
+    }
+    while_sum = w_acc;
+
+    for let f_i: u32 = 0; f_i <= max; f_i = f_i + 1; {
+        for_sum = for_sum + f_i;
+    }
 }

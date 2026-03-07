@@ -1,6 +1,6 @@
 unsigned int b(unsigned int c){
     unsigned int d=0;
-    while(1){
+    for(;;){
         if(d>=c)break;
         d=d+1;
     }

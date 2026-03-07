@@ -21,42 +21,9 @@ pub fn resolve_fns_to_vars(ctx: &mut MIRContext<'_>) {
         <StatementExplorer>::explore_block_mut(
             &mut function.body,
             &mut |statement, scope| {
-                match statement {
-                    // No expressions.
-                    MIRStatement::CreateVariable { value: None, .. } => {}
-                    MIRStatement::DropVariable(..) => {}
-                    MIRStatement::Goto { .. } => {}
-                    MIRStatement::Label { .. } => {}
-                    MIRStatement::ContinueStatement { .. } => {}
-                    MIRStatement::BreakStatement { .. } => {}
-                    MIRStatement::LoopStatement { .. } => {}
-                    MIRStatement::MarkerStatement { .. } => {}
-
-                    MIRStatement::CreateVariable {
-                        value: Some(value), ..
-                    }
-                    | MIRStatement::SetVariable { value, .. }
-                    | MIRStatement::IfStatement {
-                        condition: value, ..
-                    }
-                    | MIRStatement::GotoNotEqual {
-                        condition: value, ..
-                    } => {
-                        resolve_expr_fn_to_vars(ctx, scope, value);
-                    }
-
-                    MIRStatement::FunctionCall(fn_call) => {
-                        resolve_fn_to_var(ctx, scope, fn_call);
-                    }
-
-                    MIRStatement::Return { expr, .. } => {
-                        if let Some(expr) = expr {
-                            resolve_expr_fn_to_vars(ctx, scope, expr);
-                        }
-                    }
-                }
-
-                true
+                find_exprs_mut(statement, &mut |expr, _| {
+                    resolve_expr_fn_to_vars(ctx, scope, expr)
+                })
             },
             &|_, _| true,
             &mut |_, _| true,

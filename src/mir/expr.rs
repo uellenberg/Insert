@@ -422,8 +422,18 @@ macro_rules! extract_expr_body {
             MIRStatement::Label { .. } => {}
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
-            MIRStatement::LoopStatement { .. } => {}
+            MIRStatement::LoopStatement { condition: None, .. } => {}
+            MIRStatement::ScopeStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
+
+            MIRStatement::LoopStatement {
+                condition: Some(condition),
+                ..
+            } => {
+                if !$for_each(condition, false) {
+                    return false;
+                }
+            }
 
             MIRStatement::CreateVariable {
                 value: Some(value), ..

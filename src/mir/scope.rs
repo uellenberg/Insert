@@ -124,7 +124,15 @@ macro_rules! explore_recurse {
             MIRStatement::BreakStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
 
-            MIRStatement::LoopStatement { body, .. } => {
+            MIRStatement::LoopStatement { body, iterate, .. } => {
+                let $list = body;
+                {
+                    $recurse
+                }
+                let $list = iterate;
+                { $recurse }
+            }
+            MIRStatement::ScopeStatement { body, .. } => {
                 let $list = body;
                 { $recurse }
             }
@@ -214,6 +222,7 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
             MIRStatement::LoopStatement { .. } => {}
+            MIRStatement::ScopeStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
 
             MIRStatement::CreateVariable { var, .. } => {

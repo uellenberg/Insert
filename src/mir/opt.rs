@@ -5,6 +5,7 @@ use crate::mir::{MIRExpression, MIRExpressionInner, MIRFunction, MIRStatement, M
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::slice;
 
 /// Removes trivial (e.g., if(true)) if statements.
 /// Returns (success, modified function).
@@ -392,11 +393,11 @@ fn invalidate_loop_writes<'a>(
     // If we read after we write within the loop, then we can inline that.
     // This automatically makes variables created within the loop work correctly, since
     // we only invalidate at the beginning of it.
-    if let MIRStatement::LoopStatement { body, .. } = statement {
+    if matches!(statement, MIRStatement::LoopStatement { .. }) {
         let mut to_invalidate = HashSet::new();
 
         if !<StatementExplorer>::explore_block(
-            body,
+            slice::from_ref(statement),
             &mut |statement, scope| {
                 if let MIRStatement::SetVariable {
                     // Member access/index/deref can be ignored for the same reason as above.

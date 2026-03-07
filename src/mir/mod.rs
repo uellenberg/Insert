@@ -933,13 +933,40 @@ pub enum MIRStatement<'a> {
         span: Span<'a>,
     },
 
-    /// An infinite loop.
+    /// A loop, optionally with a condition (while loop)
+    /// and an iterate/increment block (for-loop).
+    /// If condition is None, it loops infinitely.
+    ///
+    /// For loops are constructed using this combined with
+    /// ScopeStatement.
+    /// This makes the special case handling of for loop variables
+    /// a non-issue for any optimization passes.
+    /// In exchange, lowering needs special handling to optimize it.
     LoopStatement {
+        /// Optional condition checked before each iteration.
+        condition: Option<MIRExpression<'a>>,
+
         /// Code that runs inside the loop.
         body: Vec<MIRStatement<'a>>,
 
+        /// Statements run after each body iteration,
+        /// such as variable
+        /// Continue jumps to the start of this block.
+        /// Empty for infinite/while loops.
+        iterate: Vec<MIRStatement<'a>>,
+
         /// The code that created
         /// this item.
+        span: Span<'a>,
+    },
+
+    /// A block that introduces a new child scope.
+    /// Variables declared inside do not leak to the outer scope.
+    ScopeStatement {
+        /// Code that runs inside the scope.
+        body: Vec<MIRStatement<'a>>,
+
+        /// The code that created this item.
         span: Span<'a>,
     },
 

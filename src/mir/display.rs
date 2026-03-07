@@ -218,8 +218,34 @@ impl<'a> Display for MIRStatement<'a> {
                     writeln!(f, " /* {span} */")?;
                 }
             }
-            MIRStatement::LoopStatement { body, span, .. } => {
-                writeln!(f, "loop {{")?;
+            MIRStatement::LoopStatement { condition, body, iterate, span } => {
+                if let Some(cond) = condition {
+                    writeln!(f, "while {} {{", cond)?;
+                } else {
+                    writeln!(f, "loop {{")?;
+                }
+
+                for stmt in body {
+                    write_indented(f, stmt, "    ")?;
+                    writeln!(f)?;
+                }
+
+                if !iterate.is_empty() {
+                    writeln!(f, "}} iterate {{")?;
+                    for stmt in iterate {
+                        write_indented(f, stmt, "    ")?;
+                        writeln!(f)?;
+                    }
+                }
+
+                write!(f, "}}")?;
+
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::ScopeStatement { body, span } => {
+                writeln!(f, "{{")?;
 
                 for stmt in body {
                     write_indented(f, stmt, "    ")?;

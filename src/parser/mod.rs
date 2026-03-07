@@ -387,134 +387,206 @@ fn parse_function_body<'a>(
     let mut body = vec![];
 
     for pair in value.into_inner() {
-        let span = to_span(location, pair.as_span());
-
-        match pair.as_rule() {
-            Rule::createVariable => {
-                let mut data = pair.into_inner();
-
-                let identifier = data.next().unwrap().as_str();
-                let ty = parse_type(location, data.next().unwrap());
-
-                body.push(MIRStatement::CreateVariable {
-                    var: MIRVariable {
-                        name: Cow::Borrowed(identifier),
-                        ty,
-                        span: span.clone(),
-                        var_idx: None,
-                        arg: false,
-                    },
-                    value: None,
-                    span,
-                });
-            }
-            Rule::createSetVariable => {
-                let mut data = pair.into_inner();
-
-                let identifier = data.next().unwrap().as_str();
-                let ty = parse_type(location, data.next().unwrap());
-                let value = parse_expression(location, data.next().unwrap(), ctx);
-
-                body.push(MIRStatement::CreateVariable {
-                    var: MIRVariable {
-                        name: Cow::Borrowed(identifier),
-                        ty,
-                        span: span.clone(),
-                        var_idx: None,
-                        arg: false,
-                    },
-                    value: Some(value),
-                    span: span.clone(),
-                });
-            }
-            Rule::setVariable => {
-                let mut data = pair.into_inner();
-
-                let place = parse_place_expr(location, data.next().unwrap(), ctx);
-                let value = parse_expression(location, data.next().unwrap(), ctx);
-
-                body.push(MIRStatement::SetVariable { place, value, span });
-            }
-            Rule::functionCallDirect => {
-                let mut data = pair.into_inner();
-
-                let name_data = data.next().unwrap();
-                let name = name_data.as_str();
-                let args = data
-                    .next()
-                    .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
-
-                body.push(MIRStatement::FunctionCall(MIRFnCall {
-                    source: MIRFnSource::Direct(
-                        Cow::Borrowed(name),
-                        to_span(location, name_data.as_span()),
-                    ),
-                    args,
-                    args_ty: None,
-                    ret_ty: None,
-                    span,
-                }));
-            }
-            Rule::functionCallIndirect => {
-                let mut data = pair.into_inner();
-
-                let ptr = parse_expression(location, data.next().unwrap(), ctx);
-                let args = data
-                    .next()
-                    .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
-
-                body.push(MIRStatement::FunctionCall(MIRFnCall {
-                    source: MIRFnSource::Indirect(ptr),
-                    args,
-                    args_ty: None,
-                    ret_ty: None,
-                    span,
-                }));
-            }
-            Rule::returnStmt => body.push(MIRStatement::Return {
-                expr: pair
-                    .into_inner()
-                    .next()
-                    .map(|v| parse_expression(location, v, ctx)),
-                span,
-            }),
-            Rule::ifStatement => {
-                body.push(parse_if_statement(location, pair, ctx)?);
-            }
-            Rule::continueStatement => {
-                body.push(MIRStatement::ContinueStatement { span });
-            }
-            Rule::breakStatement => {
-                body.push(MIRStatement::BreakStatement { span });
-            }
-            Rule::loopStatement => {
-                let mut data = pair.into_inner();
-
-                let loop_body = parse_function_body(location, data.next().unwrap(), ctx)?;
-
-                body.push(MIRStatement::LoopStatement {
-                    body: loop_body,
-                    span,
-                });
-            }
-            Rule::markerStatement => {
-                let marker = parse_marker(location, pair);
-                // Even though markers can live inside functions, they're
-                // always global/unique.
-                //
-                // We need to manually register it here, since only
-                // global/outer declarations are automatically registered.
-                ctx.register(MIRDeclaration::Marker(marker.clone()))?;
-                body.push(MIRStatement::MarkerStatement {
-                    name: marker.name,
-                    span: marker.span,
-                });
-            }
-            _ => unreachable!(),
-        }
+        body.push(parse_statement(location, pair, ctx)?);
     }
-
     Some(body)
+}
+
+fn parse_statement<'a>(
+    location: &'a Path,
+    pair: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> Option<MIRStatement<'a>> {
+    let span = to_span(location, pair.as_span());
+
+    match pair.as_rule() {
+        Rule::createVariable => {
+            let mut data = pair.into_inner();
+
+            let identifier = data.next().unwrap().as_str();
+            let ty = parse_type(location, data.next().unwrap());
+
+            Some(MIRStatement::CreateVariable {
+                var: MIRVariable {
+                    name: Cow::Borrowed(identifier),
+                    ty,
+                    span: span.clone(),
+                    var_idx: None,
+                    arg: false,
+                },
+                value: None,
+                span,
+            })
+        }
+        Rule::createSetVariable => {
+            let mut data = pair.into_inner();
+
+            let identifier = data.next().unwrap().as_str();
+            let ty = parse_type(location, data.next().unwrap());
+            let value = parse_expression(location, data.next().unwrap(), ctx);
+
+            Some(MIRStatement::CreateVariable {
+                var: MIRVariable {
+                    name: Cow::Borrowed(identifier),
+                    ty,
+                    span: span.clone(),
+                    var_idx: None,
+                    arg: false,
+                },
+                value: Some(value),
+                span: span.clone(),
+            })
+        }
+        Rule::setVariable => {
+            let mut data = pair.into_inner();
+
+            let place = parse_place_expr(location, data.next().unwrap(), ctx);
+            let value = parse_expression(location, data.next().unwrap(), ctx);
+
+            Some(MIRStatement::SetVariable { place, value, span })
+        }
+        Rule::functionCallDirect => {
+            let mut data = pair.into_inner();
+
+            let name_data = data.next().unwrap();
+            let name = name_data.as_str();
+            let args = data
+                .next()
+                .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
+
+            Some(MIRStatement::FunctionCall(MIRFnCall {
+                source: MIRFnSource::Direct(
+                    Cow::Borrowed(name),
+                    to_span(location, name_data.as_span()),
+                ),
+                args,
+                args_ty: None,
+                ret_ty: None,
+                span,
+            }))
+        }
+        Rule::functionCallIndirect => {
+            let mut data = pair.into_inner();
+
+            let ptr = parse_expression(location, data.next().unwrap(), ctx);
+            let args = data
+                .next()
+                .map_or(vec![], |args| parse_function_call_args(location, args, ctx));
+
+            Some(MIRStatement::FunctionCall(MIRFnCall {
+                source: MIRFnSource::Indirect(ptr),
+                args,
+                args_ty: None,
+                ret_ty: None,
+                span,
+            }))
+        }
+        Rule::returnStmt => Some(MIRStatement::Return {
+            expr: pair
+                .into_inner()
+                .next()
+                .map(|v| parse_expression(location, v, ctx)),
+            span,
+        }),
+        Rule::ifStatement => parse_if_statement(location, pair, ctx),
+        Rule::continueStatement => Some(MIRStatement::ContinueStatement { span }),
+        Rule::breakStatement => Some(MIRStatement::BreakStatement { span }),
+        Rule::loopStatement => {
+            let mut data = pair.into_inner();
+            let loop_body = parse_function_body(location, data.next().unwrap(), ctx)?;
+
+            Some(MIRStatement::LoopStatement {
+                condition: None,
+                body: loop_body,
+                iterate: vec![],
+                span,
+            })
+        }
+        Rule::whileStatement => {
+            let mut data = pair.into_inner();
+            let condition = parse_expression(location, data.next().unwrap(), ctx);
+            let loop_body = parse_function_body(location, data.next().unwrap(), ctx)?;
+
+            Some(MIRStatement::LoopStatement {
+                condition: Some(condition),
+                body: loop_body,
+                iterate: vec![],
+                span,
+            })
+        }
+        Rule::forStatement => {
+            let mut data = pair.into_inner();
+            let init_pair = data.next().unwrap();
+            let cond_pair = data.next().unwrap();
+            let iterate_pair = data.next().unwrap();
+            let body_pair = data.next().unwrap();
+
+            let init_stmt = match init_pair.as_rule() {
+                Rule::forLoopEmpty => None,
+                _ => Some(parse_statement(location, init_pair, ctx)?),
+            };
+
+            let condition = match cond_pair.as_rule() {
+                Rule::forLoopEmpty => None,
+                Rule::expression => Some(parse_expression(location, cond_pair, ctx)),
+                _ => unreachable!(),
+            };
+
+            let iterate_stmt = match iterate_pair.as_rule() {
+                Rule::forLoopEmpty => None,
+                _ => Some(parse_statement(location, iterate_pair, ctx)?),
+            };
+
+            let loop_body = parse_function_body(location, body_pair, ctx)?;
+
+            // For loops are desugared to a scope containing their initializer
+            // and a while loop.
+            // This makes MIR much simpler, with a small cost during codegen
+            // to get it properly optimized.
+            //
+            // for let i: u32 = 0; i < 10; i = i + 1 {
+            //     i = i + 2;
+            // }
+            //
+            // Desugars to
+            //
+            // scope {
+            //     let i: u32 = 0;
+            //     while i < 10 {
+            //         i = i + 2;
+            //     } iterate { i = i + 1 }
+            // }
+            let mut scope_body = vec![];
+            if let Some(init) = init_stmt {
+                scope_body.push(init);
+            }
+            scope_body.push(MIRStatement::LoopStatement {
+                condition,
+                body: loop_body,
+                iterate: iterate_stmt.into_iter().collect(),
+                span: span.clone(),
+            });
+
+            Some(MIRStatement::ScopeStatement {
+                body: scope_body,
+                span,
+            })
+        }
+        Rule::markerStatement => {
+            let marker = parse_marker(location, pair);
+            // Even though markers can live inside functions, they're
+            // always global/unique.
+            //
+            // We need to manually register it here, since only
+            // global/outer declarations are automatically registered.
+            ctx.register(MIRDeclaration::Marker(marker.clone()))?;
+            Some(MIRStatement::MarkerStatement {
+                name: marker.name,
+                span: marker.span,
+            })
+        }
+        _ => unreachable!(),
+    }
 }
 
 fn parse_if_statement<'a>(

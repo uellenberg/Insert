@@ -1,14 +1,31 @@
 const max: u32 = 10;
 static a: u32 = 0;
+static b: u32 = 0;
+static c: u32 = 0;
 function main() : () {
-    let b (0): u32 = 0;
-    let c (1): u32 = 0;
+    let d (0): u32 = 0;
+    let e (1): u32 = 0;
     loop {
-        if (c (1) > 10) {
+        if (e (1) > 10) {
             break;
         }
-        b (0) = (b (0) + c (1));
-        c (1) = (c (1) + 1);
+        d (0) = (d (0) + e (1));
+        e (1) = (e (1) + 1);
     }
-    a = b (0);
+    a = d (0);
+    d (0) = 0;
+    e (1) = 0;
+    while (e (1) <= 10) {
+        d (0) = (d (0) + e (1));
+        e (1) = (e (1) + 1);
+    }
+    b = d (0);
+    {
+        d (0) = 0;
+        while (d (0) <= 10) {
+            c = (c + d (0));
+        } iterate {
+            d (0) = (d (0) + 1);
+        }
+    }
 }

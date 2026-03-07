@@ -15,7 +15,7 @@ char*h(){
 }
 static char*a="10";static char*b="-10";static char*c="true";static char d='s';static char e='r';void i(char*k,unsigned int l){
     unsigned int m=0;
-    while(1){
+    for(;;){
         if(m>=l)break;
         k[m]='\0';
         m=m+1;

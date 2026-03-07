@@ -684,6 +684,7 @@ impl<'a> Interpreter<'a> {
             }
             MIRStatement::IfStatement { .. }
             | MIRStatement::LoopStatement { .. }
+            | MIRStatement::ScopeStatement { .. }
             | MIRStatement::ContinueStatement { .. }
             | MIRStatement::BreakStatement { .. } => {
                 panic!("This statement type cannot exist at this phase!");
