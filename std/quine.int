@@ -4,12 +4,7 @@ target "C" {
 
     /** Prints a string, escaped to work within a string literal. */
     helper function printEscaped(s: string) {
-        let i: i32 = 0;
-        loop {
-            if s[i] == '\0' {
-                break;
-            }
-
+        for let i: i32 = 0; s[i] != '\0'; i = i + 1; {
             if s[i] == '"' {
                 printf("\\\"");
             } else if s[i] == '\n' {
@@ -19,19 +14,12 @@ target "C" {
             } else {
                 putchar(s[i]);
             }
-
-            i = i + 1;
         }
     }
 
     /** Prints the quine array itself. */
     helper function printQuineArray(strs: &[string], length: i32) {
-        let i: i32 = 0;
-        loop {
-            if i >= length {
-                break;
-            }
-
+        for let i: i32 = 0; i < length; i = i + 1; {
             if i != 0 {
                 putchar(',');
             }
@@ -39,27 +27,18 @@ target "C" {
             putchar('"');
             printEscaped(strs[i]);
             putchar('"');
-
-            i = i + 1;
         }
     }
 
     /** Prints the output of the program from the quine array */
     helper function printQuine(strs: &[string], length: i32) {
-        let i: i32 = 0;
-        loop {
-            if i >= length {
-                break;
-            }
-
+        for let i: i32 = 0; i < length; i = i + 1; {
             // Empty string means self-repeating part.
             if strs[i][0] == '\0' {
                 printQuineArray(strs, length);
             } else {
                 printf("%s", strs[i]);
             }
-
-            i = i + 1;
         }
     }
 }

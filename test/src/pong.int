@@ -18,30 +18,16 @@ import "std/string.int";
 inline function drawWindow() {
     printf("/*\n");
 
-    let row: i32 = 0;
-    loop {
-        if row == HEIGHT {
-            break;
-        }
-
-        let col: i32 = 0;
-        loop {
-            if col == WIDTH {
-                break;
-            }
-
+    for let row: i32 = 0; row < HEIGHT; row = row + 1; {
+        for let col: i32 = 0; col < WIDTH; col = col + 1; {
             if col >= ballX && row >= ballY && col - ballX < BALL_RADIUS && row - ballY < BALL_RADIUS {
                 putchar('#');
             } else {
                 putchar(' ');
             }
-
-            col = col + 1;
         }
 
         putchar('\n');
-
-        row = row + 1;
     }
 
     printf("*/\n");
