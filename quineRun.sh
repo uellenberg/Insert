@@ -2,8 +2,10 @@
 
 while true
 do
-  gcc main.c
   clear
-  ./a.out | tee main.c
+  cat main.c
+
+  gcc main.c
+  ./a.out > main.c
   sleep 0.1
 done

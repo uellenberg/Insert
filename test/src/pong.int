@@ -11,32 +11,113 @@ static ballSpeedY: i32 = binding ballSpeedYMarker (1);
 
 static quineStr: &[string] = $quine;
 
-import "std/quine.int";
+const SPACE_CHAR: char = $quineSpace;
+const LINE_CHAR: char = $quineLine;
+
 import "std/print.int";
 import "std/string.int";
+import "std/quine.int";
 
-inline function drawWindow() {
-    printf("/*\n");
+static idx: i32 = 0;
+// Offset 0 is the comma (optional), 1 is the opening quote, and one past the end of the string
+// is the closing quote.
+static offset: i32 = 0;
+
+/**
+  * Tries to print a single character of the quine array, stepping idx and offset forward.
+  * Returns true if two characters were printed (needed to escape chars).
+  *
+  * This uses recursion to skip an offset while still printing out a character in the end.
+  */
+helper function printQuineArrayChar() -> bool {
+    offset = offset + 1;
+
+    if offset == 1 {
+        if idx != 0 {
+            putchar(',');
+        } else {
+            return printQuineArrayChar();
+        }
+
+        return false;
+    }
+
+    if offset == 2 {
+        putchar('"');
+        return false;
+    }
+
+    let c: char = quineStr[idx][offset - 3];
+
+    if c == '\0' {
+        putchar('"');
+        offset = 0;
+        idx = idx + 1;
+        return false;
+    }
+
+    if c == '"' {
+        printf("\\\"");
+        return true;
+    } else if c == '\\' {
+        printf("\\\\");
+        return true;
+    } else if c != ' ' && c != '\n' {
+        putchar(c);
+        return false;
+    } else {
+        return printQuineArrayChar();
+    }
+}
+
+helper function printQuineArr() {
+    // Printing the first character here helps keep the
+    // backslashes at the end more consistent.
+    printQuineArrayChar();
+    putchar('\\');
+    putchar('\n');
 
     for let row: i32 = 0; row < HEIGHT; row = row + 1; {
         for let col: i32 = 0; col < WIDTH; col = col + 1; {
             if col >= ballX && row >= ballY && col - ballX < BALL_RADIUS && row - ballY < BALL_RADIUS {
-                putchar('#');
+                if printQuineArrayChar() {
+                    col = col + 1;
+                }
             } else {
                 putchar(' ');
             }
         }
 
+        // Offset 0 means we aren't in a string literal,
+        // so we need a backslash to continue it.
+        if offset != 0 {
+            putchar('\\');
+        }
+
         putchar('\n');
     }
 
-    printf("*/\n");
+    // Print the remaining characters.
+    while idx < $quineLen {
+        printQuineArrayChar();
+    }
+}
+
+helper function printQuine1() {
+    for let i: i32 = 0; i < $quineLen; i = i + 1; {
+        if quineStr[i][0] == '\0' {
+            printQuineArr();
+        } else {
+            printQuineItem(quineStr[i]);
+        }
+    }
+
+    // A trailing newline is needed for valid C.
+    putchar('\n');
 }
 
 function main() -> i32 {
-    // Update the game state for the next frame.
-    // Speed isn't used for drawing the new frame,
-    // so we can update it directly and save a variable.
+    // Compute next ball position.
     let newBallX: i32 = ballX + ballSpeedX;
     let newBallY: i32 = ballY + ballSpeedY;
 
@@ -64,7 +145,5 @@ function main() -> i32 {
     quineStr[ballYMarker] = string(newBallY);
     quineStr[ballSpeedXMarker] = string(ballSpeedX);
     quineStr[ballSpeedYMarker] = string(ballSpeedY);
-    printQuine(quineStr, $quineLen);
-
-    drawWindow();
+    printQuine1();
 }

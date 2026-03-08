@@ -1,66 +1,89 @@
 #include<stdio.h>
-static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>:static$int$a=","1",";static$int$b=","1",";static$int$c=","1",";static$int$d=","1",";static$char*e[]={","","};void$f(char*j){:$$$$int$k;:$$$$for(k=0;j[k]!='\\0';k=k+1)if(j[k]=='\"')printf(\"\\\\\\\"\");:$$$$else$if(j[k]=='\\n')printf(\"\\\\n\");:$$$$else$if(j[k]=='\\\\')printf(\"\\\\\\\\\");:$$$$else$if(j[k]!='$'&&j[k]!='\\n')putchar(j[k]);:}:void$g(char*j){:$$$$int$k;:$$$$for(k=0;j[k]!='\\0';k=k+1)if(j[k]==","36",")putchar('$');:$$$$else$if(j[k]==","58",")putchar('\\n');:$$$$else$if(j[k]!='$'&&j[k]!='\\n')putchar(j[k]);:}:void$h(char*$*j,int$k){:$$$$int$l;:$$$$for(l=0;l<k;l=l+1){:$$$$$$$$if(l!=0)putchar(',');:$$$$$$$$putchar('\"');:$$$$$$$$f(j[l]);:$$$$$$$$putchar('\"');:$$$$}:}:void$i(char*$*j,int$k){:$$$$int$l;:$$$$for(l=0;l<k;l=l+1){:$$$$$$$$if(l!=0)putchar('$');:$$$$$$$$if(j[l][0]=='\\0')h(j,k);:$$$$$$$$else$g(j[l]);:$$$$}:}:int$main(){:$$$$char*j;:$$$$int$k=a+c;:$$$$int$l=b+d;:$$$$if(k<0||k>77){:$$$$$$$$if(k<0)k=0;:$$$$$$$$else$k=77;:$$$$$$$$c=-1*c;:$$$$}:$$$$if(l<0||l>7){:$$$$$$$$if(l<0)l=0;:$$$$$$$$else$l=7;:$$$$$$$$d=-1*d;:$$$$}:$$$$int$m=k;:$$$$asprintf(&j,\"%i\",m);:$$$$e[1]=j;:$$$$k=l;:$$$$asprintf(&j,\"%i\",k);:$$$$e[3]=j;:$$$$k=c;:$$$$asprintf(&j,\"%i\",k);:$$$$e[5]=j;:$$$$k=d;:$$$$asprintf(&j,\"%i\",k);:$$$$e[7]=j;:$$$$i(e,","17",");:$$$$printf(\"/*\\n\");:$$$$for(k=0;k<10;k=k+1){:$$$$$$$$for(l=0;l<80;l=l+1)if(l>=a&&k>=b&&l-a<3&&k-b<3)putchar('#');:$$$$$$$$else$putchar('$');:$$$$$$$$putchar('\\n');:$$$$}:$$$$printf(\"*/\\n\");:}:"};void f(char*j){
-    int k;
-    for(k=0;j[k]!='\0';k=k+1)if(j[k]=='"')printf("\\\"");
-    else if(j[k]=='\n')printf("\\n");
-    else if(j[k]=='\\')printf("\\\\");
-    else if(j[k]!=' '&&j[k]!='\n')putchar(j[k]);
+static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>/static$int$a=","1",";static$int$b=","1",";static$int$c=","1",";static$int$d=","1",";static$char*e[]={","","};void$h(char*l){/$$$$int$m;/$$$$for(m=0;l[m]!='\\0';m=m+1)if(l[m]==","36",")putchar('$');/$$$$else$if(l[m]==","47",")putchar('\\n');/$$$$else$if(l[m]!='$'&&l[m]!='\\n')putchar(l[m]);/}/static$int$f=0;static$int$g=0;bool$i(){/$$$$g=g+1;/$$$$if(g==1){/$$$$$$$$if(f!=0)putchar(',');/$$$$$$$$else$return$i();/$$$$$$$$return$false;/$$$$}/$$$$if(g==2){/$$$$$$$$putchar('\"');/$$$$$$$$return$false;/$$$$}/$$$$char$l=e[f][g-3];/$$$$if(l=='\\0'){/$$$$$$$$putchar('\"');/$$$$$$$$g=0;/$$$$$$$$f=f+1;/$$$$$$$$return$false;/$$$$}/$$$$if(l=='\"'){/$$$$$$$$printf(\"\\\\\\\"\");/$$$$$$$$return$true;/$$$$}/$$$$else$if(l=='\\\\'){/$$$$$$$$printf(\"\\\\\\\\\");/$$$$$$$$return$true;/$$$$}/$$$$else$if(l!='$'&&l!='\\n'){/$$$$$$$$putchar(l);/$$$$$$$$return$false;/$$$$}/$$$$else$return$i();/}/void$j(){/$$$$int$l;/$$$$int$m;/$$$$i();/$$$$putchar('\\\\');/$$$$putchar('\\n');/$$$$for(l=0;l<10;l=l+1){/$$$$$$$$for(m=0;m<80;m=m+1)if(m>=a&&l>=b&&m-a<3&&l-b<3){/$$$$$$$$$$$$if(i())m=m+1;/$$$$$$$$}/$$$$$$$$else$putchar('$');/$$$$$$$$if(g!=0)putchar('\\\\');/$$$$$$$$putchar('\\n');/$$$$}/$$$$for(;f<","19",";)i();/}/void$k(){/$$$$int$l;/$$$$for(l=0;l<","19",";l=l+1)if(e[l][0]=='\\0')j();/$$$$else$h(e[l]);/$$$$putchar('\\n');/}/int$main(){/$$$$char*l;/$$$$int$m=a+c;/$$$$int$n=b+d;/$$$$if(m<0||m>77){/$$$$$$$$if(m<0)m=0;/$$$$$$$$else$m=77;/$$$$$$$$c=-1*c;/$$$$}/$$$$if(n<0||n>7){/$$$$$$$$if(n<0)n=0;/$$$$$$$$else$n=7;/$$$$$$$$d=-1*d;/$$$$}/$$$$int$o=m;/$$$$asprintf(&l,\"%i\",o);/$$$$e[1]=l;/$$$$m=n;/$$$$asprintf(&l,\"%i\",m);/$$$$e[3]=l;/$$$$m=c;/$$$$asprintf(&l,\"%i\",m);/$$$$e[5]=l;/$$$$m=d;/$$$$asprintf(&l,\"%i\",m);/$$$$e[7]=l;/$$$$k();/}/"};void h(char*l){
+    int m;
+    for(m=0;l[m]!='\0';m=m+1)if(l[m]==36)putchar(' ');
+    else if(l[m]==47)putchar('\n');
+    else if(l[m]!=' '&&l[m]!='\n')putchar(l[m]);
 }
-void g(char*j){
-    int k;
-    for(k=0;j[k]!='\0';k=k+1)if(j[k]==36)putchar(' ');
-    else if(j[k]==58)putchar('\n');
-    else if(j[k]!=' '&&j[k]!='\n')putchar(j[k]);
-}
-void h(char* *j,int k){
-    int l;
-    for(l=0;l<k;l=l+1){
-        if(l!=0)putchar(',');
+static int f=0;static int g=0;bool i(){
+    g=g+1;
+    if(g==1){
+        if(f!=0)putchar(',');
+        else return i();
+        return false;
+    }
+    if(g==2){
         putchar('"');
-        f(j[l]);
+        return false;
+    }
+    char l=e[f][g-3];
+    if(l=='\0'){
         putchar('"');
+        g=0;
+        f=f+1;
+        return false;
     }
+    if(l=='"'){
+        printf("\\\"");
+        return true;
+    }
+    else if(l=='\\'){
+        printf("\\\\");
+        return true;
+    }
+    else if(l!=' '&&l!='\n'){
+        putchar(l);
+        return false;
+    }
+    else return i();
 }
-void i(char* *j,int k){
+void j(){
     int l;
-    for(l=0;l<k;l=l+1){
-        if(l!=0)putchar(' ');
-        if(j[l][0]=='\0')h(j,k);
-        else g(j[l]);
-    }
-}
-int main(){
-    char*j;
-    int k=a+c;
-    int l=b+d;
-    if(k<0||k>77){
-        if(k<0)k=0;
-        else k=77;
-        c=-1*c;
-    }
-    if(l<0||l>7){
-        if(l<0)l=0;
-        else l=7;
-        d=-1*d;
-    }
-    int m=k;
-    asprintf(&j,"%i",m);
-    e[1]=j;
-    k=l;
-    asprintf(&j,"%i",k);
-    e[3]=j;
-    k=c;
-    asprintf(&j,"%i",k);
-    e[5]=j;
-    k=d;
-    asprintf(&j,"%i",k);
-    e[7]=j;
-    i(e,17);
-    printf("/*\n");
-    for(k=0;k<10;k=k+1){
-        for(l=0;l<80;l=l+1)if(l>=a&&k>=b&&l-a<3&&k-b<3)putchar('#');
+    int m;
+    i();
+    putchar('\\');
+    putchar('\n');
+    for(l=0;l<10;l=l+1){
+        for(m=0;m<80;m=m+1)if(m>=a&&l>=b&&m-a<3&&l-b<3){
+            if(i())m=m+1;
+        }
         else putchar(' ');
+        if(g!=0)putchar('\\');
         putchar('\n');
     }
-    printf("*/\n");
+    for(;f<19;)i();
+}
+void k(){
+    int l;
+    for(l=0;l<19;l=l+1)if(e[l][0]=='\0')j();
+    else h(e[l]);
+    putchar('\n');
+}
+int main(){
+    char*l;
+    int m=a+c;
+    int n=b+d;
+    if(m<0||m>77){
+        if(m<0)m=0;
+        else m=77;
+        c=-1*c;
+    }
+    if(n<0||n>7){
+        if(n<0)n=0;
+        else n=7;
+        d=-1*d;
+    }
+    int o=m;
+    asprintf(&l,"%i",o);
+    e[1]=l;
+    m=n;
+    asprintf(&l,"%i",m);
+    e[3]=l;
+    m=c;
+    asprintf(&l,"%i",m);
+    e[5]=l;
+    m=d;
+    asprintf(&l,"%i",m);
+    e[7]=l;
+    k();
 }
