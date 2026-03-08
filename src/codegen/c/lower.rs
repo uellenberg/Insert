@@ -2,7 +2,7 @@ use crate::codegen::Codegen;
 use crate::codegen::LowerOptions;
 use crate::codegen::c::token::{
     INDENT, LEFT_BRACKET, LEFT_PAREN, LEFT_SQUIGGLE, NEWLINE, NEWLINE_REQUIRED, RIGHT_BRACKET,
-    RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, escape_char, escape_string,
+    RIGHT_PAREN, RIGHT_SQUIGGLE, SEMI, compress_with_defines, escape_char, escape_string,
 };
 use crate::codegen::token::{Token, TokenInfo, TokenStyle, Tokens, spread, strip_fancy_tokens};
 use crate::mir::{
@@ -33,19 +33,20 @@ impl Codegen for CLowerer {
     }
 
     fn lower_program(&mut self, program: &MIRProgram, options: LowerOptions) -> String {
-        let mut output = spread![];
+        let mut header = spread![];
+        let mut body = spread![];
 
-        output.extend(self.lower_imports(&program.required_imports));
+        header.extend(self.lower_imports(&program.required_imports));
 
         for val in &program.decls {
             match val {
                 MIRDeclarationKey::Static(val) => {
-                    output.extend(self.lower_static(&program.statics[*val]))
+                    body.extend(self.lower_static(&program.statics[*val]))
                 }
                 MIRDeclarationKey::Function(val) => {
                     // Skip extern functions (they have no body to emit)
                     if program.functions[*val].fn_type != MIRFunctionType::Extern {
-                        output.extend(self.lower_function(&program.functions[*val]))
+                        body.extend(self.lower_function(&program.functions[*val]))
                     }
                 }
                 // Constants are never exported.
@@ -53,7 +54,7 @@ impl Codegen for CLowerer {
                 MIRDeclarationKey::Marker(key) => {
                     let marker = &program.markers[*key];
 
-                    output.push(Token {
+                    body.push(Token {
                         text: Some(marker.name.clone()),
                         style: TokenStyle::Marker,
                     });
@@ -62,15 +63,21 @@ impl Codegen for CLowerer {
         }
 
         if !options.fancy {
-            strip_fancy_tokens(&mut output);
+            strip_fancy_tokens(&mut header);
+            strip_fancy_tokens(&mut body);
+
+            compress_with_defines(self, &mut header, &mut body);
         }
+
+        body.splice(0..0, header);
+
         // TODO: Use markers to inform merging and generate an index list.
-        self.merge_tokens(&mut output);
+        self.merge_tokens(&mut body, None);
 
         // We need to know the length of the quine upfront, since we have to
         // inject quine_len into it.
         // TODO: Can we avoid this creating a new element just for quine_len itself?
-        let quine_len = output
+        let quine_len = body
             .iter()
             .filter(|token| {
                 token.style != TokenStyle::Marker
@@ -81,7 +88,7 @@ impl Codegen for CLowerer {
         // This gives us a view of the output, where
         // each marker is its own element.
         // An empty string is a reference back to this array.
-        let quine = output
+        let quine = body
             .iter()
             .flat_map(|token| match token.style {
                 TokenStyle::Marker => {
@@ -103,7 +110,7 @@ impl Codegen for CLowerer {
         assert_eq!(quine.len(), quine_len);
 
         // Inject generated expressions.
-        for token in &mut output {
+        for token in &mut body {
             if token.style == TokenStyle::Marker {
                 match token.text.as_deref() {
                     Some("$quine") => {
@@ -123,10 +130,10 @@ impl Codegen for CLowerer {
             }
         }
 
-        output.retain(|token| token.style != TokenStyle::Marker);
+        body.retain(|token| token.style != TokenStyle::Marker);
 
         let mut output_str = String::new();
-        let mut iter = output.iter().peekable();
+        let mut iter = body.iter().peekable();
         while let Some(token) = iter.next() {
             let Some(token_text) = &token.text else {
                 continue;

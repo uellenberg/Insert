@@ -13,6 +13,7 @@ mod codegen;
 mod mir;
 mod parser;
 mod targets;
+mod util;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

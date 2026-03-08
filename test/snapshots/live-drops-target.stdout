@@ -1,1 +1,2 @@
-static unsigned int a=250;void b(unsigned int*d,unsigned int* *e){*e=d;}unsigned int*c(unsigned int*d,unsigned int* *e){return d;}unsigned int main(){unsigned int*d;unsigned int*e;unsigned int f=20;unsigned int g=30;b(&g,&d);f=20+g;g=40;d=&g;b(d,&e);f=f+g;f=f+ *e;f=f+ *d;g=40;d=&g;e=c(&g, &d);f=f+g;f=f+ *e;return f;}
+#define h unsigned int
+static h a=250;void b(h*d,h* *e){*e=d;}h*c(h*d,h* *e){return d;}h main(){h*d;h*e;h f=20;h g=30;b(&g,&d);f=20+g;g=40;d=&g;b(d,&e);f=f+g;f=f+ *e;f=f+ *d;g=40;d=&g;e=c(&g, &d);f=f+g;f=f+ *e;return f;}

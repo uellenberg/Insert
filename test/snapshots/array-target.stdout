@@ -1,1 +1,2 @@
-static int*a={1,2,3};static int b[3]={1,2,3};static int c=2;static int*d=&a[1];static int e=2;static int*f={};int h(){int i=0;unsigned int j=0;for(;;){if(j>=3)break;i=i+a[j];j=j+1;}return i;}static int g=6;
+#define k static int
+k*a={1,2,3};k b[3]={1,2,3};k c=2;k*d=&a[1];k e=2;k*f={};int h(){int i=0;unsigned int j=0;for(;;){if(j>=3)break;i=i+a[j];j=j+1;}return i;}k g=6;

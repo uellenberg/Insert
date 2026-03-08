@@ -96,7 +96,14 @@ pub trait TokenInfo {
 
     /// Combines multiple tokens into a single token while preserving their rules correctly.
     /// Returns the original token array.
-    fn merge_tokens(&self, tokens: &mut Tokens<'_>) {
+    ///
+    /// If `should_merge` is provided, two adjacent tokens will only be merged if
+    /// it returns true.
+    fn merge_tokens(
+        &self,
+        tokens: &mut Tokens<'_>,
+        should_merge: Option<&dyn Fn(&Token<'_>, &Token<'_>) -> bool>,
+    ) {
         if tokens.is_empty() {
             return;
         }
@@ -112,9 +119,11 @@ pub trait TokenInfo {
 
             let [read, write] = tokens.get_disjoint_mut([read_index, write_index]).unwrap();
 
+            let this_should_merge = should_merge.map(|f| f(write, read)).unwrap_or(true);
+
             // Merge if possible.
             // On failure, this creates a split / new token.
-            if self.try_merge(write, read) {
+            if this_should_merge && self.try_merge(write, read) {
                 read_index += 1;
                 continue;
             }

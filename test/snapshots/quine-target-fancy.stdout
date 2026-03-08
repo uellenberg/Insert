@@ -1,5 +1,5 @@
 #include<stdio.h>
-static int a=0;static char*b[]={"#include<stdio.h>\nstatic int a=","0",";static char*b[]={","","};void c(char*f){\n    int g;\n    for(g=0;f[g]!='\\0';g=g+1)if(f[g]=='\"')printf(\"\\\\\\\"\");\n    else if(f[g]=='\\n')printf(\"\\\\n\");\n    else if(f[g]=='\\\\')printf(\"\\\\\\\\\");\n    else putchar(f[g]);\n}\nvoid d(char* *f,int g){\n    int h;\n    for(h=0;h<g;h=h+1){\n        if(h!=0)putchar(',');\n        putchar('\"');\n        c(f[h]);\n        putchar('\"');\n    }\n}\nvoid e(char* *f,int g){\n    int h;\n    for(h=0;h<g;h=h+1)if(f[h][0]=='\\0')d(f,g);\n    else printf(\"%s\",f[h]);\n}\nvoid main(){\n    char*f;\n    int g=a+1;\n    asprintf(&f,\"%i\",g);\n    b[1]=f;\n    e(b,","7",");\n}\n"};void c(char*f){
+static int a=0;static char*b[]={"#include<stdio.h>\nstatic int a=","0",";static char*b[]={","","};void c(char*f){\n    int g;\n    for(g=0;f[g]!='\\0';g=g+1)if(f[g]=='\"')printf(\"\\\\\\\"\");\n    else if(f[g]=='\\n')printf(\"\\\\n\");\n    else if(f[g]=='\\\\')printf(\"\\\\\\\\\");\n    else putchar(f[g]);\n}\nvoid d(char* *f,int g){\n    int h;\n    for(h=0;h<g;h=h+1){\n        if(h!=0)putchar(',');\n        putchar('\"');\n        c(f[h]);\n        putchar('\"');\n    }\n}\nvoid e(char* *f,int g){\n    int h;\n    for(h=0;h<g;h=h+1){\n        if(h!=0)putchar(' ');\n        if(f[h][0]=='\\0')d(f,g);\n        else printf(\"%s\",f[h]);\n    }\n}\nvoid main(){\n    char*f;\n    int g=a+1;\n    asprintf(&f,\"%i\",g);\n    b[1]=f;\n    e(b,","7",");\n}\n"};void c(char*f){
     int g;
     for(g=0;f[g]!='\0';g=g+1)if(f[g]=='"')printf("\\\"");
     else if(f[g]=='\n')printf("\\n");
@@ -17,8 +17,11 @@ void d(char* *f,int g){
 }
 void e(char* *f,int g){
     int h;
-    for(h=0;h<g;h=h+1)if(f[h][0]=='\0')d(f,g);
-    else printf("%s",f[h]);
+    for(h=0;h<g;h=h+1){
+        if(h!=0)putchar(' ');
+        if(f[h][0]=='\0')d(f,g);
+        else printf("%s",f[h]);
+    }
 }
 void main(){
     char*f;

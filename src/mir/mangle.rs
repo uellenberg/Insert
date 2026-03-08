@@ -4,47 +4,9 @@ use crate::mir::{
     FunctionOverloads, MIRContext, MIRDeclarationKey, MIRExpressionInner, MIRFnSource,
     MIRFunctionArgs, MIRFunctionKey, MIRStatement,
 };
+use crate::util::name;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-
-/// Maps a sequential number to a short identifier string.
-/// First character is [a-zA-Z], remaining characters are [a-zA-Z0-9].
-fn name_num_to_str(mut num: usize) -> String {
-    const FIRST: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const REST: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-    // The actual conversion algorithm doesn't matter very much, so long as it's consistent
-    // for the length-one characters and uses the space as efficiently as possible.
-    // We could make this a bit nicer, since it can look strange sometimes, but it's not that important.
-
-    // 2 is arbitrary here, but realistically every identifier will sit within it.
-    let mut buf = String::with_capacity(2);
-    loop {
-        if buf.is_empty() {
-            buf.push(FIRST[num % FIRST.len()] as char);
-            num /= FIRST.len();
-        } else {
-            buf.push(REST[num % REST.len()] as char);
-            num /= REST.len();
-        }
-
-        if num == 0 {
-            return buf;
-        }
-    }
-}
-
-/// Returns the next valid name that isn't in the `used` set,
-/// advancing `name_num` past it.
-fn next_name(name_num: &mut usize, used: &HashSet<String>) -> String {
-    loop {
-        let name = name_num_to_str(*name_num);
-        *name_num += 1;
-        if !used.contains(&name) {
-            return name;
-        }
-    }
-}
 
 /// Renames all statics, functions, and local variables to the shortest possible names.
 /// This must be used after var_idx has been assigned and after all
@@ -72,7 +34,7 @@ pub fn mangle_names(ctx: &mut MIRContext) {
             continue;
         }
 
-        let new_name = next_name(&mut name_num, &used);
+        let new_name = name::next_name(&mut name_num, &used);
         used.insert(new_name.clone());
         static_map.insert(static_data.name.to_string(), new_name);
     }
@@ -87,7 +49,7 @@ pub fn mangle_names(ctx: &mut MIRContext) {
             // The easiest thing to do is just remap the name to itself.
             func_data.name.to_string()
         } else {
-            next_name(&mut name_num, &used)
+            name::next_name(&mut name_num, &used)
         };
 
         used.insert(new_name.clone());
@@ -109,7 +71,7 @@ pub fn mangle_names(ctx: &mut MIRContext) {
             &func_data.body,
             &mut |statement, _| {
                 if let MIRStatement::CreateVariable { var, .. } = statement {
-                    let new_name = next_name(&mut name_num, &used);
+                    let new_name = name::next_name(&mut name_num, &used);
                     used.insert(new_name.clone());
                     var_map.insert(var.var_idx.unwrap(), new_name);
                 }

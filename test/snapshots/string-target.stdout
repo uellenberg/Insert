@@ -1,3 +1,6 @@
 #include<stdio.h>
 #include<string.h>
-char*f(){char*k;asprintf(&k,"%u",10);return k;}char*g(){char*k;asprintf(&k,"%i",-10);return k;}char*h(){return"true";}static char*a="10";static char*b="-10";static char*c="true";static char d='s';static char e='r';void i(char*k,unsigned int l){unsigned int m=0;for(;;){if(m>=l)break;k[m]='\0';m=m+1;}}char*j(){char k[100];char l[10];i(k,10);i(l,10);char*m=k;char*n=l;return strcat(m, n);}
+#define q return
+#define p char*
+#define o static char
+p f(){p k;asprintf(&k,"%u",10);q k;}p g(){p k;asprintf(&k,"%i",-10);q k;}p h(){q"true";}o*a="10";o*b="-10";o*c="true";o d='s';o e='r';void i(p k,unsigned int l){unsigned int m=0;for(;;){if(m>=l)break;k[m]='\0';m=m+1;}}p j(){char k[100];char l[10];i(k,10);i(l,10);p m=k;p n=l;q strcat(m, n);}
