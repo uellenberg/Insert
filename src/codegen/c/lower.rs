@@ -10,7 +10,6 @@ use crate::mir::{
     MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
 use std::borrow::Cow;
-use std::collections::HashSet;
 
 pub const C: &'static dyn Codegen = &CLowerer {
     indent_level: 0,
@@ -354,7 +353,19 @@ impl Codegen for CLowerer {
                 ..
             } => {
                 let cond = self.lower_expression(condition);
-                let true_part = if on_true.len() == 1 {
+                let true_part = if on_true.len() == 1
+                    // If the child is an if statement and we have an else, then
+                    // that child must have its own else or else our else will bind to it.
+                    // For example, if the else belongs to us, we don't want:
+                    // if (a) if(b) ...; else ...;
+                    //
+                    // Otherwise, C will interpret our else as belonging to the child. However,
+                    // if the child has an else:
+                    // if (a) if(b) ...; else ...; else ...;
+                    //
+                    // Then the ambiguity no longer exists.
+                    && !matches!(&on_true[0], MIRStatement::IfStatement { on_false: on_false_child, .. } if !on_false.is_empty() && on_false_child.is_empty())
+                {
                     self.lower_statement(&on_true[0])?
                 } else {
                     spread![
