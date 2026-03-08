@@ -244,7 +244,7 @@ char  = ${ "'" ~ (charInner | charEscape) ~ "'" }
 charInner = ${ (!("'" | "\\") ~ ANY) }
 stringInner = ${ (!("\"" | "\\") ~ ANY)+ }
 charEscape = ${ "\\" ~ (charNormal | charUnicode) }
-charNormal = ${ "\"" | "\\" | "/" | "n" | "r" | "t" | "0" }
+charNormal = ${ "\"" | "'" | "\\" | "/" | "n" | "r" | "t" | "0" }
 charUnicode = ${ "u" ~ ASCII_HEX_DIGIT{4} }
 
 boolLiteral = { true_ | false_ }

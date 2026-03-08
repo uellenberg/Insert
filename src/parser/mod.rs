@@ -1076,9 +1076,10 @@ fn parse_char_escape<'a>(value: Pair<'a, Rule>) -> char {
             char::from_u32(code).unwrap()
         }
         Rule::charNormal => {
-            // "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
+            // "\"" | "'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
             match escaped.as_str() {
                 "\"" => '"',
+                "'" => '\'',
                 "\\" => '\\',
                 "/" => '/',
                 "n" => '\n',
