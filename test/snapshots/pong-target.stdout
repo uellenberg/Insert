@@ -1,11 +1,13 @@
 #include<stdio.h>
-#define u char*
-#define t else
-#define s static
-#define r if(
-#define q );
-#define p int
-#define o printf(
+#define x for(
+#define w static
+#define v char*
+#define u );
+#define t printf(
+#define s else
+#define r int
+#define q if(
+#define p j[k]
+#define o ;asprintf(&j,"%i",
 #define n putchar(
-#define m ;asprintf(&i,"%i",
-s p a=1;s p b=1;s p c=1;s p d=1;s u e[]={"#include<stdio.h>\n#define u char*\n#define t else\n#define s static\n#define r if(\n#define q );\n#define p int\n#define o printf(\n#define n putchar(\n#define m ;asprintf(&i,\"%i\",\ns p a=","1",";s p b=","1",";s p c=","1",";s p d=","1",";s u e[]={","","};void f(u i){p j;for(j=0;i[j]!='\\0';j=j+1)r i[j]=='\"')o\"\\\\\\\"\"q t r i[j]=='\\n')o\"\\\\n\"q t r i[j]=='\\\\')o\"\\\\\\\\\"q t n i[j]q}void g(u*i,p j){p k;for(k=0;k<j;k=k+1){r k!=0)n','q n'\"'q f(i[k]q n'\"'q}}void h(u*i,p j){p k;for(k=0;k<j;k=k+1){r k!=0)n' 'q r i[k][0]=='\\0')g(i,j q t o\"%s\",i[k]q}}p main(){u i;p j=a+c;p k=b+d;r j<0||j>77){r j<0)j=0;t j=77;c=-1*c;}r k<0||k>7){r k<0)k=0;t k=7;d=-1*d;}p l=j m l q e[1]=i;j=k m j q e[3]=i;j=c m j q e[5]=i;j=d m j q e[7]=i;h(e,","13","q o\"/*\\n\"q for(j=0;j<10;j=j+1){for(k=0;k<80;k=k+1)r k>=a&&j>=b&&k-a<3&&j-b<3)n'#'q t n' 'q n'\\n'q}o\"*/\\n\"q}"};void f(u i){p j;for(j=0;i[j]!='\0';j=j+1)r i[j]=='"')o"\\\""q t r i[j]=='\n')o"\\n"q t r i[j]=='\\')o"\\\\"q t n i[j]q}void g(u*i,p j){p k;for(k=0;k<j;k=k+1){r k!=0)n','q n'"'q f(i[k]q n'"'q}}void h(u*i,p j){p k;for(k=0;k<j;k=k+1){r k!=0)n' 'q r i[k][0]=='\0')g(i,j q t o"%s",i[k]q}}p main(){u i;p j=a+c;p k=b+d;r j<0||j>77){r j<0)j=0;t j=77;c=-1*c;}r k<0||k>7){r k<0)k=0;t k=7;d=-1*d;}p l=j m l q e[1]=i;j=k m j q e[3]=i;j=c m j q e[5]=i;j=d m j q e[7]=i;h(e,13 q o"/*\n"q for(j=0;j<10;j=j+1){for(k=0;k<80;k=k+1)r k>=a&&j>=b&&k-a<3&&j-b<3)n'#'q t n' 'q n'\n'q}o"*/\n"q}
+w r a=1;w r b=1;w r c=1;w r d=1;w v e[]={"#include<stdio.h>:#define$x$for(:#define$w$static:#define$v$char*:#define$u$);:#define$t$printf(:#define$s$else:#define$r$int:#define$q$if(:#define$p$j[k]:#define$o$;asprintf(&j,\"%i\",:#define$n$putchar(:w$r$a=","1",";w$r$b=","1",";w$r$c=","1",";w$r$d=","1",";w$v$e[]={","","};void$f(v$j){r$k;x$k=0;p!='\\0';k=k+1)q$p=='\"')t\"\\\\\\\"\"u$s$q$p=='\\n')t\"\\\\n\"u$s$q$p=='\\\\')t\"\\\\\\\\\"u$s$q$p!='$'&&p!='\\n')n$p$u}void$g(v$j){r$k;x$k=0;p!='\\0';k=k+1)q$p==","36",")n'$'u$s$q$p==","58",")n'\\n'u$s$q$p!='$'&&p!='\\n')n$p$u}void$h(v*j,r$k){r$l;x$l=0;l<k;l=l+1){q$l!=0)n','u$n'\"'u$f(j[l]u$n'\"'u}}void$i(v*j,r$k){r$l;x$l=0;l<k;l=l+1){q$l!=0)n'$'u$q$j[l][0]=='\\0')h(j,k$u$s$g(j[l]u}}r$main(){v$j;r$k=a+c;r$l=b+d;q$k<0||k>77){q$k<0)k=0;s$k=77;c=-1*c;}q$l<0||l>7){q$l<0)l=0;s$l=7;d=-1*d;}r$m=k$o$m$u$e[1]=j;k=l$o$k$u$e[3]=j;k=c$o$k$u$e[5]=j;k=d$o$k$u$e[7]=j;i(e,","17","u$t\"/*\\n\"u$x$k=0;k<10;k=k+1){x$l=0;l<80;l=l+1)q$l>=a&&k>=b&&l-a<3&&k-b<3)n'#'u$s$n'$'u$n'\\n'u}t\"*/\\n\"u}"};void f(v j){r k;x k=0;p!='\0';k=k+1)q p=='"')t"\\\""u s q p=='\n')t"\\n"u s q p=='\\')t"\\\\"u s q p!=' '&&p!='\n')n p u}void g(v j){r k;x k=0;p!='\0';k=k+1)q p==36)n' 'u s q p==58)n'\n'u s q p!=' '&&p!='\n')n p u}void h(v*j,r k){r l;x l=0;l<k;l=l+1){q l!=0)n','u n'"'u f(j[l]u n'"'u}}void i(v*j,r k){r l;x l=0;l<k;l=l+1){q l!=0)n' 'u q j[l][0]=='\0')h(j,k u s g(j[l]u}}r main(){v j;r k=a+c;r l=b+d;q k<0||k>77){q k<0)k=0;s k=77;c=-1*c;}q l<0||l>7){q l<0)l=0;s l=7;d=-1*d;}r m=k o m u e[1]=j;k=l o k u e[3]=j;k=c o k u e[5]=j;k=d o k u e[7]=j;i(e,17 u t"/*\n"u x k=0;k<10;k=k+1){x l=0;l<80;l=l+1)q l>=a&&k>=b&&l-a<3&&k-b<3)n'#'u s n' 'u n'\n'u}t"*/\n"u}

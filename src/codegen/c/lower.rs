@@ -10,6 +10,7 @@ use crate::mir::{
     MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
 use std::borrow::Cow;
+use std::collections::HashSet;
 
 pub const C: &'static dyn Codegen = &CLowerer {
     indent_level: 0,
@@ -74,6 +75,41 @@ impl Codegen for CLowerer {
         // TODO: Use markers to inform merging and generate an index list.
         self.merge_tokens(&mut body, None);
 
+        // Encode required spaces and newlines in the quine string as other printable
+        // characters.
+        // This allows spaces and newlines to be inserted arbitrarily into it.
+        //
+        // To do this, we need to find two printable characters not already used in
+        // the string.
+        let mut used_chars = [false; u8::MAX as usize + 1];
+        for token in &body {
+            if token.style != TokenStyle::Marker
+                && let Some(text) = &token.text
+            {
+                for &byte in text.as_bytes() {
+                    used_chars[byte as usize] = true;
+                }
+            }
+        }
+
+        // Disallow characters which could be generated programmatically,
+        // such as numbers and booleans.
+        // TODO: This is fragile, ideally the user should be able to configure the chars to use.
+        for &byte in b"0123456789.+-truefalse \n" {
+            used_chars[byte as usize] = true;
+        }
+
+        let mut encoding_chars = (0u8..=u8::MAX).filter(|&b| {
+            let c = b as char;
+            !c.is_control() && !used_chars[b as usize]
+        });
+        let space_char = encoding_chars
+            .next()
+            .expect("No unused printable ASCII char for quine space");
+        let newline_char = encoding_chars
+            .next()
+            .expect("No unused printable ASCII char for quine newline");
+
         // We need to know the length of the quine upfront, since we have to
         // inject quine_len into it.
         // TODO: Can we avoid this creating a new element just for quine_len itself?
@@ -81,13 +117,20 @@ impl Codegen for CLowerer {
             .iter()
             .filter(|token| {
                 token.style != TokenStyle::Marker
-                    || matches!(token.text.as_deref(), Some("$quine") | Some("$quineLen"))
+                    || matches!(
+                        token.text.as_deref(),
+                        Some("$quine")
+                            | Some("$quineLen")
+                            | Some("$quineSpace")
+                            | Some("$quineLine")
+                    )
             })
             .count();
 
         // This gives us a view of the output, where
         // each marker is its own element.
         // An empty string is a reference back to this array.
+        // Spaces and newlines in token texts are replaced with the encoding chars.
         let quine = body
             .iter()
             .flat_map(|token| match token.style {
@@ -99,10 +142,20 @@ impl Codegen for CLowerer {
                             Some("".to_string())
                         }
                         Some("$quineLen") => Some(quine_len.to_string()),
+                        Some("$quineSpace") => Some(space_char.to_string()),
+                        Some("$quineLine") => Some(newline_char.to_string()),
                         _ => None,
                     }
                 }
-                _ => token.text.as_ref().map(|t| t.to_string()),
+                _ => token.text.as_ref().map(|t| {
+                    t.chars()
+                        .map(|c| match c {
+                            ' ' => space_char as char,
+                            '\n' => newline_char as char,
+                            c => c,
+                        })
+                        .collect::<String>()
+                }),
             })
             .map(|s| format!("\"{}\"", escape_string(&s)))
             .collect::<Vec<_>>();
@@ -123,6 +176,18 @@ impl Codegen for CLowerer {
                         *token = Token {
                             style: TokenStyle::Required,
                             text: Some(quine_len.to_string().into()),
+                        }
+                    }
+                    Some("$quineSpace") => {
+                        *token = Token {
+                            style: TokenStyle::Required,
+                            text: Some(space_char.to_string().into()),
+                        }
+                    }
+                    Some("$quineLine") => {
+                        *token = Token {
+                            style: TokenStyle::Required,
+                            text: Some(newline_char.to_string().into()),
                         }
                     }
                     _ => {}
@@ -558,6 +623,18 @@ impl Codegen for CLowerer {
                     style: TokenStyle::Marker,
                 },]
             }
+            MIRExpressionInner::QuineSpace => {
+                spread![Token {
+                    text: Some("$quineSpace".into()),
+                    style: TokenStyle::Marker,
+                }]
+            }
+            MIRExpressionInner::QuineLine => {
+                spread![Token {
+                    text: Some("$quineLine".into()),
+                    style: TokenStyle::Marker,
+                }]
+            }
             MIRExpressionInner::Binding(left, inner, right) => {
                 let inner = self.lower_expression(inner);
                 spread![
@@ -717,7 +794,9 @@ impl Codegen for CLowerer {
             | MIRExpressionInner::FunctionCall(_)
             | MIRExpressionInner::Array(_)
             | MIRExpressionInner::Quine
-            | MIRExpressionInner::QuineLen => None,
+            | MIRExpressionInner::QuineLen
+            | MIRExpressionInner::QuineSpace
+            | MIRExpressionInner::QuineLine => None,
 
             MIRExpressionInner::Member(..) | MIRExpressionInner::Index(..) => Some(1),
 

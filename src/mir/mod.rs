@@ -1111,6 +1111,12 @@ pub enum MIRExpressionInner<'a> {
     /// An expression returning the length of the Quine string.
     QuineLen,
 
+    /// An expression returning the character used to encode spaces in the quine.
+    QuineSpace,
+
+    /// An expression returning the character used to encode newlines in the quine.
+    QuineLine,
+
     /// A binding creates an expression which can be manipulated
     /// programmatically in the quine. It makes the expression a
     /// dedicated item in the quine array.

@@ -1,58 +1,64 @@
 #include<stdio.h>
-static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>\nstatic int a=","1",";static int b=","1",";static int c=","1",";static int d=","1",";static char*e[]={","","};void f(char*i){\n    int j;\n    for(j=0;i[j]!='\\0';j=j+1)if(i[j]=='\"')printf(\"\\\\\\\"\");\n    else if(i[j]=='\\n')printf(\"\\\\n\");\n    else if(i[j]=='\\\\')printf(\"\\\\\\\\\");\n    else putchar(i[j]);\n}\nvoid g(char* *i,int j){\n    int k;\n    for(k=0;k<j;k=k+1){\n        if(k!=0)putchar(',');\n        putchar('\"');\n        f(i[k]);\n        putchar('\"');\n    }\n}\nvoid h(char* *i,int j){\n    int k;\n    for(k=0;k<j;k=k+1){\n        if(k!=0)putchar(' ');\n        if(i[k][0]=='\\0')g(i,j);\n        else printf(\"%s\",i[k]);\n    }\n}\nint main(){\n    char*i;\n    int j=a+c;\n    int k=b+d;\n    if(j<0||j>77){\n        if(j<0)j=0;\n        else j=77;\n        c=-1*c;\n    }\n    if(k<0||k>7){\n        if(k<0)k=0;\n        else k=7;\n        d=-1*d;\n    }\n    int l=j;\n    asprintf(&i,\"%i\",l);\n    e[1]=i;\n    j=k;\n    asprintf(&i,\"%i\",j);\n    e[3]=i;\n    j=c;\n    asprintf(&i,\"%i\",j);\n    e[5]=i;\n    j=d;\n    asprintf(&i,\"%i\",j);\n    e[7]=i;\n    h(e,","13",");\n    printf(\"/*\\n\");\n    for(j=0;j<10;j=j+1){\n        for(k=0;k<80;k=k+1)if(k>=a&&j>=b&&k-a<3&&j-b<3)putchar('#');\n        else putchar(' ');\n        putchar('\\n');\n    }\n    printf(\"*/\\n\");\n}\n"};void f(char*i){
-    int j;
-    for(j=0;i[j]!='\0';j=j+1)if(i[j]=='"')printf("\\\"");
-    else if(i[j]=='\n')printf("\\n");
-    else if(i[j]=='\\')printf("\\\\");
-    else putchar(i[j]);
-}
-void g(char* *i,int j){
+static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>:static$int$a=","1",";static$int$b=","1",";static$int$c=","1",";static$int$d=","1",";static$char*e[]={","","};void$f(char*j){:$$$$int$k;:$$$$for(k=0;j[k]!='\\0';k=k+1)if(j[k]=='\"')printf(\"\\\\\\\"\");:$$$$else$if(j[k]=='\\n')printf(\"\\\\n\");:$$$$else$if(j[k]=='\\\\')printf(\"\\\\\\\\\");:$$$$else$if(j[k]!='$'&&j[k]!='\\n')putchar(j[k]);:}:void$g(char*j){:$$$$int$k;:$$$$for(k=0;j[k]!='\\0';k=k+1)if(j[k]==","36",")putchar('$');:$$$$else$if(j[k]==","58",")putchar('\\n');:$$$$else$if(j[k]!='$'&&j[k]!='\\n')putchar(j[k]);:}:void$h(char*$*j,int$k){:$$$$int$l;:$$$$for(l=0;l<k;l=l+1){:$$$$$$$$if(l!=0)putchar(',');:$$$$$$$$putchar('\"');:$$$$$$$$f(j[l]);:$$$$$$$$putchar('\"');:$$$$}:}:void$i(char*$*j,int$k){:$$$$int$l;:$$$$for(l=0;l<k;l=l+1){:$$$$$$$$if(l!=0)putchar('$');:$$$$$$$$if(j[l][0]=='\\0')h(j,k);:$$$$$$$$else$g(j[l]);:$$$$}:}:int$main(){:$$$$char*j;:$$$$int$k=a+c;:$$$$int$l=b+d;:$$$$if(k<0||k>77){:$$$$$$$$if(k<0)k=0;:$$$$$$$$else$k=77;:$$$$$$$$c=-1*c;:$$$$}:$$$$if(l<0||l>7){:$$$$$$$$if(l<0)l=0;:$$$$$$$$else$l=7;:$$$$$$$$d=-1*d;:$$$$}:$$$$int$m=k;:$$$$asprintf(&j,\"%i\",m);:$$$$e[1]=j;:$$$$k=l;:$$$$asprintf(&j,\"%i\",k);:$$$$e[3]=j;:$$$$k=c;:$$$$asprintf(&j,\"%i\",k);:$$$$e[5]=j;:$$$$k=d;:$$$$asprintf(&j,\"%i\",k);:$$$$e[7]=j;:$$$$i(e,","17",");:$$$$printf(\"/*\\n\");:$$$$for(k=0;k<10;k=k+1){:$$$$$$$$for(l=0;l<80;l=l+1)if(l>=a&&k>=b&&l-a<3&&k-b<3)putchar('#');:$$$$$$$$else$putchar('$');:$$$$$$$$putchar('\\n');:$$$$}:$$$$printf(\"*/\\n\");:}:"};void f(char*j){
     int k;
-    for(k=0;k<j;k=k+1){
-        if(k!=0)putchar(',');
+    for(k=0;j[k]!='\0';k=k+1)if(j[k]=='"')printf("\\\"");
+    else if(j[k]=='\n')printf("\\n");
+    else if(j[k]=='\\')printf("\\\\");
+    else if(j[k]!=' '&&j[k]!='\n')putchar(j[k]);
+}
+void g(char*j){
+    int k;
+    for(k=0;j[k]!='\0';k=k+1)if(j[k]==36)putchar(' ');
+    else if(j[k]==58)putchar('\n');
+    else if(j[k]!=' '&&j[k]!='\n')putchar(j[k]);
+}
+void h(char* *j,int k){
+    int l;
+    for(l=0;l<k;l=l+1){
+        if(l!=0)putchar(',');
         putchar('"');
-        f(i[k]);
+        f(j[l]);
         putchar('"');
     }
 }
-void h(char* *i,int j){
-    int k;
-    for(k=0;k<j;k=k+1){
-        if(k!=0)putchar(' ');
-        if(i[k][0]=='\0')g(i,j);
-        else printf("%s",i[k]);
+void i(char* *j,int k){
+    int l;
+    for(l=0;l<k;l=l+1){
+        if(l!=0)putchar(' ');
+        if(j[l][0]=='\0')h(j,k);
+        else g(j[l]);
     }
 }
 int main(){
-    char*i;
-    int j=a+c;
-    int k=b+d;
-    if(j<0||j>77){
-        if(j<0)j=0;
-        else j=77;
+    char*j;
+    int k=a+c;
+    int l=b+d;
+    if(k<0||k>77){
+        if(k<0)k=0;
+        else k=77;
         c=-1*c;
     }
-    if(k<0||k>7){
-        if(k<0)k=0;
-        else k=7;
+    if(l<0||l>7){
+        if(l<0)l=0;
+        else l=7;
         d=-1*d;
     }
-    int l=j;
-    asprintf(&i,"%i",l);
-    e[1]=i;
-    j=k;
-    asprintf(&i,"%i",j);
-    e[3]=i;
-    j=c;
-    asprintf(&i,"%i",j);
-    e[5]=i;
-    j=d;
-    asprintf(&i,"%i",j);
-    e[7]=i;
-    h(e,13);
+    int m=k;
+    asprintf(&j,"%i",m);
+    e[1]=j;
+    k=l;
+    asprintf(&j,"%i",k);
+    e[3]=j;
+    k=c;
+    asprintf(&j,"%i",k);
+    e[5]=j;
+    k=d;
+    asprintf(&j,"%i",k);
+    e[7]=j;
+    i(e,17);
     printf("/*\n");
-    for(j=0;j<10;j=j+1){
-        for(k=0;k<80;k=k+1)if(k>=a&&j>=b&&k-a<3&&j-b<3)putchar('#');
+    for(k=0;k<10;k=k+1){
+        for(l=0;l<80;l=l+1)if(l>=a&&k>=b&&l-a<3&&k-b<3)putchar('#');
         else putchar(' ');
         putchar('\n');
     }

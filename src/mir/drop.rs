@@ -566,7 +566,9 @@ fn collect_refs(
         | MIRExpressionInner::Char(..)
         | MIRExpressionInner::Unit
         | MIRExpressionInner::Quine
-        | MIRExpressionInner::QuineLen => HashSet::new(),
+        | MIRExpressionInner::QuineLen
+        | MIRExpressionInner::QuineSpace
+        | MIRExpressionInner::QuineLine => HashSet::new(),
     }
 }
 

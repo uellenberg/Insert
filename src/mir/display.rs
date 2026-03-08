@@ -337,6 +337,8 @@ impl<'a> Display for MIRExpressionInner<'a> {
             }
             MIRExpressionInner::Quine => write!(f, "$quine"),
             MIRExpressionInner::QuineLen => write!(f, "$quineLen"),
+            MIRExpressionInner::QuineSpace => write!(f, "$quineSpace"),
+            MIRExpressionInner::QuineLine => write!(f, "$quineLine"),
             MIRExpressionInner::Binding(left, inner, _) => {
                 write!(f, "binding {} ({})", left.name, inner)
             }

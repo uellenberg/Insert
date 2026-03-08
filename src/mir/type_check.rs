@@ -992,6 +992,10 @@ fn check_expression<'a, 'b>(
                 ty: MIRTypeInner::UnknownNumber,
                 span: None,
             }),
+            MIRExpressionInner::QuineSpace | MIRExpressionInner::QuineLine => Some(MIRType {
+                ty: MIRTypeInner::Char,
+                span: None,
+            }),
             MIRExpressionInner::Binding(_, inner, _) => {
                 if let Some(ty) = &mut expr.ty {
                     inner.ty = Some(ty.clone());

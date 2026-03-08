@@ -3,7 +3,7 @@ target "C" {
     import "./print.int";
 
     /** Prints a string, escaped to work within a string literal. */
-    helper function printEscaped(s: string) {
+    helper function printQuineEscaped(s: string) {
         for let i: i32 = 0; s[i] != '\0'; i = i + 1; {
             if s[i] == '"' {
                 printf("\\\"");
@@ -11,7 +11,20 @@ target "C" {
                 printf("\\n");
             } else if s[i] == '\\' {
                 printf("\\\\");
-            } else {
+            } else if s[i] != ' ' && s[i] != '\n' {
+                putchar(s[i]);
+            }
+        }
+    }
+
+    /** Prints out an item from the quine array, decoding it. */
+    helper function printQuineItem(s: string) {
+        for let i: i32 = 0; s[i] != '\0'; i = i + 1; {
+            if s[i] == $quineSpace {
+                putchar(' ');
+            } else if s[i] == $quineLine {
+                putchar('\n');
+            } else if s[i] != ' ' && s[i] != '\n' {
                 putchar(s[i]);
             }
         }
@@ -25,7 +38,7 @@ target "C" {
             }
 
             putchar('"');
-            printEscaped(strs[i]);
+            printQuineEscaped(strs[i]);
             putchar('"');
         }
     }
@@ -45,7 +58,7 @@ target "C" {
             if strs[i][0] == '\0' {
                 printQuineArray(strs, length);
             } else {
-                printf("%s", strs[i]);
+                printQuineItem(strs[i]);
             }
         }
     }

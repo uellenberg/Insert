@@ -502,6 +502,8 @@ impl<'a> Interpreter<'a> {
             }
             MIRExpressionInner::Quine
             | MIRExpressionInner::QuineLen
+            | MIRExpressionInner::QuineSpace
+            | MIRExpressionInner::QuineLine
             | MIRExpressionInner::Binding(_, _, _) => {
                 // We can't handle these expressions.
                 Err(())

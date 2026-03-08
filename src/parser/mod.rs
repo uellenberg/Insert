@@ -890,6 +890,8 @@ fn parse_primary<'a>(
         Rule::boolLiteral => MIRExpressionInner::Bool(data.as_str() == "true"),
         Rule::quine => MIRExpressionInner::Quine,
         Rule::quineLen => MIRExpressionInner::QuineLen,
+        Rule::quineSpace => MIRExpressionInner::QuineSpace,
+        Rule::quineLine => MIRExpressionInner::QuineLine,
         Rule::bindingExpr => {
             let mut inner = data.into_inner();
             let name = inner.next().unwrap().as_str();
