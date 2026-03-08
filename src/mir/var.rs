@@ -108,7 +108,10 @@ impl Clone for MinVarDataRef<'_> {
         let data = self.0.borrow();
 
         Self(Rc::new(RefCell::new(MinVarData {
-            to_drop: data.to_drop.clone(),
+            // For statements with multiple children (if and else branches), we need to make
+            // sure that to_drop isn't shared between siblings.
+            // This is just meant to go from child -> parent, so we can start fresh.
+            to_drop: HashSet::new(),
             dropped: data.dropped.clone(),
             allocations: data.allocations.clone(),
             parent: Some(MinVarDataRef(Rc::clone(&self.0))),
