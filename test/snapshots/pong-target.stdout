@@ -1,13 +1,14 @@
 #include<stdio.h>
-#define z int
-#define y ){
-#define x return
-#define w '\n'
-#define v );
-#define u else
-#define t if(
-#define s return false;}
-#define r static int
-#define q ;asprintf(&l,"%i",
-#define p putchar(
-r a=1;r b=1;r c=1;r d=1;static char*e[]={"#include<stdio.h>/#define$z$int/#define$y$){/#define$x$return/#define$w$'\\n'/#define$v$);/#define$u$else/#define$t$if(/#define$s$return$false;}/#define$r$static$int/#define$q$;asprintf(&l,\"%i\",/#define$p$putchar(/r$a=","1",";r$b=","1",";r$c=","1",";r$d=","1",";static$char*e[]={","","};void$h(char*l$y$z$m;for(m=0;l[m]!='\\0';m=m+1)t$l[m]==","36",")p'$'v$u$t$l[m]==","47",")p$w$v$u$t$l[m]!='$'&&l[m]!=w)p$l[m]v}r$f=0;r$g=0;bool$i(y$g=g+1;t$g==1$y$t$f!=0)p','v$u$x$i(v$s$t$g==2$y$p'\"'v$s$char$l=e[f][g-3];t$l=='\\0'y$p'\"'v$g=0;f=f+1;s$t$l=='\"'y$printf(\"\\\\\\\"\"v$x$true;}u$t$l=='\\\\'y$printf(\"\\\\\\\\\"v$x$true;}u$t$l!='$'&&l!=w$y$p$l$v$s$u$x$i(v}void$j(y$z$l;z$m;i(v$p'\\\\'v$p$w$v$for(l=0;l<10;l=l+1$y$for(m=0;m<80;m=m+1)t$m>=a&&l>=b&&m-a<3&&l-b<3$y$t$i())m=m+1;}u$p'$'v$t$g!=0)p'\\\\'v$p$w$v}for(;f<","19",";)i(v}void$k(y$z$l;for(l=0;l<","19",";l=l+1)t$e[l][0]=='\\0')j(v$u$h(e[l]v$p$w$v}z$main(y$char*l;z$m=a+c;z$n=b+d;t$m<0||m>77$y$t$m<0)m=0;u$m=77;c=-1*c;}t$n<0||n>7$y$t$n<0)n=0;u$n=7;d=-1*d;}z$o=m$q$o$v$e[1]=l;m=n$q$m$v$e[3]=l;m=c$q$m$v$e[5]=l;m=d$q$m$v$e[7]=l;k(v}"};void h(char*l y z m;for(m=0;l[m]!='\0';m=m+1)t l[m]==36)p' 'v u t l[m]==47)p w v u t l[m]!=' '&&l[m]!=w)p l[m]v}r f=0;r g=0;bool i(y g=g+1;t g==1 y t f!=0)p','v u x i(v s t g==2 y p'"'v s char l=e[f][g-3];t l=='\0'y p'"'v g=0;f=f+1;s t l=='"'y printf("\\\""v x true;}u t l=='\\'y printf("\\\\"v x true;}u t l!=' '&&l!=w y p l v s u x i(v}void j(y z l;z m;i(v p'\\'v p w v for(l=0;l<10;l=l+1 y for(m=0;m<80;m=m+1)t m>=a&&l>=b&&m-a<3&&l-b<3 y t i())m=m+1;}u p' 'v t g!=0)p'\\'v p w v}for(;f<19;)i(v}void k(y z l;for(l=0;l<19;l=l+1)t e[l][0]=='\0')j(v u h(e[l]v p w v}z main(y char*l;z m=a+c;z n=b+d;t m<0||m>77 y t m<0)m=0;u m=77;c=-1*c;}t n<0||n>7 y t n<0)n=0;u n=7;d=-1*d;}z o=m q o v e[1]=l;m=n q m v e[3]=l;m=c q m v e[5]=l;m=d q m v e[7]=l;k(v}
+#define C int
+#define B return
+#define A ){
+#define z '\n'
+#define y &&
+#define x else
+#define w );
+#define v if(
+#define u return false;}
+#define t ;asprintf(&n,"%i",
+#define s static int
+#define r putchar(
+s a=39;s b=9;s c=1;s d=1;s e=7;s f=7;static char*g[]={"#include<stdio.h>/#define$C$int/#define$B$return/#define$A$){/#define$z$'\\n'/#define$y$&&/#define$x$else/#define$w$);/#define$v$if(/#define$u$return$false;}/#define$t$;asprintf(&n,\"%i\",/#define$s$static$int/#define$r$putchar(/s$a=","39",";s$b=","9",";s$c=","1",";s$d=","1",";s$e=","7",";s$f=","7",";static$char*g[]={","","};void$j(char*n$A$C$o;for(o=0;n[o]!='\\0';o=o+1)v$n[o]==","36",")r'$'w$x$v$n[o]==","47",")r$z$w$x$v$n[o]!='$'y$n[o]!=z)r$n[o]w}s$h=0;s$i=0;bool$k(A$i=i+1;v$i==1$A$v$h!=0)r','w$x$B$k(w$u$v$i==2$A$r'\"'w$u$char$n=g[h][i-3];v$n=='\\0'A$r'\"'w$i=0;h=h+1;u$v$n=='\"'A$printf(\"\\\\\\\"\"w$B$true;}x$v$n=='\\\\'A$printf(\"\\\\\\\\\"w$B$true;}x$v$n!='$'y$n!=z$A$r$n$w$u$x$B$k(w}void$l(A$C$n;C$o;k(w$r'\\\\'w$r$z$w$for(n=0;n<20;n=n+1$A$for(o=0;o<80;o=o+1)v$o>=a$y$n>=b$y$o-a<2$y$n-b<2||o>=5$y$n>=e$y$o-5<2$y$n-e<6||o>=73$y$n>=f$y$o-73<2$y$n-f<6$A$v$k())o=o+1;}x$r'$'w$v$i!=0)r'\\\\'w$r$z$w}for(;h<","23",";)k(w}void$m(A$C$n;for(n=0;n<","23",";n=n+1)v$g[n][0]=='\\0')l(w$x$j(g[n]w$r$z$w}C$main(A$char*n;C$o=a+c;C$p=b+d;v$o>=5$y$o<7$y$p>=e$y$p<e+6||o>=73$y$o<75$y$p>=f$y$p<f+6$A$o=o-c;c=-1*c;}v$o<0||o>78$A$o=39;p=9;}v$p<0||p>18$A$v$p<0)p=0;x$p=18;d=-1*d;}C$q=o$t$q$w$g[1]=n;o=p$t$o$w$g[3]=n;o=c$t$o$w$g[5]=n;o=d$t$o$w$g[7]=n;m(w}"};void j(char*n A C o;for(o=0;n[o]!='\0';o=o+1)v n[o]==36)r' 'w x v n[o]==47)r z w x v n[o]!=' 'y n[o]!=z)r n[o]w}s h=0;s i=0;bool k(A i=i+1;v i==1 A v h!=0)r','w x B k(w u v i==2 A r'"'w u char n=g[h][i-3];v n=='\0'A r'"'w i=0;h=h+1;u v n=='"'A printf("\\\""w B true;}x v n=='\\'A printf("\\\\"w B true;}x v n!=' 'y n!=z A r n w u x B k(w}void l(A C n;C o;k(w r'\\'w r z w for(n=0;n<20;n=n+1 A for(o=0;o<80;o=o+1)v o>=a y n>=b y o-a<2 y n-b<2||o>=5 y n>=e y o-5<2 y n-e<6||o>=73 y n>=f y o-73<2 y n-f<6 A v k())o=o+1;}x r' 'w v i!=0)r'\\'w r z w}for(;h<23;)k(w}void m(A C n;for(n=0;n<23;n=n+1)v g[n][0]=='\0')l(w x j(g[n]w r z w}C main(A char*n;C o=a+c;C p=b+d;v o>=5 y o<7 y p>=e y p<e+6||o>=73 y o<75 y p>=f y p<f+6 A o=o-c;c=-1*c;}v o<0||o>78 A o=39;p=9;}v p<0||p>18 A v p<0)p=0;x p=18;d=-1*d;}C q=o t q w g[1]=n;o=p t o w g[3]=n;o=c t o w g[5]=n;o=d t o w g[7]=n;m(w}

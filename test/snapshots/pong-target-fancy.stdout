@@ -1,89 +1,92 @@
 #include<stdio.h>
-static int a=1;static int b=1;static int c=1;static int d=1;static char*e[]={"#include<stdio.h>/static$int$a=","1",";static$int$b=","1",";static$int$c=","1",";static$int$d=","1",";static$char*e[]={","","};void$h(char*l){/$$$$int$m;/$$$$for(m=0;l[m]!='\\0';m=m+1)if(l[m]==","36",")putchar('$');/$$$$else$if(l[m]==","47",")putchar('\\n');/$$$$else$if(l[m]!='$'&&l[m]!='\\n')putchar(l[m]);/}/static$int$f=0;static$int$g=0;bool$i(){/$$$$g=g+1;/$$$$if(g==1){/$$$$$$$$if(f!=0)putchar(',');/$$$$$$$$else$return$i();/$$$$$$$$return$false;/$$$$}/$$$$if(g==2){/$$$$$$$$putchar('\"');/$$$$$$$$return$false;/$$$$}/$$$$char$l=e[f][g-3];/$$$$if(l=='\\0'){/$$$$$$$$putchar('\"');/$$$$$$$$g=0;/$$$$$$$$f=f+1;/$$$$$$$$return$false;/$$$$}/$$$$if(l=='\"'){/$$$$$$$$printf(\"\\\\\\\"\");/$$$$$$$$return$true;/$$$$}/$$$$else$if(l=='\\\\'){/$$$$$$$$printf(\"\\\\\\\\\");/$$$$$$$$return$true;/$$$$}/$$$$else$if(l!='$'&&l!='\\n'){/$$$$$$$$putchar(l);/$$$$$$$$return$false;/$$$$}/$$$$else$return$i();/}/void$j(){/$$$$int$l;/$$$$int$m;/$$$$i();/$$$$putchar('\\\\');/$$$$putchar('\\n');/$$$$for(l=0;l<10;l=l+1){/$$$$$$$$for(m=0;m<80;m=m+1)if(m>=a&&l>=b&&m-a<3&&l-b<3){/$$$$$$$$$$$$if(i())m=m+1;/$$$$$$$$}/$$$$$$$$else$putchar('$');/$$$$$$$$if(g!=0)putchar('\\\\');/$$$$$$$$putchar('\\n');/$$$$}/$$$$for(;f<","19",";)i();/}/void$k(){/$$$$int$l;/$$$$for(l=0;l<","19",";l=l+1)if(e[l][0]=='\\0')j();/$$$$else$h(e[l]);/$$$$putchar('\\n');/}/int$main(){/$$$$char*l;/$$$$int$m=a+c;/$$$$int$n=b+d;/$$$$if(m<0||m>77){/$$$$$$$$if(m<0)m=0;/$$$$$$$$else$m=77;/$$$$$$$$c=-1*c;/$$$$}/$$$$if(n<0||n>7){/$$$$$$$$if(n<0)n=0;/$$$$$$$$else$n=7;/$$$$$$$$d=-1*d;/$$$$}/$$$$int$o=m;/$$$$asprintf(&l,\"%i\",o);/$$$$e[1]=l;/$$$$m=n;/$$$$asprintf(&l,\"%i\",m);/$$$$e[3]=l;/$$$$m=c;/$$$$asprintf(&l,\"%i\",m);/$$$$e[5]=l;/$$$$m=d;/$$$$asprintf(&l,\"%i\",m);/$$$$e[7]=l;/$$$$k();/}/"};void h(char*l){
-    int m;
-    for(m=0;l[m]!='\0';m=m+1)if(l[m]==36)putchar(' ');
-    else if(l[m]==47)putchar('\n');
-    else if(l[m]!=' '&&l[m]!='\n')putchar(l[m]);
+static int a=39;static int b=9;static int c=1;static int d=1;static int e=7;static int f=7;static char*g[]={"#include<stdio.h>/static$int$a=","39",";static$int$b=","9",";static$int$c=","1",";static$int$d=","1",";static$int$e=","7",";static$int$f=","7",";static$char*g[]={","","};void$j(char*n){/$$$$int$o;/$$$$for(o=0;n[o]!='\\0';o=o+1)if(n[o]==","36",")putchar('$');/$$$$else$if(n[o]==","47",")putchar('\\n');/$$$$else$if(n[o]!='$'&&n[o]!='\\n')putchar(n[o]);/}/static$int$h=0;static$int$i=0;bool$k(){/$$$$i=i+1;/$$$$if(i==1){/$$$$$$$$if(h!=0)putchar(',');/$$$$$$$$else$return$k();/$$$$$$$$return$false;/$$$$}/$$$$if(i==2){/$$$$$$$$putchar('\"');/$$$$$$$$return$false;/$$$$}/$$$$char$n=g[h][i-3];/$$$$if(n=='\\0'){/$$$$$$$$putchar('\"');/$$$$$$$$i=0;/$$$$$$$$h=h+1;/$$$$$$$$return$false;/$$$$}/$$$$if(n=='\"'){/$$$$$$$$printf(\"\\\\\\\"\");/$$$$$$$$return$true;/$$$$}/$$$$else$if(n=='\\\\'){/$$$$$$$$printf(\"\\\\\\\\\");/$$$$$$$$return$true;/$$$$}/$$$$else$if(n!='$'&&n!='\\n'){/$$$$$$$$putchar(n);/$$$$$$$$return$false;/$$$$}/$$$$else$return$k();/}/void$l(){/$$$$int$n;/$$$$int$o;/$$$$k();/$$$$putchar('\\\\');/$$$$putchar('\\n');/$$$$for(n=0;n<20;n=n+1){/$$$$$$$$for(o=0;o<80;o=o+1)if(o>=a&&n>=b&&o-a<2&&n-b<2||o>=5&&n>=e&&o-5<2&&n-e<6||o>=73&&n>=f&&o-73<2&&n-f<6){/$$$$$$$$$$$$if(k())o=o+1;/$$$$$$$$}/$$$$$$$$else$putchar('$');/$$$$$$$$if(i!=0)putchar('\\\\');/$$$$$$$$putchar('\\n');/$$$$}/$$$$for(;h<","23",";)k();/}/void$m(){/$$$$int$n;/$$$$for(n=0;n<","23",";n=n+1)if(g[n][0]=='\\0')l();/$$$$else$j(g[n]);/$$$$putchar('\\n');/}/int$main(){/$$$$char*n;/$$$$int$o=a+c;/$$$$int$p=b+d;/$$$$if(o>=5&&o<7&&p>=e&&p<e+6||o>=73&&o<75&&p>=f&&p<f+6){/$$$$$$$$o=o-c;/$$$$$$$$c=-1*c;/$$$$}/$$$$if(o<0||o>78){/$$$$$$$$o=39;/$$$$$$$$p=9;/$$$$}/$$$$if(p<0||p>18){/$$$$$$$$if(p<0)p=0;/$$$$$$$$else$p=18;/$$$$$$$$d=-1*d;/$$$$}/$$$$int$q=o;/$$$$asprintf(&n,\"%i\",q);/$$$$g[1]=n;/$$$$o=p;/$$$$asprintf(&n,\"%i\",o);/$$$$g[3]=n;/$$$$o=c;/$$$$asprintf(&n,\"%i\",o);/$$$$g[5]=n;/$$$$o=d;/$$$$asprintf(&n,\"%i\",o);/$$$$g[7]=n;/$$$$m();/}/"};void j(char*n){
+    int o;
+    for(o=0;n[o]!='\0';o=o+1)if(n[o]==36)putchar(' ');
+    else if(n[o]==47)putchar('\n');
+    else if(n[o]!=' '&&n[o]!='\n')putchar(n[o]);
 }
-static int f=0;static int g=0;bool i(){
-    g=g+1;
-    if(g==1){
-        if(f!=0)putchar(',');
-        else return i();
+static int h=0;static int i=0;bool k(){
+    i=i+1;
+    if(i==1){
+        if(h!=0)putchar(',');
+        else return k();
         return false;
     }
-    if(g==2){
+    if(i==2){
         putchar('"');
         return false;
     }
-    char l=e[f][g-3];
-    if(l=='\0'){
+    char n=g[h][i-3];
+    if(n=='\0'){
         putchar('"');
-        g=0;
-        f=f+1;
+        i=0;
+        h=h+1;
         return false;
     }
-    if(l=='"'){
+    if(n=='"'){
         printf("\\\"");
         return true;
     }
-    else if(l=='\\'){
+    else if(n=='\\'){
         printf("\\\\");
         return true;
     }
-    else if(l!=' '&&l!='\n'){
-        putchar(l);
+    else if(n!=' '&&n!='\n'){
+        putchar(n);
         return false;
     }
-    else return i();
+    else return k();
 }
-void j(){
-    int l;
-    int m;
-    i();
+void l(){
+    int n;
+    int o;
+    k();
     putchar('\\');
     putchar('\n');
-    for(l=0;l<10;l=l+1){
-        for(m=0;m<80;m=m+1)if(m>=a&&l>=b&&m-a<3&&l-b<3){
-            if(i())m=m+1;
+    for(n=0;n<20;n=n+1){
+        for(o=0;o<80;o=o+1)if(o>=a&&n>=b&&o-a<2&&n-b<2||o>=5&&n>=e&&o-5<2&&n-e<6||o>=73&&n>=f&&o-73<2&&n-f<6){
+            if(k())o=o+1;
         }
         else putchar(' ');
-        if(g!=0)putchar('\\');
+        if(i!=0)putchar('\\');
         putchar('\n');
     }
-    for(;f<19;)i();
+    for(;h<23;)k();
 }
-void k(){
-    int l;
-    for(l=0;l<19;l=l+1)if(e[l][0]=='\0')j();
-    else h(e[l]);
+void m(){
+    int n;
+    for(n=0;n<23;n=n+1)if(g[n][0]=='\0')l();
+    else j(g[n]);
     putchar('\n');
 }
 int main(){
-    char*l;
-    int m=a+c;
-    int n=b+d;
-    if(m<0||m>77){
-        if(m<0)m=0;
-        else m=77;
+    char*n;
+    int o=a+c;
+    int p=b+d;
+    if(o>=5&&o<7&&p>=e&&p<e+6||o>=73&&o<75&&p>=f&&p<f+6){
+        o=o-c;
         c=-1*c;
     }
-    if(n<0||n>7){
-        if(n<0)n=0;
-        else n=7;
+    if(o<0||o>78){
+        o=39;
+        p=9;
+    }
+    if(p<0||p>18){
+        if(p<0)p=0;
+        else p=18;
         d=-1*d;
     }
-    int o=m;
-    asprintf(&l,"%i",o);
-    e[1]=l;
-    m=n;
-    asprintf(&l,"%i",m);
-    e[3]=l;
-    m=c;
-    asprintf(&l,"%i",m);
-    e[5]=l;
-    m=d;
-    asprintf(&l,"%i",m);
-    e[7]=l;
-    k();
+    int q=o;
+    asprintf(&n,"%i",q);
+    g[1]=n;
+    o=p;
+    asprintf(&n,"%i",o);
+    g[3]=n;
+    o=c;
+    asprintf(&n,"%i",o);
+    g[5]=n;
+    o=d;
+    asprintf(&n,"%i",o);
+    g[7]=n;
+    m();
 }
