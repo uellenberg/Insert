@@ -1,4 +1,4 @@
-use crate::mir::interpreter::Interpreter;
+use crate::mir::interpreter::{Interpreter, InterpreterScope};
 use crate::mir::scope::StatementExplorer;
 use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
@@ -9,20 +9,24 @@ use crate::mir::{
 /// whether it was successful.
 pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a>) -> bool {
     for (const_name, const_key) in &ctx.program.const_names {
+        let const_ = &mut ctx.program.constants[*const_key];
+
         // If an error occurs, ignore it, since this is an optional step.
         // This includes errors which the user may have to intervene with, or
         // errors caused by us being unable to evaluate the constant.
+        //
+        // We can still use partial evaluation to still get some optimization
+        // when an error occurs, though.
         if let Ok(value) = interpreter.eval_const(const_name) {
-            ctx.program
-                .constants
-                .get_mut(*const_key)
-                .unwrap()
-                .value
-                .inner = value.into();
-        };
+            const_.value.inner = value.into();
+        } else {
+            partial_const_eval(&mut const_.value, interpreter);
+        }
     }
 
     for (static_name, static_key) in &ctx.program.static_names {
+        let static_ = &mut ctx.program.statics[*static_key];
+
         if let Ok(value) = interpreter.eval_static(static_name) {
             ctx.program
                 .statics
@@ -30,10 +34,26 @@ pub fn const_eval<'a>(ctx: &mut MIRContext<'a>, interpreter: &mut Interpreter<'a
                 .unwrap()
                 .value
                 .inner = value.into();
+        } else {
+            partial_const_eval(&mut static_.value, interpreter);
         }
     }
 
     true
+}
+
+/// Attempts to evaluate all subexpressions of the given expression
+/// using the interpreter.
+/// This is needed because the interpreter may fail to evaluate an expression,
+/// but is still able to simplify subexpressions.
+fn partial_const_eval<'a>(expr: &mut MIRExpression<'a>, interpreter: &Interpreter<'a>) {
+    explore_expr_mut(expr, &mut |expr| {
+        if let Ok(data) = interpreter.eval_expr(expr, &InterpreterScope::default(), false) {
+            expr.inner = data.into();
+        }
+
+        true
+    });
 }
 
 /// Inlines constants in all expressions, returning
@@ -426,7 +446,9 @@ macro_rules! extract_expr_body {
             MIRStatement::Label { .. } => {}
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
-            MIRStatement::LoopStatement { condition: None, .. } => {}
+            MIRStatement::LoopStatement {
+                condition: None, ..
+            } => {}
             MIRStatement::ScopeStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
 
