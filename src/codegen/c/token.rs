@@ -49,6 +49,11 @@ impl TokenInfo for CLowerer {
             return true;
         }
 
+        // Literal prefixes.
+        if (right_char == '"' || right_char == '\'') && (matches!(left_char, 'L' | 'u' | 'U')) {
+            return true;
+        }
+
         false
     }
 }
