@@ -1,1 +1,1 @@
-void main(){unsigned int a=10;for(;;){if(a==0)break;a=a-1;}}
+void main(){unsigned int b=10;for(;;){if(b==0)break;b=b-1;}}void a(bool b,int c){int d=c;if(b)if(d!=1){}else if(d!=2)d=2;}

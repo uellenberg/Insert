@@ -177,10 +177,13 @@ fn add_drops(block: &mut Vec<MIRStatement>, relationships: &HashMap<usize, HashS
 
             // If this statement's children dropped something, we need to
             // mark those as dropped so we don't try to drop them again.
+            let mut drops_from_children: HashSet<usize> = HashSet::new();
+
             {
                 let data = &mut *scope.scope_data.0.borrow_mut();
                 // Drain to ensure to_drop doesn't leak between statements in the
                 // same scope, since it's used for, e.g., if statements.
+                drops_from_children.extend(data.to_drop.iter());
                 data.dropped.extend(data.to_drop.drain());
             }
 
@@ -288,7 +291,11 @@ fn add_drops(block: &mut Vec<MIRStatement>, relationships: &HashMap<usize, HashS
 
                 data.dropped.extend(drop_after.iter());
                 if let Some(parent) = &data.parent {
-                    parent.0.borrow_mut().to_drop.extend(drop_after.iter());
+                    parent
+                        .0
+                        .borrow_mut()
+                        .to_drop
+                        .extend(drop_after.iter().chain(drops_from_children.iter()));
                 }
             }
 
@@ -355,8 +362,14 @@ fn inject_drops_on_unused(block: &mut Vec<MIRStatement>, drops: &HashSet<usize>)
     <StatementExplorer>::explore_block(
         block,
         &mut |statement, _scope| {
-            find_exprs(&statement, &mut |expr, _| {
+            find_exprs(&statement, &mut |expr, place_write| {
                 explore_expr(expr, &mut |expr| {
+                    // This needs to match the behavior of the usage finding
+                    // code in add_drops.
+                    if place_write && matches!(expr.inner, MIRExpressionInner::Variable(_, _)) {
+                        return true;
+                    }
+
                     if let MIRExpressionInner::Variable(_, Some(var_idx)) = &expr.inner {
                         drops.remove(var_idx);
                     }

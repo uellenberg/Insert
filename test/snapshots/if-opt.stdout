@@ -1,9 +1,22 @@
 function main() : () {
-    let a (0): u32 = 10;
+    let b (0): u32 = 10;
     loop {
-        if (a (0) == 0) {
+        if (b (0) == 0) {
             break;
         }
-        a (0) = (a (0) - 1);
+        b (0) = (b (0) - 1);
+    }
+}
+function a(b (0): bool, c (1): i32) : () {
+    let b (0): bool;
+    let c (1): i32;
+    let d (2): i32 = c (1);
+    if b (0) {
+        if (d (2) != 1) {
+        } else {
+            if (d (2) != 2) {
+                d (2) = 2;
+            }
+        }
     }
 }
