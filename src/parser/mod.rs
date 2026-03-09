@@ -708,25 +708,19 @@ fn parse_logical<'a>(
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let comp = parse_comparison(location, data.next().unwrap(), ctx);
+    let mut lhs = parse_comparison(location, data.next().unwrap(), ctx);
 
-    let Some(op) = data.next() else {
-        return comp;
-    };
-
-    let log = parse_logical(location, data.next().unwrap(), ctx);
-
-    let expr = match op.as_str() {
-        "&&" => MIRExpressionInner::BoolAnd(Box::new(comp), Box::new(log)),
-        "||" => MIRExpressionInner::BoolOr(Box::new(comp), Box::new(log)),
-        _ => unreachable!(),
-    };
-
-    MIRExpression {
-        inner: expr,
-        ty: None,
-        span,
+    while let Some(op) = data.next() {
+        let rhs = parse_comparison(location, data.next().unwrap(), ctx);
+        let expr = match op.as_str() {
+            "&&" => MIRExpressionInner::BoolAnd(Box::new(lhs), Box::new(rhs)),
+            "||" => MIRExpressionInner::BoolOr(Box::new(lhs), Box::new(rhs)),
+            _ => unreachable!(),
+        };
+        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
     }
+
+    lhs
 }
 
 fn parse_comparison<'a>(
@@ -739,29 +733,23 @@ fn parse_comparison<'a>(
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let add = parse_addition(location, data.next().unwrap(), ctx);
+    let mut lhs = parse_addition(location, data.next().unwrap(), ctx);
 
-    let Some(op) = data.next() else {
-        return add;
-    };
-
-    let comp = parse_comparison(location, data.next().unwrap(), ctx);
-
-    let expr = match op.as_str() {
-        "==" => MIRExpressionInner::Equal(Box::new(add), Box::new(comp)),
-        "!=" => MIRExpressionInner::NotEqual(Box::new(add), Box::new(comp)),
-        ">" => MIRExpressionInner::Greater(Box::new(add), Box::new(comp)),
-        "<" => MIRExpressionInner::Less(Box::new(add), Box::new(comp)),
-        ">=" => MIRExpressionInner::GreaterEq(Box::new(add), Box::new(comp)),
-        "<=" => MIRExpressionInner::LessEq(Box::new(add), Box::new(comp)),
-        _ => unreachable!(),
-    };
-
-    MIRExpression {
-        inner: expr,
-        ty: None,
-        span,
+    while let Some(op) = data.next() {
+        let rhs = parse_addition(location, data.next().unwrap(), ctx);
+        let expr = match op.as_str() {
+            "==" => MIRExpressionInner::Equal(Box::new(lhs), Box::new(rhs)),
+            "!=" => MIRExpressionInner::NotEqual(Box::new(lhs), Box::new(rhs)),
+            ">" => MIRExpressionInner::Greater(Box::new(lhs), Box::new(rhs)),
+            "<" => MIRExpressionInner::Less(Box::new(lhs), Box::new(rhs)),
+            ">=" => MIRExpressionInner::GreaterEq(Box::new(lhs), Box::new(rhs)),
+            "<=" => MIRExpressionInner::LessEq(Box::new(lhs), Box::new(rhs)),
+            _ => unreachable!(),
+        };
+        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
     }
+
+    lhs
 }
 
 fn parse_addition<'a>(
@@ -774,25 +762,19 @@ fn parse_addition<'a>(
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let mul = parse_multiplication(location, data.next().unwrap(), ctx);
+    let mut lhs = parse_multiplication(location, data.next().unwrap(), ctx);
 
-    let Some(op) = data.next() else {
-        return mul;
-    };
-
-    let add = parse_addition(location, data.next().unwrap(), ctx);
-
-    let expr = match op.as_str() {
-        "+" => MIRExpressionInner::Add(Box::new(mul), Box::new(add)),
-        "-" => MIRExpressionInner::Sub(Box::new(mul), Box::new(add)),
-        _ => unreachable!(),
-    };
-
-    MIRExpression {
-        inner: expr,
-        ty: None,
-        span,
+    while let Some(op) = data.next() {
+        let rhs = parse_multiplication(location, data.next().unwrap(), ctx);
+        let expr = match op.as_str() {
+            "+" => MIRExpressionInner::Add(Box::new(lhs), Box::new(rhs)),
+            "-" => MIRExpressionInner::Sub(Box::new(lhs), Box::new(rhs)),
+            _ => unreachable!(),
+        };
+        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
     }
+
+    lhs
 }
 
 fn parse_multiplication<'a>(
@@ -805,25 +787,19 @@ fn parse_multiplication<'a>(
     let span = to_span(location, value.as_span());
     let mut data = value.into_inner();
 
-    let pri = parse_primary(location, data.next().unwrap(), ctx);
+    let mut lhs = parse_primary(location, data.next().unwrap(), ctx);
 
-    let Some(op) = data.next() else {
-        return pri;
-    };
-
-    let mul = parse_multiplication(location, data.next().unwrap(), ctx);
-
-    let expr = match op.as_str() {
-        "*" => MIRExpressionInner::Mul(Box::new(pri), Box::new(mul)),
-        "/" => MIRExpressionInner::Div(Box::new(pri), Box::new(mul)),
-        _ => unreachable!(),
-    };
-
-    MIRExpression {
-        inner: expr,
-        ty: None,
-        span,
+    while let Some(op) = data.next() {
+        let rhs = parse_primary(location, data.next().unwrap(), ctx);
+        let expr = match op.as_str() {
+            "*" => MIRExpressionInner::Mul(Box::new(lhs), Box::new(rhs)),
+            "/" => MIRExpressionInner::Div(Box::new(lhs), Box::new(rhs)),
+            _ => unreachable!(),
+        };
+        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
     }
+
+    lhs
 }
 
 fn parse_primary<'a>(

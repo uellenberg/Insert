@@ -174,23 +174,19 @@ fnArgsType = {
 expression = { logical }
 
 logical = {
-    comparison ~ logicalOp ~ logical
-    | comparison
+    comparison ~ (logicalOp ~ comparison)*
 }
 
 comparison = {
-    addition ~ comparisonOp ~ comparison
-    | addition
+    addition ~ (comparisonOp ~ addition)*
 }
 
 addition = {
-    multiplication ~ additionOp ~ addition
-    | multiplication
+    multiplication ~ (additionOp ~ multiplication)*
 }
 
 multiplication = {
-    primary ~ multiplicationOp ~ multiplication
-    | primary
+    primary ~ (multiplicationOp ~ primary)*
 }
 
 primary = {
