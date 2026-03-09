@@ -1,2 +1,2 @@
 #define e unsigned int
-e b(e c){e d=0;for(;;){if(d>=c)break;d=d+1;}return d;}static e a=10;
+e b(e c){e d=0;for(;;){if(d>=c)break;d=d+1;}return d;}e a=10;

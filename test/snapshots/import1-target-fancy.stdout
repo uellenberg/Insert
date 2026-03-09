@@ -1,7 +1,7 @@
-static unsigned int a=10;unsigned int c(){
+unsigned int a=10;unsigned int c(){
     return a+2;
 }
 unsigned int d(){
     return c()+1;
 }
-static unsigned int b=13;
+unsigned int b=13;

@@ -13,7 +13,7 @@ char*g(){
 char*h(){
     return"true";
 }
-static char*a="10";static char*b="-10";static char*c="true";static char d='s';static char e='r';void i(char*k,unsigned int l){
+char*a="10";char*b="-10";char*c="true";char d='s';char e='r';void i(char*k,unsigned int l){
     unsigned int m=0;
     for(;;){
         if(m>=l)break;

@@ -1,5 +1,5 @@
-static unsigned int a=21;static bool b=false;static unsigned int c=2;void main(){
+unsigned int a=21;bool b=0;unsigned int c=2;void main(){
     a=5;
     a=25;
-    b=true;
+    b=1;
 }

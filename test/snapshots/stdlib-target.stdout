@@ -1,1 +1,1 @@
-static char*a="10";
+char*a="10";

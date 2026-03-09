@@ -40,12 +40,11 @@ helper function printQuineArrayChar() -> bool {
     offset = offset + 1;
 
     if offset == 1 {
-        if idx != 0 {
-            putchar(',');
-        } else {
+        if idx == 0 {
             return printQuineArrayChar();
         }
 
+        putchar(',');
         return false;
     }
 
@@ -64,10 +63,12 @@ helper function printQuineArrayChar() -> bool {
     }
 
     if c == '"' {
-        printf("\\\"");
+        putchar('\\');
+        putchar('\"');
         return true;
     } else if c == '\\' {
-        printf("\\\\");
+        putchar('\\');
+        putchar('\\');
         return true;
     } else if c != ' ' && c != '\n' {
         putchar(c);

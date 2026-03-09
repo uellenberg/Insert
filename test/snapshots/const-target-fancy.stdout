@@ -6,4 +6,4 @@ unsigned int b(unsigned int c){
     }
     return d;
 }
-static unsigned int a=10;
+unsigned int a=10;

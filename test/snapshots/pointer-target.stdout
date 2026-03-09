@@ -1,1 +1,1 @@
-void c(int*e,int f){*e=*e*f;}int d(int e){int f=e+1;c(&e,2);c(&f,3);return e+f;}static int a=8;static int*b=&testVal;
+void c(int*e,int f){*e=*e*f;}int d(int e){int f=e+1;c(&e,2);c(&f,3);return e+f;}int a=8;int*b=&testVal;

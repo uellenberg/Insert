@@ -1,2 +1,1 @@
-#define d static unsigned int
-d a=21;static bool b=false;d c=2;void main(){a=5;a=25;b=true;}
+unsigned int a=21;bool b=0;unsigned int c=2;void main(){a=5;a=25;b=1;}

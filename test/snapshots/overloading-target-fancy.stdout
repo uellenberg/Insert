@@ -7,7 +7,7 @@ int c(int e){
 unsigned int d(unsigned int e){
     return 10;
 }
-static int a=-10;void main(){
+int a=-10;void main(){
     b(10);
     d(10);
 }

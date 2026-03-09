@@ -534,7 +534,8 @@ impl Codegen for CLowerer {
         let decorated = self.decorate_with_type(val.name.clone(), &val.ty);
         let expr = self.lower_expression(&val.value);
 
-        spread![Token::new("static".into()), ...decorated, Token::new("=".into()), ...expr, SEMI]
+        // "static" only affects mutliple files, so we can exclude it.
+        spread![...decorated, Token::new("=".into()), ...expr, SEMI]
     }
 
     fn lower_expression<'a>(&mut self, expr: &MIRExpression<'a>) -> Tokens<'a> {
@@ -577,9 +578,9 @@ impl Codegen for CLowerer {
             )],
             MIRExpressionInner::Bool(val) => {
                 if *val {
-                    spread![Token::new("true".into())]
+                    spread![Token::new("1".into())]
                 } else {
-                    spread![Token::new("false".into())]
+                    spread![Token::new("0".into())]
                 }
             }
             MIRExpressionInner::Unit => spread![Token::new("void".into())],

@@ -3,4 +3,4 @@ void main(){
     return;
     
 }
-static unsigned int a=10;
+unsigned int a=10;

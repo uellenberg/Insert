@@ -1,1 +1,1 @@
-void main(){return;}static unsigned int a=10;
+void main(){return;}unsigned int a=10;

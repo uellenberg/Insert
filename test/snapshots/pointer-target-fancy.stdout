@@ -7,4 +7,4 @@ int d(int e){
     c(&f,3);
     return e+f;
 }
-static int a=8;static int*b=&testVal;
+int a=8;int*b=&testVal;

@@ -1,2 +1,2 @@
 #define f unsigned int
-static f a=0;static f b=0;static f c=0;void main(){f d=0;f e=0;for(;;){if(e>10)break;d=d+e;e=e+1;}a=d;d=0;e=0;for(;e<=10;){d=d+e;e=e+1;}b=d;for(d=0;d<=10;d=d+1)c=c+d;}
+f a=0;f b=0;f c=0;void main(){f d=0;f e=0;for(;;){if(e>10)break;d=d+e;e=e+1;}a=d;d=0;e=0;for(;e<=10;){d=d+e;e=e+1;}b=d;for(d=0;d<=10;d=d+1)c=c+d;}

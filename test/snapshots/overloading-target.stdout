@@ -1,2 +1,2 @@
 #define f unsigned int
-f b(f e){return 10;}int c(int e){return-10;}f d(f e){return 10;}static int a=-10;void main(){b(10);d(10);}
+f b(f e){return 10;}int c(int e){return-10;}f d(f e){return 10;}int a=-10;void main(){b(10);d(10);}

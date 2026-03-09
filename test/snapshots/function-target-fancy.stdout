@@ -1,6 +1,6 @@
 bool main(){
     a(10,11,12,13,14,15);
-    bool d=b(true, false, false, false, false, b(true, false, false, false, false, false));
+    bool d=b(1, 0, 0, 0, 0, b(1, 0, 0, 0, 0, 0));
     return d;
 }
 unsigned int a(unsigned int d,unsigned int e,unsigned int f,unsigned int g,unsigned int h,unsigned int i){

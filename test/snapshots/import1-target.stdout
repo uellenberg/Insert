@@ -1,2 +1,2 @@
 #define e unsigned int
-static e a=10;e c(){return a+2;}e d(){return c()+1;}static e b=13;
+e a=10;e c(){return a+2;}e d(){return c()+1;}e b=13;

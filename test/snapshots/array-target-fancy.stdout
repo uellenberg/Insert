@@ -1,4 +1,4 @@
-static int*a={1,2,3};static int b[3]={1,2,3};static int c=2;static int*d=&a[1];static int e=2;static int*f={};int h(){
+int*a={1,2,3};int b[3]={1,2,3};int c=2;int*d=&a[1];int e=2;int*f={};int h(){
     int i=0;
     unsigned int j=0;
     for(;;){
@@ -8,4 +8,4 @@ static int*a={1,2,3};static int b[3]={1,2,3};static int c=2;static int*d=&a[1];s
     }
     return i;
 }
-static int g=6;
+int g=6;
