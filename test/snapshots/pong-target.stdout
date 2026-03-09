@@ -1,14 +1,14 @@
 #include<stdio.h>
-#define E return
-#define D ){
-#define C '\n'
-#define B int
-#define A &&
+#define E ){
+#define D int
+#define C &&
+#define B false;
+#define A '\n'
 #define z );
-#define y else
-#define x return false;}
-#define w if(
+#define y if(
+#define x return
+#define w else if(
 #define v static int
-#define u putchar(
-#define t ;asprintf(&p,"%i",n);g[
-v a=39;v b=9;v c=1;v d=1;v e=7;v f=7;static char*g[]={"#include<stdio.h>/#define$E$return/#define$D$){/#define$C$'\\n'/#define$B$int/#define$A$&&/#define$z$);/#define$y$else/#define$x$return$false;}/#define$w$if(/#define$v$static$int/#define$u$putchar(/#define$t$;asprintf(&p,\"%i\",n);g[/v$a=","39",";v$b=","9",";v$c=","1",";v$d=","1",";v$e=","7",";v$f=","7",";static$char*g[]={","","};void$j(char*n$D$B$o;for(o=0;n[o]!='\\0';o=o+1)w$n[o]==","36",")u$'$'z$y$w$n[o]==","47",")u$C$z$y$w$n[o]!='$'A$n[o]!=C)u$n[o]z}v$h=0;v$i=0;bool$k(D$i=i+1;w$i==1$D$w$h!=0)u$','z$y$E$k(z$x$w$i==2$D$u$'\"'z$x$char$n=g[h][i-3];w$n=='\\0'D$u$'\"'z$i=0;h=h+1;x$w$n=='\"'D$printf(\"\\\\\\\"\"z$E$true;}y$w$n=='\\\\'D$printf(\"\\\\\\\\\"z$E$true;}y$w$n!='$'A$n!=C$D$u$n$z$x$y$E$k(z}void$l(D$B$n;B$o;k(z$u$'\\\\'z$u$C$z$for(n=0;n<20;n=n+1$D$for(o=0;o<80;o=o+1)w$o>=a$A$n>=b$A$o-a<2$A$n-b<2||o>=5$A$n>=e$A$o-5<2$A$n-e<6||o>=73$A$n>=f$A$o-73<2$A$n-f<6$D$w$k())o=o+1;}y$u$'$'z$w$i!=0)u$'\\\\'z$u$C$z}for(;h<","23",";)k(z}void$m(D$B$n;for(n=0;n<","23",";n=n+1)w$g[n][0]=='\\0')l(z$y$j(g[n]z$u$C$z}B$main(B$n,char*$*o$D$char*p;B$q=a+c;B$r=b+d;w$q>=5$A$q<7$A$r>=e$A$r<e+6||q>=73$A$q<75$A$r>=f$A$r<f+6$D$q=q-c;c=-1*c;}w$q<0||q>78$D$q=39;r=9;}w$r<0||r>18$D$w$r<0)r=0;y$r=18;d=-1*d;}B$s=f;w$n>1)w$o[1][0]=='w'A$s>0)s=s-1;y$w$o[1][0]=='s'A$s<14)s=s+1;n=q$t$1]=p;n=r$t$3]=p;n=c$t$5]=p;n=d$t$7]=p;n=s$t$11]=p;m(z}"};void j(char*n D B o;for(o=0;n[o]!='\0';o=o+1)w n[o]==36)u ' 'z y w n[o]==47)u C z y w n[o]!=' 'A n[o]!=C)u n[o]z}v h=0;v i=0;bool k(D i=i+1;w i==1 D w h!=0)u ','z y E k(z x w i==2 D u '"'z x char n=g[h][i-3];w n=='\0'D u '"'z i=0;h=h+1;x w n=='"'D printf("\\\""z E true;}y w n=='\\'D printf("\\\\"z E true;}y w n!=' 'A n!=C D u n z x y E k(z}void l(D B n;B o;k(z u '\\'z u C z for(n=0;n<20;n=n+1 D for(o=0;o<80;o=o+1)w o>=a A n>=b A o-a<2 A n-b<2||o>=5 A n>=e A o-5<2 A n-e<6||o>=73 A n>=f A o-73<2 A n-f<6 D w k())o=o+1;}y u ' 'z w i!=0)u '\\'z u C z}for(;h<23;)k(z}void m(D B n;for(n=0;n<23;n=n+1)w g[n][0]=='\0')l(z y j(g[n]z u C z}B main(B n,char* *o D char*p;B q=a+c;B r=b+d;w q>=5 A q<7 A r>=e A r<e+6||q>=73 A q<75 A r>=f A r<f+6 D q=q-c;c=-1*c;}w q<0||q>78 D q=39;r=9;}w r<0||r>18 D w r<0)r=0;y r=18;d=-1*d;}B s=f;w n>1)w o[1][0]=='w'A s>0)s=s-1;y w o[1][0]=='s'A s<14)s=s+1;n=q t 1]=p;n=r t 3]=p;n=c t 5]=p;n=d t 7]=p;n=s t 11]=p;m(z}
+#define u ;asprintf(&p,"%i",n);g[
+#define t putchar(
+v a=34;v b=6;v c=1;v d=1;v e=4;v f=4;static char*g[]={"#include<stdio.h>/#define$E$){/#define$D$int/#define$C$&&/#define$B$false;/#define$A$'\\n'/#define$z$);/#define$y$if(/#define$x$return/#define$w$else$if(/#define$v$static$int/#define$u$;asprintf(&p,\"%i\",n);g[/#define$t$putchar(/v$a=","34",";v$b=","6",";v$c=","1",";v$d=","1",";v$e=","4",";v$f=","4",";static$char*g[]={","","};v$h=0;v$i=0;bool$j(E$i=i+1;y$i==1$E$y$h!=0)t','z$else$x$j(z$x$B}y$i==2$E$t'\"'z$x$B}char$n=g[h][i-3];y$n=='\\0'E$t'\"'z$i=0;h=h+1;x$B}y$n=='\"'E$printf(\"\\\\\\\"\"z$x$true;}w$n=='\\\\'E$printf(\"\\\\\\\\\"z$x$true;}w$n!='$'C$n!=A$E$t$n$z$x$B}else$x$j(z}void$k(E$D$n;D$o;j(z$t'\\\\'z$t$A$z$t'\\\\'z$t$A$z$for(n=0;n<15;n=n+1$E$for(o=0;o<70;o=o+1)y$h>=","25","||o>=a$C$n>=b$C$o-a<3$C$n-b<3||o>=5$C$n>=e$C$o-5<3$C$n-e<6||o>=62$C$n>=f$C$o-62<3$C$n-f<6)t'$'z$w$j())o=o+1;y$i!=0)t'\\\\'z$t$A$z}y$i!=0)t'\\\\'z$t$A$z$for(;h<","25",";)j(z}void$l(char*n$E$D$o;bool$p=true;for(o=0;n[o]!='\\0';o=o+1)y$n[o]==","36",")t'$'z$w$n[o]==","47",")t$A$z$w$n[o]!='$'C$n[o]!=A$E$p=B$t$n[o]z}y$p)k(z}void$m(E$D$n;for(n=0;n<","25",";n=n+1)l(g[n]z$t$A$z}D$main(D$n,char*$*o$E$char*p;D$q=a+c;D$r=b+d;y$q>=5$C$q<8$C$r+3>e$C$r<e+6||q+3>62$C$q<65$C$r+3>f$C$r<f+6$E$q=q-c;c=-1*c;}y$q<0||q>67$E$q=34;r=6;}y$r<0||r>12$E$r=r-d;d=-1*d;}D$s=f;y$n>1)y$o[1][0]=='w'C$s>0)s=s-1;w$o[1][0]=='s'C$s<9)s=s+1;n=q$u$1]=p;n=r$u$3]=p;n=c$u$5]=p;n=d$u$7]=p;n=s$u$11]=p;m(z}"};v h=0;v i=0;bool j(E i=i+1;y i==1 E y h!=0)t','z else x j(z x B}y i==2 E t'"'z x B}char n=g[h][i-3];y n=='\0'E t'"'z i=0;h=h+1;x B}y n=='"'E printf("\\\""z x true;}w n=='\\'E printf("\\\\"z x true;}w n!=' 'C n!=A E t n z x B}else x j(z}void k(E D n;D o;j(z t'\\'z t A z t'\\'z t A z for(n=0;n<15;n=n+1 E for(o=0;o<70;o=o+1)y h>=25||o>=a C n>=b C o-a<3 C n-b<3||o>=5 C n>=e C o-5<3 C n-e<6||o>=62 C n>=f C o-62<3 C n-f<6)t' 'z w j())o=o+1;y i!=0)t'\\'z t A z}y i!=0)t'\\'z t A z for(;h<25;)j(z}void l(char*n E D o;bool p=true;for(o=0;n[o]!='\0';o=o+1)y n[o]==36)t' 'z w n[o]==47)t A z w n[o]!=' 'C n[o]!=A E p=B t n[o]z}y p)k(z}void m(E D n;for(n=0;n<25;n=n+1)l(g[n]z t A z}D main(D n,char* *o E char*p;D q=a+c;D r=b+d;y q>=5 C q<8 C r+3>e C r<e+6||q+3>62 C q<65 C r+3>f C r<f+6 E q=q-c;c=-1*c;}y q<0||q>67 E q=34;r=6;}y r<0||r>12 E r=r-d;d=-1*d;}D s=f;y n>1)y o[1][0]=='w'C s>0)s=s-1;w o[1][0]=='s'C s<9)s=s+1;n=q u 1]=p;n=r u 3]=p;n=c u 5]=p;n=d u 7]=p;n=s u 11]=p;m(z}

@@ -1,9 +1,9 @@
 //@check
 
-const WIDTH: i32 = 80;
-const HEIGHT: i32 = 20;
-const BALL_RADIUS: i32 = 2;
-const PADDLE_WIDTH: i32 = 2;
+const WIDTH: i32 = 70;
+const HEIGHT: i32 = 15;
+const BALL_RADIUS: i32 = 3;
+const PADDLE_WIDTH: i32 = 3;
 const PADDLE_HEIGHT: i32 = 6;
 
 const PADDLE_LEFT_X: i32 = 5;
@@ -24,7 +24,6 @@ const LINE_CHAR: char = $quineLine;
 
 import "std/print.int";
 import "std/string.int";
-import "std/quine.int";
 
 static idx: i32 = 0;
 // Offset 0 is the comma (optional), 1 is the opening quote, and one past the end of the string
@@ -84,18 +83,21 @@ helper function printQuineArr() {
     printQuineArrayChar();
     putchar('\\');
     putchar('\n');
+    // Separator.
+    putchar('\\');
+    putchar('\n');
 
     for let row: i32 = 0; row < HEIGHT; row = row + 1; {
         for let col: i32 = 0; col < WIDTH; col = col + 1; {
-            if (col >= ballX && row >= ballY && col - ballX < BALL_RADIUS && row - ballY < BALL_RADIUS)
+            if idx >= $quineLen || (col >= ballX && row >= ballY && col - ballX < BALL_RADIUS && row - ballY < BALL_RADIUS)
                || (col >= PADDLE_LEFT_X && row >= paddleLeftY && col - PADDLE_LEFT_X < PADDLE_WIDTH && row - paddleLeftY < PADDLE_HEIGHT)
                || (col >= PADDLE_RIGHT_X && row >= paddleRightY && col - PADDLE_RIGHT_X < PADDLE_WIDTH && row - paddleRightY < PADDLE_HEIGHT)
             {
-                if printQuineArrayChar() {
+                putchar(' ');
+            } else {
+            if printQuineArrayChar() {
                     col = col + 1;
                 }
-            } else {
-                putchar(' ');
             }
         }
 
@@ -104,9 +106,14 @@ helper function printQuineArr() {
         if offset != 0 {
             putchar('\\');
         }
-
         putchar('\n');
     }
+
+    // Separator.
+    if offset != 0 {
+        putchar('\\');
+    }
+    putchar('\n');
 
     // Print the remaining characters.
     while idx < $quineLen {
@@ -114,13 +121,29 @@ helper function printQuineArr() {
     }
 }
 
+helper function printQuineItem(s: string) {
+    // This is the quine part of the string if it's completely
+    // empty, except for spaces and newlines.
+    let quinePart: bool = true;
+    for let i: i32 = 0; s[i] != '\0'; i = i + 1; {
+        if s[i] == $quineSpace {
+            putchar(' ');
+        } else if s[i] == $quineLine {
+            putchar('\n');
+        } else if s[i] != ' ' && s[i] != '\n' {
+            quinePart = false;
+            putchar(s[i]);
+        }
+    }
+
+    if quinePart {
+        printQuineArr();
+    }
+}
+
 helper function printQuine1() {
     for let i: i32 = 0; i < $quineLen; i = i + 1; {
-        if quineStr[i][0] == '\0' {
-            printQuineArr();
-        } else {
-            printQuineItem(quineStr[i]);
-        }
+        printQuineItem(quineStr[i]);
     }
 
     // A trailing newline is needed for valid C.
@@ -132,25 +155,27 @@ function main(argc: i32, argv: &[string]) -> i32 {
     let newBallX: i32 = ballX + ballSpeedX;
     let newBallY: i32 = ballY + ballSpeedY;
 
-    if (newBallX >= PADDLE_LEFT_X && newBallX < PADDLE_LEFT_X + PADDLE_WIDTH && newBallY >= paddleLeftY && newBallY < paddleLeftY + PADDLE_HEIGHT)
-       || (newBallX >= PADDLE_RIGHT_X && newBallX < PADDLE_RIGHT_X + PADDLE_WIDTH && newBallY >= paddleRightY && newBallY < paddleRightY + PADDLE_HEIGHT)
+    // Paddle bounce.
+    //
+    // This is optimized for the sides that will actually be hit,
+    // so if the ball hits the left paddle while moving right,
+    // it will phase through.
+    if (newBallX >= PADDLE_LEFT_X && newBallX < PADDLE_LEFT_X + PADDLE_WIDTH && newBallY + BALL_RADIUS > paddleLeftY && newBallY < paddleLeftY + PADDLE_HEIGHT)
+       || (newBallX + BALL_RADIUS > PADDLE_RIGHT_X && newBallX < PADDLE_RIGHT_X + PADDLE_WIDTH && newBallY + BALL_RADIUS > paddleRightY && newBallY < paddleRightY + PADDLE_HEIGHT)
     {
         newBallX = newBallX - ballSpeedX;
         ballSpeedX = -1 * ballSpeedX;
     }
 
+    // Left and right walls means a player lost.
     if newBallX < 0 || newBallX > WIDTH - BALL_RADIUS {
         newBallX = WIDTH / 2 - BALL_RADIUS / 2;
         newBallY = HEIGHT / 2 - BALL_RADIUS / 2;
     }
 
+    // Top and bottom walls should bounce.
     if newBallY < 0 || newBallY > HEIGHT - BALL_RADIUS {
-        if newBallY < 0 {
-            newBallY = 0;
-        } else {
-            newBallY = HEIGHT - BALL_RADIUS;
-        }
-
+        newBallY = newBallY - ballSpeedY;
         ballSpeedY = -1 * ballSpeedY;
     }
 
