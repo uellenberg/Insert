@@ -7,12 +7,12 @@ unsigned int a=0;unsigned int b=0;unsigned int c=0;void main(){
         e=e+1;
     }
     a=d;
-    d=0;
     e=0;
-    for(;e<=10;){
-        d=d+e;
-        e=e+1;
+    d=0;
+    for(;d<=10;){
+        e=e+d;
+        d=d+1;
     }
-    b=d;
+    b=e;
     for(d=0;d<=10;d=d+1)c=c+d;
 }

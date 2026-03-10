@@ -138,6 +138,10 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
         let mut creates: Vec<MIRStatement> = vec![];
         // Type -> vars that have been allocated already.
         let mut vars: HashMap<MIRTypeInner<'a>, Vec<usize>> = HashMap::new();
+        // Var -> allocation num when it was last allocated.
+        let mut last_allocations: HashMap<usize, usize> = HashMap::new();
+        // Increments every time a new allocation is made.
+        let mut last_allocation_num = 0;
 
         if !<StatementExplorer<(), MinVarDataRef<'a>>>::rewrite_block(
             &mut function.body,
@@ -145,9 +149,14 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
                 // Update the current allocations based on this statement, and ensure
                 // that we have a variable allocated for CreateVariable.
                 // This may want to early return if the statement should be dropped.
-                if let Some(value) =
-                    update_var_allocations(&mut creates, &mut vars, &mut statement, scope)
-                {
+                if let Some(value) = update_var_allocations(
+                    &mut creates,
+                    &mut vars,
+                    &mut statement,
+                    &mut last_allocations,
+                    &mut last_allocation_num,
+                    scope,
+                ) {
                     return value;
                 }
 
@@ -337,6 +346,8 @@ fn update_var_allocations<'a>(
     creates: &mut Vec<MIRStatement<'a>>,
     vars: &mut HashMap<MIRTypeInner<'a>, Vec<usize>>,
     statement: &mut MIRStatement<'a>,
+    last_allocations: &mut HashMap<usize, usize>,
+    last_allocation_num: &mut usize,
     scope: &mut Scope<'a, (), MinVarDataRef<'a>>,
 ) -> Option<bool> {
     match &statement {
@@ -378,11 +389,17 @@ fn update_var_allocations<'a>(
                 // Values are the allocated variables.
                 let used_allocations = data.allocations.values().cloned().collect::<HashSet<_>>();
 
+                // This is sorted by last allocation, as it makes it both deterministic and gives
+                // consistency to the output.
+                // In particular, if we call a bunch of inline functions, we want the inline variables
+                // to use the same allocation, as this allows things like the C define compressor
+                // to use larger ranges.
                 vars.entry(var.ty.ty.clone())
                     .or_default()
                     .iter()
                     .cloned()
-                    .find(|var_idx| !used_allocations.contains(var_idx))
+                    .filter(|var_idx| !used_allocations.contains(var_idx))
+                    .max_by_key(|var_idx| last_allocations[var_idx])
             };
             // If there's no existing space, we'll need to allocate this variable.
             let available = match available {
@@ -415,6 +432,9 @@ fn update_var_allocations<'a>(
                 .borrow_mut()
                 .allocations
                 .insert(var.var_idx.unwrap(), available);
+
+            last_allocations.insert(available, *last_allocation_num);
+            *last_allocation_num += 1;
 
             let Some(value) = value else {
                 // No need to continue below, since we have no expressions

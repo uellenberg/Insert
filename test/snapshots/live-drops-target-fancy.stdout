@@ -18,9 +18,9 @@ unsigned int main(){
     f=f+ *e;
     f=f+ *d;
     g=40;
-    d=&g;
-    e=c(&g, &d);
+    e=&g;
+    d=c(&g, &e);
     f=f+g;
-    f=f+ *e;
+    f=f+ *d;
     return f;
 }
