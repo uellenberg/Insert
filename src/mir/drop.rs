@@ -460,7 +460,8 @@ fn compute_var_relationships(
                             // If the reference isn't pointing to a variable though, it's fine.
                             // That's why we do the check here (when referenced is not empty, meaning
                             // it does point to a variable).
-                            let Some(var_idx) = var_idx else {
+                            let Some(var_idx) = var_idx.expect("Reference with no variable!")
+                            else {
                                 eprintln_span!(
                                     Some(span.clone()),
                                     "Reference escapes to static {statement}!"
@@ -489,11 +490,13 @@ fn compute_var_relationships(
 }
 
 /// Finds the variable being references in a place expression.
-fn extract_place_var(expr: &MIRExpression) -> Option<usize> {
+/// If no variable was found, returns None.
+/// Otherwise, returns the variable's var_idx (None for non-locals).
+fn extract_place_var(expr: &MIRExpression) -> Option<Option<usize>> {
     let mut root = None;
     explore_outer_place(expr, &mut |expr| {
-        if let MIRExpressionInner::Variable(_, Some(var_idx)) = &expr.inner {
-            root = Some(*var_idx);
+        if let MIRExpressionInner::Variable(_, var_idx) = &expr.inner {
+            root = Some(var_idx.clone());
         }
 
         true
@@ -513,7 +516,13 @@ fn collect_refs(
         // Referencing adds an extra layer of indirection, so we use this variable
         // and not its references.
         MIRExpressionInner::Ref(inner) => {
-            HashSet::from([extract_place_var(inner).expect("Reference with no variable!")])
+            let place = extract_place_var(inner).expect("Reference with no variable!");
+            if let Some(var_idx) = place {
+                HashSet::from([var_idx])
+            } else {
+                // Non-local
+                HashSet::new()
+            }
         }
 
         // Variable access is a copy, so we can just copy its references.
@@ -526,6 +535,7 @@ fn collect_refs(
             {
                 relationships.get(var_idx).cloned().unwrap_or_default()
             } else {
+                // Non-local
                 HashSet::new()
             }
         }
