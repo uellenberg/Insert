@@ -299,66 +299,96 @@ fn merge_pairs(info: &impl TokenInfo, body: &mut Tokens<'_>) {
 /// `body` to use the short names, and prepends define lines to
 /// `header`.
 fn assign_defines<'a>(
+    info: &impl TokenInfo,
     header: &mut Tokens<'a>,
     body: &mut Tokens<'a>,
     used: &HashSet<Cow<'a, str>>,
 ) {
     // Count occurrences of each distinct token text.
-    let mut counts = HashMap::<&str, usize>::new();
+    let mut counts = HashMap::<String, usize>::new();
     for token in body.iter() {
         if token.style == TokenStyle::Marker {
             continue;
         }
 
         *counts
-            .entry(token.text.as_ref().expect("Token text is required"))
+            .entry(
+                token
+                    .text
+                    .as_ref()
+                    .expect("Token text is required")
+                    .to_string(),
+            )
             .or_default() += 1;
     }
-
-    // Collect tokens worth defining, sorted by descending savings so
-    // that the most valuable tokens get the shortest names first.
-    let mut candidates: Vec<(&str, i32)> = counts
-        .iter()
-        .filter_map(|(&token, &count)| {
-            let s = define_savings(token, count);
-
-            if s > 0 {
-                // This token is worth compressing.
-                Some((token, s))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // This is used to keep a consistent sort order
-    // when we get the same savings.
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    struct SortKey<'a>(Reverse<i32>, &'a str);
-
-    candidates.sort_by_key(|(text, savings)| SortKey(Reverse(*savings), text));
 
     // Assign short names.
     let mut name_num: usize = 0;
     // Token -> define name.
-    let defines: Vec<(String, String)> = candidates
-        .iter()
-        .map(|&(token, _)| (token.to_string(), next_name(&mut name_num, used)))
-        .collect();
+    let mut defines: Vec<(String, String)> = Vec::new();
 
-    let defines_map: HashMap<&str, &str> = defines
-        .iter()
-        .map(|(a, b)| (a.as_ref(), b.as_ref()))
-        .collect();
+    // This is in a loop, rather than a single collect phase, because the replacements
+    // which are profitable can depend on whether they're in between identifiers.
+    // The neighbors of each token change as we do more replacements.
+    // Therefore, we must recompute at each step to determine profitability.
+    loop {
+        // This is used to keep a consistent sort order
+        // when we get the same savings.
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        struct SortKey<'a>(i32, &'a str);
 
-    for token in body.iter_mut() {
-        if token.style == TokenStyle::Marker {
-            continue;
-        }
-        let text = token.text.as_ref().expect("Token text is required");
+        // Collect tokens worth defining, sorted by descending savings so
+        // that the most valuable tokens get the shortest names first.
+        let Some(to_replace) = counts
+            .iter()
+            .flat_map(|(token, &count)| {
+                // Swapping to a define can introduce spaces on either
+                // side which weren't previously there.
+                // We must factor this into our cost calculation.
+                //
+                // It may be possible to factor this into merge_pairs as well,
+                // although it's likely very complex.
+                let num_spaces: i32 = body
+                    .array_windows::<3>()
+                    .filter(|[_, middle, _]| middle.text.as_deref() == Some(token))
+                    .map(|[left, middle, right]| {
+                        // Use a dummy token that looks like an identifier (what the define replacement will be).
+                        let left_space = info.needs_space_between(left, &Token::new("a".into()))
+                            && !info.needs_space_between(left, middle);
+                        let right_space = info.needs_space_between(&Token::new("a".into()), right)
+                            && !info.needs_space_between(middle, right);
 
-        if let Some(&replacement) = defines_map.get(text.as_ref()) {
-            token.text = Some(replacement.to_string().into());
+                        return left_space as i32 + right_space as i32;
+                    })
+                    .sum();
+
+                let s = define_savings(token, count) - num_spaces;
+                if s <= 0 {
+                    // This token is not worth compressing.
+                    return None;
+                }
+
+                Some((token, s))
+            })
+            .max_by_key(|(text, savings)| SortKey(*savings, text))
+            .map(|(text, _)| text.clone())
+        else {
+            break;
+        };
+        counts.remove(&to_replace);
+
+        let define_name = next_name(&mut name_num, used);
+        defines.push((to_replace.clone(), define_name.to_string()));
+
+        for token in body.iter_mut() {
+            if token.style == TokenStyle::Marker {
+                continue;
+            }
+            let text = token.text.as_ref().expect("Token text is required");
+
+            if text.as_ref() == &to_replace {
+                token.text = Some(define_name.to_string().into());
+            }
         }
     }
 
@@ -406,5 +436,5 @@ pub fn compress_with_defines<'a>(
 
     // Now that tokens are maximized, compress the ones with the biggest savings by
     // turning them into defines.
-    assign_defines(header, body, &used);
+    assign_defines(info, header, body, &used);
 }

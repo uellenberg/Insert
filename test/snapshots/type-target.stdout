@@ -1,16 +1,14 @@
-#define lc (void
-#define kc (char
-#define jc ,unsigned int
-#define ic * *
-#define hc (*Wb)
-#define gc *Wb
-#define fc (int Wb
-#define ec (bool
+#define jc (char
+#define ic ,unsigned int
+#define hc *Wb
+#define gc (*Wb)
+#define fc (bool
+#define ec (int Wb
 #define dc )(int
-#define cc * *Wb
-#define bc (int
+#define cc (int
+#define bc * *Wb
 #define ac (*Wb)(int
 #define Zb (unsigned int
 #define Yb )){return;}void
 #define Xb ){return;}void
-void a fc Xb b Zb Wb Xb c ec Wb Xb d kc gc Xb e fc Xb f Zb Wb Xb g ec Wb Xb h bc gc Xb i Zb gc Xb j ec gc Xb k kc cc Xb l bc gc Xb m bc gc Xb n bc gc Xb o Zb gc Xb p ec gc Xb q kc cc Xb r bc gc Xb s bc gc Xb t fc[10]Xb u Zb Wb[5]Xb v ec Wb[3]Xb w kc gc[8]Xb x fc[10]Xb y fc[5]Xb z bc cc Xb A Zb ic gc Xb B ec ic cc Xb C bc cc Xb D bc cc Xb E bc cc Xb F Zb cc Xb G bc cc Xb H ec ic gc Xb I bc cc Xb J bc cc Xb K bc gc[4]Xb L Zb cc[2]Xb M bc gc[3]Xb N bc gc[3]Xb O bc hc[10]Xb P Zb(cc)[5]Xb Q bc hc[3]Xb R bc hc[10]Xb S bc ic gc Xb T Zb ic gc Xb U ec cc[2]Xb V bc*hc[5]Xb W fc[4][3][2]Xb X Zb hc[3][2][1]Xb Y bc ic gc Xb Z Zb ic gc Xb ab fc[4][4]Xb bb ec Wb[2][2][2]Xb cb fc[4][4]Xb db lc hc lc Yb eb bc ac Yb fb kc*ac jc,bool Yb gb bc hc kc*,...Yb hb bc hc(...Yb ib Zb*ac Yb jb Zb ac*Yb kb ec*ac*jc*Yb lb bc ac Yb mb bc ac Yb nb bc ac Yb ob bc(cc dc Yb pb Zb(ic gc)Zb Yb qb bc(cc dc Yb rb bc(cc dc Yb sb ec(*ac))Zb Yb tb Zb(ic hc lc)dc Yb ub Zb(*hc lc)dc Yb vb Zb ac(*dc)Yb wb Zb(*ac(*dc)))Zb Yb xb Zb ac(*dc)Yb yb Zb*ac Yb zb bc hc lc)[5]Xb Ab Zb ac*Yb Bb bc hc ec[3]Yb Cb Zb*ac*Yb Db bc(cc dc Yb Eb Zb(*Wb[4])Zb Yb Fb bc(cc dc Yb Gb bc(cc dc Yb Hb Zb ic ac ic Yb Ib Zb*(cc dc*Yb Jb Zb*(*ac*(*dc*)))Zb*Yb Kb ec*(cc[3]dc jc Yb Lb Zb(ic ac(*(*)[2]dc)))Zb Yb Mb Zb ic ac ic Yb Nb Zb*(cc dc*Yb Ob bc(ic cc dc Yb Pb bc ac(*dc(*dc))Yb Qb bc*(ic gc dc*Yb Rb bc*(ic cc dc*Yb Sb fc Xb Tb bc ic gc Xb Ub bc gc[5]Xb Vb Zb ac)){return;}
+void a ec Xb b Zb Wb Xb c fc Wb Xb d jc hc Xb e ec Xb f Zb Wb Xb g fc Wb Xb h cc hc Xb i Zb hc Xb j fc hc Xb k jc bc Xb l cc hc Xb m cc hc Xb n cc hc Xb o Zb hc Xb p fc hc Xb q jc bc Xb r cc hc Xb s cc hc Xb t ec[10]Xb u Zb Wb[5]Xb v fc Wb[3]Xb w jc hc[8]Xb x ec[10]Xb y ec[5]Xb z cc bc Xb A Zb* *hc Xb B fc* *bc Xb C cc bc Xb D cc bc Xb E cc bc Xb F Zb bc Xb G cc bc Xb H fc* *hc Xb I cc bc Xb J cc bc Xb K cc hc[4]Xb L Zb bc[2]Xb M cc hc[3]Xb N cc hc[3]Xb O cc gc[10]Xb P Zb(bc)[5]Xb Q cc gc[3]Xb R cc gc[10]Xb S cc* *hc Xb T Zb* *hc Xb U fc bc[2]Xb V cc*gc[5]Xb W ec[4][3][2]Xb X Zb gc[3][2][1]Xb Y cc* *hc Xb Z Zb* *hc Xb ab ec[4][4]Xb bb fc Wb[2][2][2]Xb cb ec[4][4]Xb db(void gc(void Yb eb cc ac Yb fb jc*ac ic,bool Yb gb cc gc jc*,...Yb hb cc gc(...Yb ib Zb*ac Yb jb Zb ac*Yb kb fc*ac*ic*Yb lb cc ac Yb mb cc ac Yb nb cc ac Yb ob cc(bc dc Yb pb Zb(* *hc)Zb Yb qb cc(bc dc Yb rb cc(bc dc Yb sb fc(*ac))Zb Yb tb Zb(* *gc(void)dc Yb ub Zb(*gc(void)dc Yb vb Zb ac(*dc)Yb wb Zb(*ac(*dc)))Zb Yb xb Zb ac(*dc)Yb yb Zb*ac Yb zb cc gc(void)[5]Xb Ab Zb ac*Yb Bb cc gc fc[3]Yb Cb Zb*ac*Yb Db cc(bc dc Yb Eb Zb(*Wb[4])Zb Yb Fb cc(bc dc Yb Gb cc(bc dc Yb Hb Zb* *ac* *Yb Ib Zb*(bc dc*Yb Jb Zb*(*ac*(*dc*)))Zb*Yb Kb fc*(bc[3]dc ic Yb Lb Zb(* *ac(*(*)[2]dc)))Zb Yb Mb Zb* *ac* *Yb Nb Zb*(bc dc*Yb Ob cc(* *bc dc Yb Pb cc ac(*dc(*dc))Yb Qb cc*(* *hc dc*Yb Rb cc*(* *bc dc*Yb Sb ec Xb Tb cc* *hc Xb Ub cc hc[5]Xb Vb Zb ac)){return;}
