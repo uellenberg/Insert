@@ -363,13 +363,13 @@ fn inject_drops_on_unused(block: &mut Vec<MIRStatement>, drops: &HashSet<usize>)
         block,
         &mut |statement, _scope| {
             find_exprs(&statement, &mut |expr, place_write| {
-                explore_expr(expr, &mut |expr| {
-                    // This needs to match the behavior of the usage finding
-                    // code in add_drops.
-                    if place_write && matches!(expr.inner, MIRExpressionInner::Variable(_, _)) {
-                        return true;
-                    }
+                // This needs to match the behavior of the usage finding
+                // code in add_drops.
+                if place_write && matches!(expr.inner, MIRExpressionInner::Variable(_, _)) {
+                    return true;
+                }
 
+                explore_expr(expr, &mut |expr| {
                     if let MIRExpressionInner::Variable(_, Some(var_idx)) = &expr.inner {
                         drops.remove(var_idx);
                     }
