@@ -3,10 +3,11 @@
 stty -echo -icanon
 trap 'stty sane' EXIT
 
+clear
+cat main.c
+
 while true
 do
-  clear
-  cat main.c
   gcc main.c -o a.out || break
 
   key=""
@@ -14,4 +15,7 @@ do
 
   output=$(./a.out $key) || break
   echo "$output" > main.c
+
+  clear
+  echo "$output"
 done
