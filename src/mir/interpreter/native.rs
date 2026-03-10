@@ -19,10 +19,10 @@ pub struct NativeFunctions {
 pub fn register_natives(ctx: &mut MIRContext) -> Result<NativeFunctions, ()> {
     let mut funcs = NativeFunctions::default();
 
-    for (name, args, variadic, ret, func) in FUNCS {
+    for (name, args, variadic, ret, func) in get_funcs() {
         let args_ty = MIRFunctionArgs {
             args: args.to_vec(),
-            variadic: *variadic,
+            variadic,
         };
         let func_data = MIRFunction {
             name: (*name).into(),
@@ -69,7 +69,7 @@ pub fn register_natives(ctx: &mut MIRContext) -> Result<NativeFunctions, ()> {
         func_overloads.remove_conflicts(&args_ty);
         func_overloads.push(args_ty, key);
 
-        funcs.funcs.insert(key, *func);
+        funcs.funcs.insert(key, func);
     }
 
     Ok(funcs)
@@ -78,25 +78,47 @@ pub fn register_natives(ctx: &mut MIRContext) -> Result<NativeFunctions, ()> {
 macro_rules! function {
     // Variadic with one or more args
     ($name:literal ( $($arg:expr),+ , ... ) -> $ret:expr => $func:ident) => {
-        ($name, &[$($arg),+], true, $ret, $func)
+        ($name, vec![$($arg),+], true, $ret, $func)
     };
     // Variadic with no args
     ($name:literal ( ... ) -> $ret:expr => $func:ident) => {
-        ($name, &[], true, $ret, $func)
+        ($name, vec![], true, $ret, $func)
     };
     // Non-variadic
     ($name:literal ( $($arg:expr),* ) -> $ret:expr => $func:ident) => {
-        ($name, &[$($arg),*], false, $ret, $func)
+        ($name, vec![$($arg),*], false, $ret, $func)
     };
 }
 
 /// Name, args, variadic, return type, function.
-const FUNCS: &[(&str, &[MIRTypeInner], bool, MIRTypeInner, NativeFunction)] = &[
-    function! { "string" (MIRTypeInner::U32) -> MIRTypeInner::String => string },
-    function! { "string" (MIRTypeInner::I32) -> MIRTypeInner::String => string },
-    function! { "string" (MIRTypeInner::Bool) -> MIRTypeInner::String => string },
-    function! { "string" (MIRTypeInner::String) -> MIRTypeInner::String => string },
-];
+fn get_funcs() -> Vec<(
+    &'static str,
+    Vec<MIRTypeInner<'static>>,
+    bool,
+    MIRTypeInner<'static>,
+    NativeFunction,
+)> {
+    vec![
+        // string
+        function! { "string" (MIRTypeInner::U32) -> MIRTypeInner::String => string },
+        function! { "string" (MIRTypeInner::I32) -> MIRTypeInner::String => string },
+        function! { "string" (MIRTypeInner::Bool) -> MIRTypeInner::String => string },
+        function! { "string" (MIRTypeInner::String) -> MIRTypeInner::String => string },
+        function! { "string" (MIRTypeInner::Array(Box::new(MIRTypeInner::Char))) -> MIRTypeInner::String => string },
+        // stringInto
+        function! { "stringInto" (MIRTypeInner::U32, MIRTypeInner::Ref(Box::new(MIRTypeInner::String))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::I32, MIRTypeInner::Ref(Box::new(MIRTypeInner::String))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::Bool, MIRTypeInner::Ref(Box::new(MIRTypeInner::String))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::String, MIRTypeInner::Ref(Box::new(MIRTypeInner::String))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::Array(Box::new(MIRTypeInner::Char)), MIRTypeInner::Ref(Box::new(MIRTypeInner::String))) -> MIRTypeInner::String => string_into },
+        // stringInto (&[char] output)
+        function! { "stringInto" (MIRTypeInner::U32, MIRTypeInner::Ref(Box::new(MIRTypeInner::Array(Box::new(MIRTypeInner::Char))))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::I32, MIRTypeInner::Ref(Box::new(MIRTypeInner::Array(Box::new(MIRTypeInner::Char))))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::Bool, MIRTypeInner::Ref(Box::new(MIRTypeInner::Array(Box::new(MIRTypeInner::Char))))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::String, MIRTypeInner::Ref(Box::new(MIRTypeInner::Array(Box::new(MIRTypeInner::Char))))) -> MIRTypeInner::String => string_into },
+        function! { "stringInto" (MIRTypeInner::Array(Box::new(MIRTypeInner::Char)), MIRTypeInner::Ref(Box::new(MIRTypeInner::Array(Box::new(MIRTypeInner::Char))))) -> MIRTypeInner::String => string_into },
+    ]
+}
 
 fn string<'a>(args: &[(InterpreterData<'a>, MIRTypeInner<'a>)]) -> InterpreterData<'a> {
     let val = match &args[0] {
@@ -108,4 +130,15 @@ fn string<'a>(args: &[(InterpreterData<'a>, MIRTypeInner<'a>)]) -> InterpreterDa
     };
 
     InterpreterData::String(Rc::new(RefCell::new(val)))
+}
+
+fn string_into<'a>(args: &[(InterpreterData<'a>, MIRTypeInner<'a>)]) -> InterpreterData<'a> {
+    let val = string(args);
+
+    let InterpreterData::Ref(inner, _) = &args[1].0 else {
+        unreachable!();
+    };
+    *inner.borrow_mut() = Some(val);
+
+    InterpreterData::Unit(())
 }

@@ -19,6 +19,7 @@ static str2s: string = string(-10i32);
 static str3s: string = string(true);
 static str4: char = ("test")[2];
 static str5: char = str3s[1];
+static str6: string = testStringInto();
 
 function zeroString(inp: string, len: u32) {
     let i: u32 = 0;
@@ -41,4 +42,11 @@ function addTwoStrings() -> string {
     zeroString(str1, 10);
     zeroString(str2, 10);
     return stringAppend(str1, str2);
+}
+
+function testStringInto() -> string {
+    let val: string;
+    stringInto(10u32, &val);
+
+    return val;
 }

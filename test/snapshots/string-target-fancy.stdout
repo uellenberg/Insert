@@ -1,32 +1,37 @@
 #include<stdio.h>
 #include<string.h>
-char*f(){
-    char*k;
-    asprintf(&k,"%u",10);
-    return k;
-}
 char*g(){
-    char*k;
-    asprintf(&k,"%i",-10);
-    return k;
+    char*m;
+    asprintf(&m,"%u",10);
+    return m;
 }
 char*h(){
-    return"true";
+    char*m;
+    asprintf(&m,"%i",-10);
+    return m;
 }
-char*a="10";char*b="-10";char*c="true";char d='s';char e='r';void i(char*k,unsigned int l){
-    unsigned int m=0;
+char*i(){
+    return"1";
+}
+char*a="10";char*b="-10";char*c="true";char d='s';char e='r';char*f="10";void j(char*m,unsigned int n){
+    unsigned int o=0;
     for(;;){
-        if(m>=l)break;
-        k[m]='\0';
-        m=m+1;
+        if(o>=n)break;
+        m[o]='\0';
+        o=o+1;
     }
 }
-char*j(){
-    char k[100];
-    char l[10];
-    i(k,10);
-    i(l,10);
-    char*m=k;
-    char*n=l;
-    return strcat(m, n);
+char*k(){
+    char m[100];
+    char n[10];
+    j(m,10);
+    j(n,10);
+    char*o=m;
+    char*p=n;
+    return strcat(o, p);
+}
+char*l(){
+    char*m;
+    asprintf(&m,"%u",10);
+    return m;
 }

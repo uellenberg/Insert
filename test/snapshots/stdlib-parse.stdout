@@ -12,14 +12,30 @@ inline function string(input: i32) : &[char] {
 inline function string(input: bool) : &[char] {
     let out: string;
     if input {
-        out = "true";
+        out = "1";
     } else {
-        out = "false";
+        out = "0";
     }
     return out;
 }
 inline function string(input: &[char]) : &[char] {
     return input;
+}
+inline function stringInto(input: u32, output: &&[char]) : () {
+    asprintf(output, "%u", input)
+}
+inline function stringInto(input: i32, output: &&[char]) : () {
+    asprintf(output, "%i", input)
+}
+inline function stringInto(input: bool, output: &&[char]) : &[char] {
+    if input {
+        (*output) = "1";
+    } else {
+        (*output) = "0";
+    }
+}
+inline function stringInto(input: &[char], output: &&[char]) : () {
+    (*output) = input;
 }
 inline function stringAppend(dest: &[char], source: &[char]) : &[char] {
     return strcat(dest, source);

@@ -14,9 +14,9 @@ target "C" {
     inline function string(input: bool) -> string {
         let out: string;
         if input {
-            out = "true";
+            out = "1";
         } else {
-            out = "false";
+            out = "0";
         }
 
         return out;
@@ -24,6 +24,26 @@ target "C" {
 
     inline function string(input: string) -> string {
         return input;
+    }
+
+    inline function stringInto(input: u32, output: &string) {
+        asprintf(output, "%u", input);
+    }
+
+    inline function stringInto(input: i32, output: &string) {
+        asprintf(output, "%i", input);
+    }
+
+    inline function stringInto(input: bool, output: &string) -> string {
+        if input {
+            *output = "1";
+        } else {
+            *output = "0";
+        }
+    }
+
+    inline function stringInto(input: string, output: &string) {
+        *output = input;
     }
 
     extern function asprintf(ptr: &string, ...) from "<stdio.h>";
