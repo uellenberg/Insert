@@ -1,6 +1,6 @@
 unsigned int a=10;unsigned int b(unsigned int c){
     unsigned int d=c;
-    d=d+1;
+    d=c+1;
     d=d+2;
     c=d+3;
     return c;

@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<string.h>
-#define s return
-#define r m;asprintf(&m,
-#define q char*
-q g(){q r"%u",10);s m;}q h(){q r"%i",-10);s m;}q i(){s"1";}q a="10";q b="-10";q c="true";char d='s';char e='r';q f="10";void j(q m,unsigned int n){unsigned int o=0;for(;;){if(o>=n)break;m[o]='\0';o=o+1;}}q k(){char m[100];char n[10];j(m,10);j(n,10);q o=m;q p=n;s strcat(o, p);}q l(){q r"%u",10);s m;}
+#define r return
+#define q *m;asprintf(&m,
+#define p char
+p*g(){p q"%u",10);r m;}p*h(){p q"%i",-10);r m;}p*i(){r"1";}p*a="10";p*b="-10";p*c="true";p d='s';p e='r';p*f="10";void j(p*m,unsigned int n){unsigned int o=0;for(;;){if(o>=n)break;m[o]='\0';o=o+1;}}p*k(){p m[100];p n[10];j(m,10);j(n,10);r strcat(m, n);}p*l(){p q"%u",10);r m;}

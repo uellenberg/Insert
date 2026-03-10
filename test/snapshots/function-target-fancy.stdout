@@ -5,12 +5,10 @@ bool main(){
 }
 unsigned int a(unsigned int d,unsigned int e,unsigned int f,unsigned int g,unsigned int h,unsigned int i){
     unsigned int j=d+10;
-    d=i;
-    return j*d;
+    return j*i;
 }
 bool b(bool d,bool e,bool f,bool g,bool h,bool i){
-    bool j=i;
-    return j;
+    return i;
 }
 unsigned int c(){
     return 1;

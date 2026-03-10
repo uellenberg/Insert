@@ -113,6 +113,11 @@ struct PrimitiveData<'a> {
     ///   can defer invalidation since their condition always runs first.
     values: HashMap<usize, MIRExpressionInner<'a>>,
 
+    /// If we inline a variable read, then if the variable we read gets invalidated,
+    /// we also need to invalidate the variable it's stored in, cascading.
+    /// Variable -> variable it needs to invalidate when the key gets written to
+    var_values: HashMap<usize, usize>,
+
     /// These variables are permanently invalidated from analysis and won't be
     /// inlined.
     perm_invalidated: HashSet<usize>,
@@ -143,6 +148,7 @@ impl Clone for PrimitiveDataRef<'_> {
 
         Self(Rc::new(RefCell::new(PrimitiveData {
             values: data.values.clone(),
+            var_values: data.var_values.clone(),
             perm_invalidated: data.perm_invalidated.clone(),
             needs_invalidation: data.needs_invalidation.clone(),
             needs_perm_invalidation: data.needs_perm_invalidation.clone(),
@@ -284,16 +290,13 @@ fn invalidate_refs(
                 scope_data.perm_invalidated.insert(var_idx);
                 // We need to invalidate directly, since we need it to affect
                 // the next statement.
-                scope_data
-                    .values
-                    .retain(|check_var_idx, _| *check_var_idx != var_idx);
+                cascade_invalidations(var_idx, &mut *scope_data);
                 if let Some(parent) = &scope_data.parent {
                     parent
                         .0
                         .borrow_mut()
                         .needs_perm_invalidation
                         .insert(var_idx);
-                    parent.0.borrow_mut().needs_invalidation.insert(var_idx);
                 }
             }
 
@@ -349,35 +352,60 @@ fn process_var_write<'a>(
     }
 
     if let Some(value) = value {
-        if let Some(parent) = &scope.scope_data.0.borrow().parent {
-            parent.0.borrow_mut().needs_invalidation.insert(var_idx);
-        }
+        let mut data = scope.scope_data.0.borrow_mut();
+
+        // Preemptively invalidate this variable - if we write to it, it'll be
+        // valid again, and we need to properly handle cascading on every write.
+        cascade_invalidations(var_idx, &mut *data);
 
         // On our scope however, this is a direct set, and can potentially be inlined.
-        if matches!(
-            value.inner,
-            // If we ever decide to inline compound operations here, we need to
-            // invalidate any writes that read themselves back (e.g., a = a + 1).
-            // That's because inlining has a different meaning after the statement compared
-            // to within it.
-            //
-            // Binding cannot be used here, otherwise we'll duplicate the markers and
-            // make it impossible for quines to properly replace them.
-            MIRExpressionInner::Number(_)
-                | MIRExpressionInner::Bool(_)
-                | MIRExpressionInner::String(_)
-                | MIRExpressionInner::Unit
-                | MIRExpressionInner::Ref(_)
-        ) {
-            let mut data = scope.scope_data.0.borrow_mut();
-
-            if !data.perm_invalidated.contains(&var_idx) {
-                data.values.insert(var_idx, value.inner.clone());
-            }
-        } else {
-            // Non-primitive write, so we need to invalidate.
-            scope.scope_data.0.borrow_mut().values.remove(&var_idx);
+        if !data.perm_invalidated.contains(&var_idx)
+            && (matches!(
+                    value.inner,
+                    // If we ever decide to inline compound operations here, we need to
+                    // invalidate any writes that read themselves back (e.g., a = a + 1).
+                    // That's because inlining has a different meaning after the statement compared
+                    // to within it.
+                    //
+                    // Binding cannot be used here, otherwise we'll duplicate the markers and
+                    // make it impossible for quines to properly replace them.
+                    MIRExpressionInner::Number(_)
+                    | MIRExpressionInner::Bool(_)
+                    | MIRExpressionInner::String(_)
+                    | MIRExpressionInner::Unit
+                    | MIRExpressionInner::Ref(_)
+                    // A read from a static is always valid to inline.
+                    | MIRExpressionInner::Variable(_, None)
+                )
+            // If the variable was never a reference, we can inline it until
+            // it's next written / referenced.
+            || matches!(value.inner, MIRExpressionInner::Variable(_, Some(inner_var_idx)) if !data.perm_invalidated.contains(&inner_var_idx)))
+        {
+            data.values.insert(var_idx, value.inner.clone());
         }
+    }
+}
+
+/// Invalidates var_idx and any variables which reference it.
+/// This will update the parent.
+fn cascade_invalidations(var_idx: usize, data: &mut PrimitiveData) {
+    data.values.remove(&var_idx);
+    if let Some(parent) = &data.parent {
+        parent.0.borrow_mut().needs_invalidation.insert(var_idx);
+    }
+
+    let mut cur_var_idx = var_idx;
+    while let Some(parent_var_idx) = data.var_values.remove(&cur_var_idx) {
+        data.values.remove(&parent_var_idx);
+        if let Some(parent) = &data.parent {
+            parent
+                .0
+                .borrow_mut()
+                .needs_invalidation
+                .insert(parent_var_idx);
+        }
+
+        cur_var_idx = parent_var_idx;
     }
 }
 
@@ -456,6 +484,13 @@ fn forward_invalidations(scope: &Scope<InvalidateParentData, PrimitiveDataRef>) 
     // just a one-time thing applied below.
     data.perm_invalidated
         .extend(data.needs_perm_invalidation.iter());
+
+    // No need to permanently invalidate any vars that are set to this
+    // variable, but we do need to invalidate them so they don't inline
+    // a value which is permanently invalidated.
+    for var_idx in data.perm_invalidated.clone() {
+        cascade_invalidations(var_idx, data);
+    }
 
     data.values.retain(|var_idx, _| {
         !data.perm_invalidated.contains(var_idx) && !data.needs_invalidation.contains(var_idx)

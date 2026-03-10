@@ -21,7 +21,7 @@ function main() {
     }
 }
 
-function testNestedUse(cond: bool, val1: i32) {
+function testNestedUse(cond: bool, val1: i32) -> i32 {
     let val: i32 = val1;
 
     if cond {
@@ -31,4 +31,6 @@ function testNestedUse(cond: bool, val1: i32) {
             val = 2;
         }
     }
+
+    return val;
 }

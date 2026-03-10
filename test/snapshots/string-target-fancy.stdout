@@ -26,9 +26,7 @@ char*k(){
     char n[10];
     j(m,10);
     j(n,10);
-    char*o=m;
-    char*p=n;
-    return strcat(o, p);
+    return strcat(m, n);
 }
 char*l(){
     char*m;
