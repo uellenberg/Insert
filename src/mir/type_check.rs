@@ -150,7 +150,9 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 MIRStatement::Label { .. } => {}
                 MIRStatement::ContinueStatement { .. } => {}
                 MIRStatement::BreakStatement { .. } => {}
-                MIRStatement::LoopStatement { condition: None, .. } => {}
+                MIRStatement::LoopStatement {
+                    condition: None, ..
+                } => {}
                 MIRStatement::ScopeStatement { .. } => {}
                 MIRStatement::MarkerStatement { .. } => {}
 
@@ -975,7 +977,7 @@ fn check_expression<'a, 'b>(
                     });
                 }
                 let MIRType {
-                    ty: MIRTypeInner::Array(inner),
+                    ty: MIRTypeInner::Array(inner) | MIRTypeInner::ArrayFixed(inner, _),
                     span,
                 } = check_expression(ctx, base, scope)?.clone()
                 else {
