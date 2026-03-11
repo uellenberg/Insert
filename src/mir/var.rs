@@ -149,6 +149,10 @@ pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, b
     // Increments every time a new allocation is made.
     let mut last_allocation_num = 0;
     let mut dead_removed = false;
+    // Variables which were originally declared in a for loop initializer,
+    // and which another variable wasn't allocated to.
+    // These are safe to put back into the for loop.
+    let mut for_loop_vars: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 
     if !<StatementExplorer<(), MinVarDataRef<'a>>>::rewrite_block(
         &mut function.body,
@@ -165,6 +169,7 @@ pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, b
                 scope,
                 &mut dead_removed,
                 only_dead,
+                &mut *for_loop_vars.borrow_mut(),
             ) {
                 return value;
             }
@@ -217,7 +222,31 @@ pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, b
             true
         },
         &mut |_, _| true,
-        &|_, _, _| true,
+        &|statement, _, _| {
+            match statement {
+                MIRStatement::ScopeStatement { body, .. } => {
+                    // Mark any variables originally declared in the for loop initializer,
+                    // that way we can add them back later instead of hoisting them to the
+                    // top.
+                    if body.len() >= 2
+                        && let Some(MIRStatement::CreateVariable {
+                            var:
+                                MIRVariable {
+                                    var_idx: Some(var_idx),
+                                    ..
+                                },
+                            ..
+                        }) = body.first()
+                        && matches!(body.get(1), Some(MIRStatement::LoopStatement { .. }))
+                    {
+                        for_loop_vars.borrow_mut().insert(*var_idx);
+                    }
+                }
+                _ => {}
+            }
+
+            true
+        },
     ) {
         return (false, false);
     }
@@ -227,7 +256,7 @@ pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, b
     function.body.splice(0..0, creates);
 
     // Clean up the messy CreateVariable and SetVariable splitting.
-    if !merge_var_declarations(function) {
+    if !merge_var_declarations(function, &mut *for_loop_vars.borrow_mut()) {
         return (false, false);
     }
 
@@ -241,7 +270,10 @@ pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, b
 ///
 /// This should be run after min_vars, as it only considers top-level declarations
 /// and is very coupled with its implementation.
-fn merge_var_declarations(function: &mut MIRFunction) -> bool {
+///
+/// for_loop_vars is a set of variables which can be safely moved down to their for loop
+/// initializers (i.e.,
+fn merge_var_declarations(function: &mut MIRFunction, for_loop_vars: &HashSet<usize>) -> bool {
     // All hoisted creates (from min_vars) sit at the very front of the body
     // with value: None.
     // This makes it easy, as we don't have to deal with as much data flow
@@ -270,7 +302,8 @@ fn merge_var_declarations(function: &mut MIRFunction) -> bool {
 
     let mut merged: HashSet<usize> = HashSet::new();
 
-    for stmt in &mut function.body[num_hoisted..] {
+    // Rewrite base-level SetVariables to CreateVariables.
+    for stmt in &mut function.body {
         if candidates.is_empty() {
             break;
         }
@@ -310,7 +343,11 @@ fn merge_var_declarations(function: &mut MIRFunction) -> bool {
             &mut |stmt, _| {
                 find_exprs(stmt, &mut |expr, _| {
                     explore_expr(expr, &mut |expr| {
-                        if let MIRExpressionInner::Variable(_, Some(idx)) = &expr.inner {
+                        // This doesn't apply to for loop variables, since all their data flow
+                        // is internal to the loop.
+                        if let MIRExpressionInner::Variable(_, Some(idx)) = &expr.inner
+                            && !for_loop_vars.contains(idx)
+                        {
                             candidates.remove(idx);
                         }
 
@@ -326,6 +363,50 @@ fn merge_var_declarations(function: &mut MIRFunction) -> bool {
             &|_, _| true,
         );
     }
+
+    // Rewrite for loop initializers everywhere to CreateVariable.
+    <StatementExplorer>::explore_block_mut(
+        &mut function.body,
+        &mut |statement, _| {
+            if let MIRStatement::ScopeStatement { body, .. } = statement {
+                let new_stmt = if body.len() >= 2
+                    && let Some(MIRStatement::SetVariable {
+                        place:
+                            MIRExpression {
+                                inner: MIRExpressionInner::Variable(_, Some(var_idx)),
+                                ..
+                            },
+                        span,
+                        value,
+                        ..
+                    }) = body.first()
+                    && matches!(body.get(1), Some(MIRStatement::LoopStatement { .. }))
+                    // This means the variable isn't being reused for something else,
+                    // so it's safe to move it down.
+                    && for_loop_vars.contains(var_idx)
+                    && let Some(var) = candidates.remove(var_idx)
+                {
+                    merged.insert(*var_idx);
+
+                    Some(MIRStatement::CreateVariable {
+                        var,
+                        value: Some(value.clone()),
+                        span: span.clone(),
+                    })
+                } else {
+                    None
+                };
+
+                if let Some(new_stmt) = new_stmt {
+                    body[0] = new_stmt;
+                }
+            }
+
+            true
+        },
+        &|_, _| true,
+        &mut |_, _| true,
+    );
 
     if merged.is_empty() {
         return true;
@@ -363,6 +444,7 @@ fn update_var_allocations<'a>(
     scope: &mut Scope<'a, (), MinVarDataRef<'a>>,
     removed_dead: &mut bool,
     only_dead: bool,
+    for_loop_vars: &mut HashSet<usize>,
 ) -> Option<bool> {
     match &statement {
         MIRStatement::DropVariable(_, var_idx, _) => {
@@ -423,7 +505,13 @@ fn update_var_allocations<'a>(
             };
             // If there's no existing space, we'll need to allocate this variable.
             let available = match available {
-                Some(available) => available,
+                Some(available) => {
+                    // If we reused a variable originally declared in a for loop initializer,
+                    // then we can't bring that variable back into the for loop.
+                    for_loop_vars.remove(&available);
+
+                    available
+                }
                 None => {
                     // No space, so we need to allocate this variable.
                     let var_idx = var.var_idx.unwrap();

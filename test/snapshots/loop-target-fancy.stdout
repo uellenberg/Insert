@@ -1,18 +1,22 @@
 unsigned int a=0;unsigned int b=0;unsigned int c=0;void main(){
-    unsigned int d=0;
     unsigned int e=0;
+    unsigned int f=0;
     for(;;){
-        if(e>10)break;
-        d+=e;
+        if(f>10)break;
+        e+=f;
+        f++;
+    }
+    a=e;
+    f=0;
+    e=0;
+    for(;e<=10;){
+        f+=e;
         e++;
     }
-    a=d;
-    e=0;
-    d=0;
-    for(;d<=10;){
-        e+=d;
-        d++;
-    }
-    b=e;
-    for(d=0;d<=10;d++)c+=d;
+    b=f;
+    for(e=0;e<=10;e++)c+=e;
+}
+int d(){
+    for(int e=0;e<10;e++)return e;
+    return 0;
 }

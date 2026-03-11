@@ -32,3 +32,11 @@ function main() {
         for_sum = for_sum + f_i;
     }
 }
+
+function for_fn() -> i32 {
+    for let val: i32 = 0; val < 10; val = val + 1; {
+        return val;
+    }
+
+    return 0;
+}

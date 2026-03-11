@@ -29,3 +29,14 @@ function main() : () {
         }
     }
 }
+function for_fn() : i32 {
+    {
+        let val: i32 = 0;
+        while (val < 10) {
+            return val;
+        } iterate {
+            val = (val + 1);
+        }
+    }
+    return 0;
+}

@@ -1,20 +1,17 @@
 #include<stdio.h>
-int a=0 ;char*b[]={"#include<stdio.h>'int$a=","0$",";char*b[]={","","};void$c(char*g){'$$$$int$h;'$$$$for(h=0;g[h];h++)if(g[h]==34)printf(\"\\\\\\\"\");'$$$$else$if(g[h]==10)printf(\"\\\\n\");'$$$$else$if(g[h]==92)printf(\"\\\\\\\\\");'$$$$else$if(g[h]!=32&&g[h]!=10)putchar(g[h]);'}'void$d(char*g){'$$$$int$h;'$$$$for(h=0;g[h];h++)if(g[h]==","36",")putchar(32);'$$$$else$if(g[h]==","39",")putchar(10);'$$$$else$if(g[h]!=32&&g[h]!=10)putchar(g[h]);'}'void$e(char**g,int$h){'$$$$int$i;'$$$$for(i=0;i<h;i++){'$$$$$$$$if(i)putchar(44);'$$$$$$$$putchar(34);'$$$$$$$$c(g[i]);'$$$$$$$$putchar(34);'$$$$}'}'void$f(char**g,int$h){'$$$$int$i;'$$$$for(i=0;i<h;i++){'$$$$$$$$if(i)putchar(32);'$$$$$$$$if(!g[i][0])e(g,h);'$$$$$$$$else$d(g[i]);'$$$$}'}'void$main(){'$$$$char*g;'$$$$int$h=a+1;'$$$$asprintf(&g,\"%i\",h);'$$$$b[1]=g;'$$$$f(b,","11",");'}'"};void c(char*g){
-    int h;
-    for(h=0;g[h];h++)if(g[h]==34)printf("\\\"");
+int a=0 ;char*b[]={"#include<stdio.h>'int$a=","0$",";char*b[]={","","};void$c(char*g){'$$$$for(int$h=0;g[h];h++)if(g[h]==34)printf(\"\\\\\\\"\");'$$$$else$if(g[h]==10)printf(\"\\\\n\");'$$$$else$if(g[h]==92)printf(\"\\\\\\\\\");'$$$$else$if(g[h]!=32&&g[h]!=10)putchar(g[h]);'}'void$d(char*g){'$$$$for(int$h=0;g[h];h++)if(g[h]==","36",")putchar(32);'$$$$else$if(g[h]==","39",")putchar(10);'$$$$else$if(g[h]!=32&&g[h]!=10)putchar(g[h]);'}'void$e(char**g,int$h){'$$$$for(int$i=0;i<h;i++){'$$$$$$$$if(i)putchar(44);'$$$$$$$$putchar(34);'$$$$$$$$c(g[i]);'$$$$$$$$putchar(34);'$$$$}'}'void$f(char**g,int$h){'$$$$for(int$i=0;i<h;i++){'$$$$$$$$if(i)putchar(32);'$$$$$$$$if(!g[i][0])e(g,h);'$$$$$$$$else$d(g[i]);'$$$$}'}'void$main(){'$$$$char*g;'$$$$int$h=a+1;'$$$$asprintf(&g,\"%i\",h);'$$$$b[1]=g;'$$$$f(b,","11",");'}'"};void c(char*g){
+    for(int h=0;g[h];h++)if(g[h]==34)printf("\\\"");
     else if(g[h]==10)printf("\\n");
     else if(g[h]==92)printf("\\\\");
     else if(g[h]!=32&&g[h]!=10)putchar(g[h]);
 }
 void d(char*g){
-    int h;
-    for(h=0;g[h];h++)if(g[h]==36)putchar(32);
+    for(int h=0;g[h];h++)if(g[h]==36)putchar(32);
     else if(g[h]==39)putchar(10);
     else if(g[h]!=32&&g[h]!=10)putchar(g[h]);
 }
 void e(char**g,int h){
-    int i;
-    for(i=0;i<h;i++){
+    for(int i=0;i<h;i++){
         if(i)putchar(44);
         putchar(34);
         c(g[i]);
@@ -22,8 +19,7 @@ void e(char**g,int h){
     }
 }
 void f(char**g,int h){
-    int i;
-    for(i=0;i<h;i++){
+    for(int i=0;i<h;i++){
         if(i)putchar(32);
         if(!g[i][0])e(g,h);
         else d(g[i]);
