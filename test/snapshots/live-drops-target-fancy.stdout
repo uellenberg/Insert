@@ -12,13 +12,13 @@ unsigned int main(){
     e=20+f;
     f=40;
     b(&f,&d);
-    e=e+f;
-    e=e+ *d;
-    e=e+f;
+    e+=f;
+    e+=*d;
+    e+=f;
     f=40;
     d=&f;
     unsigned int*g=c(&f, &d);
-    e=e+f;
-    e=e+ *g;
+    e+=f;
+    e+=*g;
     return e;
 }

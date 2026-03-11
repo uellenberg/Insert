@@ -1,1 +1,1 @@
-unsigned int main(){unsigned int a=20;for(;;){if(a==30)a=10;a=a+1;for(;;)a=50;}return 30;}
+unsigned int main(){unsigned int a=20;for(;;){if(a==30)a=10;a++;for(;;)a=50;}return 30;}

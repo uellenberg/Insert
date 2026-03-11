@@ -759,6 +759,14 @@ pub struct MIRMarker<'a> {
     pub span: Span<'a>,
 }
 
+impl Eq for MIRMarker<'_> {}
+
+impl PartialEq for MIRMarker<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
 /// The function's type (how it should be used and emitted).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MIRFunctionType {
@@ -1029,6 +1037,14 @@ pub struct MIRExpression<'a> {
     pub span: Span<'a>,
 }
 
+impl Eq for MIRExpression<'_> {}
+
+impl PartialEq for MIRExpression<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner && self.ty == other.ty
+    }
+}
+
 /// An expression that evaluates to some
 /// value.
 #[derive(Debug, Clone)]
@@ -1141,6 +1157,47 @@ pub enum MIRExpressionInner<'a> {
     Binding(MIRMarker<'a>, Box<MIRExpression<'a>>, MIRMarker<'a>),
 }
 
+impl Eq for MIRExpressionInner<'_> {}
+
+impl<'a> PartialEq for MIRExpressionInner<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Add(a1, a2), Self::Add(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Sub(a1, a2), Self::Sub(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Mul(a1, a2), Self::Mul(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Div(a1, a2), Self::Div(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Equal(a1, a2), Self::Equal(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::NotEqual(a1, a2), Self::NotEqual(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Less(a1, a2), Self::Less(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Greater(a1, a2), Self::Greater(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::LessEq(a1, a2), Self::LessEq(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::GreaterEq(a1, a2), Self::GreaterEq(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::BoolAnd(a1, a2), Self::BoolAnd(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::BoolOr(a1, a2), Self::BoolOr(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::String(a), Self::String(b)) => a == b,
+            (Self::Char(a), Self::Char(b)) => a == b,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::Unit, Self::Unit) => true,
+            (Self::Variable(a1, a2), Self::Variable(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::FunctionCall(a), Self::FunctionCall(b)) => a == b,
+            (Self::Ref(a), Self::Ref(b)) => a == b,
+            (Self::Deref(a), Self::Deref(b)) => a == b,
+            (Self::Member(a1, a2), Self::Member(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Index(a1, a2), Self::Index(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Array(a), Self::Array(b)) => a == b,
+            (Self::Quine, Self::Quine) => true,
+            (Self::QuineLen, Self::QuineLen) => true,
+            (Self::QuineSpace, Self::QuineSpace) => true,
+            (Self::QuineLine, Self::QuineLine) => true,
+            (Self::Binding(a1, a2, a3), Self::Binding(b1, b2, b3)) => {
+                a1 == b1 && a2 == b2 && a3 == b3
+            }
+            _ => false,
+        }
+    }
+}
+
 /// A type written out as text.
 #[derive(Debug, Clone)]
 pub struct MIRType<'a> {
@@ -1154,6 +1211,14 @@ pub struct MIRType<'a> {
     /// placed at the inference site,
     /// if possible, or else None.
     pub span: Option<Span<'a>>,
+}
+
+impl Eq for MIRType<'_> {}
+
+impl PartialEq for MIRType<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ty == other.ty
+    }
 }
 
 /// The type of data a variable represents.
@@ -1272,6 +1337,17 @@ pub struct MIRFnCall<'a> {
     pub span: Span<'a>,
 }
 
+impl Eq for MIRFnCall<'_> {}
+
+impl PartialEq for MIRFnCall<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.source == other.source
+            && self.args == other.args
+            && self.args_ty == other.args_ty
+            && self.ret_ty == other.ret_ty
+    }
+}
+
 /// The source for a function pointer
 /// when performing a function call.
 #[derive(Debug, Clone)]
@@ -1286,4 +1362,16 @@ pub enum MIRFnSource<'a> {
     /// Contains the name of the variable
     /// storing the pointer.
     Indirect(MIRExpression<'a>),
+}
+
+impl Eq for MIRFnSource<'_> {}
+
+impl PartialEq for MIRFnSource<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Direct(a1, _), Self::Direct(b1, _)) => a1 == b1,
+            (Self::Indirect(a1), Self::Indirect(b1)) => a1 == b1,
+            _ => false,
+        }
+    }
 }

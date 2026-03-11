@@ -18,7 +18,7 @@ char*a="10";char*b="-10";char*c="true";char d='s';char e='r';char*f="10";void j(
     for(;;){
         if(o>=n)break;
         m[o]='\0';
-        o=o+1;
+        o++;
     }
 }
 char*k(){

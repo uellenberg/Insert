@@ -12,11 +12,11 @@ void main(){
             c=0;
             for(;;){
                 if(c>10)break;
-                a=a+c;
-                c=c+1;
+                a+=c;
+                c++;
             }
-            b=b+1;
+            b++;
         }
-        d=d+1;
+        d++;
     }
 }

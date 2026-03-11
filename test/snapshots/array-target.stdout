@@ -1,2 +1,2 @@
 #define k int
-k*a={1,2,3};k b[3]={1,2,3};k c=2;k*d=&a[1];k e=2;k*f={};k h(){k i=0;unsigned k j=0;for(;;){if(j>=3)break;i=i+a[j];j=j+1;}return i;}k g=6;
+k*a={1,2,3};k b[3]={1,2,3};k c=2;k*d=&a[1];k e=2;k*f={};k h(){k i=0;unsigned k j=0;for(;;){if(j>=3)break;i+=a[j];j++;}return i;}k g=6;

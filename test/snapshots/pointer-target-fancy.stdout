@@ -1,5 +1,5 @@
 void c(int*e,int f){
-    *e=*e*f;
+    *e*=f;
 }
 int d(int e){
     int f=e+1;

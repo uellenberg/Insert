@@ -225,6 +225,25 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
             // TODO: When while loops are implemented, they need to additionally use
             //       the invalidated list from parent_data.
 
+            // Optimization: if we have a variable write like:
+            // a = a + 1
+            // We don't want to inline the expr part to a variable,
+            // since that defeats transformations into ++ and +=:
+            // a = b + 1
+            let set_var_idx = if let MIRStatement::SetVariable {
+                place:
+                    MIRExpression {
+                        inner: MIRExpressionInner::Variable(_, Some(var_idx)),
+                        ..
+                    },
+                ..
+            } = statement
+            {
+                Some(*var_idx)
+            } else {
+                None
+            };
+
             // Now, we can inline any primitive variables that are currently valid.
             // Inlining in SetVariable is safe here because we only save its value after inlining.
             if !find_exprs_mut(statement, &mut |expr, write_place| {
@@ -248,6 +267,13 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
                     let scope_data = scope.scope_data.0.borrow();
 
                     if let Some(var_data) = scope_data.values.get(&var_idx) {
+                        // ++ optimization
+                        if Some(var_idx) == set_var_idx
+                            && matches!(var_data, MIRExpressionInner::Variable(..))
+                        {
+                            return true;
+                        }
+
                         // Deref needs to be preserved, since inlining doesn't change the type.
                         if let MIRExpressionInner::Deref(inner) = &mut expr.inner {
                             inner.inner = var_data.clone();

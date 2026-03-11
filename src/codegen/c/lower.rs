@@ -308,15 +308,90 @@ impl Codegen for CLowerer {
             }
 
             MIRStatement::SetVariable { place, value, .. } => {
-                let place = self.lower_expression(place);
-                let expr = self.lower_expression(value);
+                let place_tokens = self.lower_expression(place);
 
-                Some(spread![
-                    ...place,
-                    Token::new("=".into()),
-                    ...expr,
-                    SEMI,
-                ])
+                // Optimize to shorthand += / ++ / etc
+                // if we can (i.e., a = a + 1 -> a++).
+                match &value.inner {
+                    MIRExpressionInner::Add(
+                        box left,
+                        box MIRExpression {
+                            inner: MIRExpressionInner::Number(1),
+                            ..
+                        },
+                    ) if left == place => Some(spread![
+                        ...place_tokens,
+                        Token::new("++".into()),
+                        SEMI,
+                    ]),
+
+                    MIRExpressionInner::Sub(
+                        box left,
+                        box MIRExpression {
+                            inner: MIRExpressionInner::Number(1),
+                            ..
+                        },
+                    ) if left == place => Some(spread![
+                        ...place_tokens,
+                        Token::new("--".into()),
+                        SEMI,
+                    ]),
+
+                    MIRExpressionInner::Add(box left, box right) if left == place => {
+                        let expr = self.lower_expression(right);
+
+                        Some(spread![
+                            ...place_tokens,
+                            Token::new("+=".into()),
+                            ...expr,
+                            SEMI,
+                        ])
+                    }
+
+                    MIRExpressionInner::Sub(box left, box right) if left == place => {
+                        let expr = self.lower_expression(right);
+
+                        Some(spread![
+                            ...place_tokens,
+                            Token::new("-=".into()),
+                            ...expr,
+                            SEMI,
+                        ])
+                    }
+
+                    MIRExpressionInner::Mul(box left, box right) if left == place => {
+                        let expr = self.lower_expression(right);
+
+                        Some(spread![
+                            ...place_tokens,
+                            Token::new("*=".into()),
+                            ...expr,
+                            SEMI,
+                        ])
+                    }
+
+                    MIRExpressionInner::Div(box left, box right) if left == place => {
+                        let expr = self.lower_expression(right);
+
+                        Some(spread![
+                            ...place_tokens,
+                            Token::new("/=".into()),
+                            ...expr,
+                            SEMI,
+                        ])
+                    }
+
+                    _ => {
+                        let expr = self.lower_expression(value);
+
+                        Some(spread![
+                            ...place_tokens,
+                            Token::new("=".into()),
+                            ...expr,
+                            SEMI,
+                        ])
+                    }
+                }
             }
 
             MIRStatement::FunctionCall(call) => {

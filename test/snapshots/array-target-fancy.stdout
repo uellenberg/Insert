@@ -3,8 +3,8 @@ int*a={1,2,3};int b[3]={1,2,3};int c=2;int*d=&a[1];int e=2;int*f={};int h(){
     unsigned int j=0;
     for(;;){
         if(j>=3)break;
-        i=i+a[j];
-        j=j+1;
+        i+=a[j];
+        j++;
     }
     return i;
 }

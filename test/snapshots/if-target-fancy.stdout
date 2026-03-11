@@ -2,7 +2,7 @@ void main(){
     unsigned int c=10;
     for(;;){
         if(c==0)break;
-        c=c-1;
+        c--;
     }
 }
 int a(bool c,int d){

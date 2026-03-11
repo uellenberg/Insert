@@ -1,1 +1,1 @@
-void main(){int a;int b;int c;int d=0;for(;;){if(d>10)break;a=0;b=0;for(;;){if(b>10)break;c=0;for(;;){if(c>10)break;a=a+c;c=c+1;}b=b+1;}d=d+1;}}
+void main(){int a;int b;int c;int d=0;for(;;){if(d>10)break;a=0;b=0;for(;;){if(b>10)break;c=0;for(;;){if(c>10)break;a+=c;c++;}b++;}d++;}}
