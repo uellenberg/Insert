@@ -144,24 +144,39 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
             }
             modified |= modified1;
 
+            // With all the optimizations above, we may be able to drop
+            // some dead variables.
+            // This is helpful because some optimizations (like inlining)
+            // don't work when references are created, and if those references
+            // are in dead sets, we can remove them and run the optimization again.
+            if !add_live_drops(function) {
+                return false;
+            }
+
+            let (success, modified1) = min_vars(function, true);
+            if !success {
+                return false;
+            }
+            modified |= modified1;
+
             if !modified {
                 break;
             }
         }
+
+        if !add_live_drops(function) {
+            return false;
+        }
+
+        // All variables are now dropped, including
+        // arg variables.
+
+        if !min_vars(function, false).0 {
+            return false;
+        }
+
+        // Variables now use space more efficiently, and drops are gone.
     }
-
-    if !add_live_drops(ctx) {
-        return false;
-    }
-
-    // All variables are now dropped, including
-    // arg variables.
-
-    if !min_vars(ctx) {
-        return false;
-    }
-
-    // Variables now use space more efficiently, and drops are gone.
 
     // TODO: Add a pass to remove unit variables (probably part of SSA -> function scope var generation).
 

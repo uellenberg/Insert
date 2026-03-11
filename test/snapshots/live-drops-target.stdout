@@ -1,2 +1,2 @@
 #define h unsigned int
-h a=250;void b(h*d,h* *e){*e=d;}h*c(h*d,h* *e){return d;}h main(){h*d;h*e;h f=20;h g=30;b(&g,&d);f=20+g;g=40;d=&g;b(d,&e);f=f+g;f=f+ *e;f=f+ *d;g=40;e=&g;d=c(&g, &e);f=f+g;f=f+ *d;return f;}
+h a=250;void b(h*d,h* *e){*e=d;}h*c(h*d,h* *e){return d;}h main(){h*d;h e=20;h f=30;b(&f,&d);e=20+f;f=40;b(&f,&d);e=e+f;e=e+ *d;e=e+f;f=40;d=&f;h*g=c(&f, &d);e=e+f;e=e+ *g;return e;}

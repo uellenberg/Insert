@@ -1,8 +1,8 @@
 use crate::mir::expr::{explore_expr, explore_outer_place, find_exprs};
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRStatement, MIRTypeInner,
-    MIRVariable,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFunction, MIRStatement,
+    MIRTypeInner, MIRVariable,
 };
 use crate::parser::span::{Span, eprintln_span};
 use std::cell::RefCell;
@@ -27,25 +27,23 @@ use std::slice;
 /// their drops may remain.
 ///
 /// This must be run after var_idx is assigned.
-pub fn add_live_drops(ctx: &mut MIRContext) -> bool {
-    for (_, function) in &mut ctx.program.functions {
-        // We need to track which variables reference which other
-        // variables, since we can only drop a variable once all its
-        // references have been dropped.
-        // This maps variables (var_idx) to the variables they reference.
-        let mut relationships = HashMap::new();
-        if !compute_var_relationships(&function.body, &mut relationships) {
-            return false;
-        }
-
-        // It isn't enough to just look at direct references.
-        // We also need to compute it transitively, since we can access
-        // our variable through a double reference.
-        apply_transitive_relationships(&mut relationships);
-
-        // Now, we can add drops based on these relationships.
-        add_drops(&mut function.body, &relationships);
+pub fn add_live_drops(function: &mut MIRFunction) -> bool {
+    // We need to track which variables reference which other
+    // variables, since we can only drop a variable once all its
+    // references have been dropped.
+    // This maps variables (var_idx) to the variables they reference.
+    let mut relationships = HashMap::new();
+    if !compute_var_relationships(&function.body, &mut relationships) {
+        return false;
     }
+
+    // It isn't enough to just look at direct references.
+    // We also need to compute it transitively, since we can access
+    // our variable through a double reference.
+    apply_transitive_relationships(&mut relationships);
+
+    // Now, we can add drops based on these relationships.
+    add_drops(&mut function.body, &relationships);
 
     true
 }

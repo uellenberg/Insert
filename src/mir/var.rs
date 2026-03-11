@@ -3,7 +3,8 @@ use crate::mir::expr::{
 };
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRStatement, MIRTypeInner, MIRVariable,
+    MIRContext, MIRExpression, MIRExpressionInner, MIRFunction, MIRStatement, MIRTypeInner,
+    MIRVariable,
 };
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -131,37 +132,46 @@ impl Default for MinVarDataRef<'_> {
 /// This must be run after var_idx is assigned, and only has an effect after
 /// drops are added. Additionally, this will create conflicting variables, so
 /// a renaming step must occur afterwards to make the output valid.
-pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
-    for function in ctx.program.functions.values_mut() {
-        // We need to hoist create var statements up to the top of the function.
-        // The create vars that we don't use can just be discarded, though.
-        let mut creates: Vec<MIRStatement> = vec![];
-        // Type -> vars that have been allocated already.
-        let mut vars: HashMap<MIRTypeInner<'a>, Vec<usize>> = HashMap::new();
-        // Var -> allocation num when it was last allocated.
-        let mut last_allocations: HashMap<usize, usize> = HashMap::new();
-        // Increments every time a new allocation is made.
-        let mut last_allocation_num = 0;
+///
+/// If only_dead is passed, this will only remove dead sets, and won't allocate
+/// any variables. It will still remove drops, though.
+/// This is useful for optimizations, since allocating makes analysis much more complex.
+///
+/// Returns (success, whether any dead variables were removed).
+pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, bool) {
+    // We need to hoist create var statements up to the top of the function.
+    // The create vars that we don't use can just be discarded, though.
+    let mut creates: Vec<MIRStatement> = vec![];
+    // Type -> vars that have been allocated already.
+    let mut vars: HashMap<MIRTypeInner<'a>, Vec<usize>> = HashMap::new();
+    // Var -> allocation num when it was last allocated.
+    let mut last_allocations: HashMap<usize, usize> = HashMap::new();
+    // Increments every time a new allocation is made.
+    let mut last_allocation_num = 0;
+    let mut dead_removed = false;
 
-        if !<StatementExplorer<(), MinVarDataRef<'a>>>::rewrite_block(
-            &mut function.body,
-            &mut |mut statement, scope, statements| {
-                // Update the current allocations based on this statement, and ensure
-                // that we have a variable allocated for CreateVariable.
-                // This may want to early return if the statement should be dropped.
-                if let Some(value) = update_var_allocations(
-                    &mut creates,
-                    &mut vars,
-                    &mut statement,
-                    &mut last_allocations,
-                    &mut last_allocation_num,
-                    scope,
-                ) {
-                    return value;
-                }
+    if !<StatementExplorer<(), MinVarDataRef<'a>>>::rewrite_block(
+        &mut function.body,
+        &mut |mut statement, scope, statements| {
+            // Update the current allocations based on this statement, and ensure
+            // that we have a variable allocated for CreateVariable.
+            // This may want to early return if the statement should be dropped.
+            if let Some(value) = update_var_allocations(
+                &mut creates,
+                &mut vars,
+                &mut statement,
+                &mut last_allocations,
+                &mut last_allocation_num,
+                scope,
+                &mut dead_removed,
+                only_dead,
+            ) {
+                return value;
+            }
 
-                // Rewrite to use the new allocations.
-                if !find_exprs_mut(&mut statement, &mut |expr, _| {
+            // Rewrite to use the new allocations.
+            if !only_dead
+                && !find_exprs_mut(&mut statement, &mut |expr, _| {
                     explore_expr_mut(expr, &mut |expr| {
                         if let MIRExpressionInner::Variable(_, Some(var_idx)) = &mut expr.inner {
                             let data = scope.scope_data.0.borrow();
@@ -169,58 +179,59 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
                             // This only happens if it's a dead write anyway.
                             if !data.dropped.contains(var_idx) {
                                 *var_idx = data.allocations[var_idx];
+                                dead_removed = true;
                             }
                         }
 
                         true
                     })
-                }) {
-                    return false;
-                }
+                })
+            {
+                return false;
+            }
 
-                // The statement has been fully processed, so we can add it back now.
-                statements.push(statement);
+            // The statement has been fully processed, so we can add it back now.
+            statements.push(statement);
 
-                // Propagate drops upwards.
-                // We need to do this after handling our own statement because expressions in
-                // this statement generally run before the body (e.g., if a var is dropped in an if body,
-                // we need to update its condition first, then deallocate, since the condition happens first).
-                {
-                    let data = &mut *scope.scope_data.0.borrow_mut();
-                    if !data.to_drop.is_empty() {
-                        // Keys are the variables pointing to allocated variables.
-                        data.allocations
-                            .retain(|var_idx, _| !data.to_drop.contains(var_idx));
-                        data.dropped.extend(data.to_drop.iter());
-                        if let Some(parent) = &data.parent {
-                            parent.0.borrow_mut().to_drop.extend(data.to_drop.iter());
-                        }
-
-                        // This is no longer needed, although behavior won't change if we
-                        // leave it full.
-                        data.to_drop.clear();
+            // Propagate drops upwards.
+            // We need to do this after handling our own statement because expressions in
+            // this statement generally run before the body (e.g., if a var is dropped in an if body,
+            // we need to update its condition first, then deallocate, since the condition happens first).
+            {
+                let data = &mut *scope.scope_data.0.borrow_mut();
+                if !data.to_drop.is_empty() {
+                    // Keys are the variables pointing to allocated variables.
+                    data.allocations
+                        .retain(|var_idx, _| !data.to_drop.contains(var_idx));
+                    data.dropped.extend(data.to_drop.iter());
+                    if let Some(parent) = &data.parent {
+                        parent.0.borrow_mut().to_drop.extend(data.to_drop.iter());
                     }
+
+                    // This is no longer needed, although behavior won't change if we
+                    // leave it full.
+                    data.to_drop.clear();
                 }
+            }
 
-                true
-            },
-            &mut |_, _| true,
-            &|_, _, _| true,
-        ) {
-            return false;
-        }
-
-        // Any created variables must be prepended to the start, since they can be used at any
-        // point in the function.
-        function.body.splice(0..0, creates);
+            true
+        },
+        &mut |_, _| true,
+        &|_, _, _| true,
+    ) {
+        return (false, false);
     }
+
+    // Any created variables must be prepended to the start, since they can be used at any
+    // point in the function.
+    function.body.splice(0..0, creates);
 
     // Clean up the messy CreateVariable and SetVariable splitting.
-    if !merge_var_declarations(ctx) {
-        return false;
+    if !merge_var_declarations(function) {
+        return (false, false);
     }
 
-    true
+    (true, dead_removed)
 }
 
 /// This merges CreateVariable and SetVariable into a single CreateVariable,
@@ -230,105 +241,103 @@ pub fn min_vars<'a>(ctx: &mut MIRContext<'a>) -> bool {
 ///
 /// This should be run after min_vars, as it only considers top-level declarations
 /// and is very coupled with its implementation.
-fn merge_var_declarations(ctx: &mut MIRContext) -> bool {
-    for function in ctx.program.functions.values_mut() {
-        // All hoisted creates (from min_vars) sit at the very front of the body
-        // with value: None.
-        // This makes it easy, as we don't have to deal with as much data flow
-        // analysis.
-        let num_hoisted = function
-            .body
-            .iter()
-            .take_while(|s| matches!(s, MIRStatement::CreateVariable { value: None, .. }))
-            .count();
+fn merge_var_declarations(function: &mut MIRFunction) -> bool {
+    // All hoisted creates (from min_vars) sit at the very front of the body
+    // with value: None.
+    // This makes it easy, as we don't have to deal with as much data flow
+    // analysis.
+    let num_hoisted = function
+        .body
+        .iter()
+        .take_while(|s| matches!(s, MIRStatement::CreateVariable { value: None, .. }))
+        .count();
 
-        if num_hoisted == 0 {
-            continue;
+    if num_hoisted == 0 {
+        return true;
+    }
+
+    // All vars we should consider (excluding virtual arg vars).
+    // var_idx -> its definition.
+    let mut candidates: HashMap<usize, MIRVariable> = function.body[..num_hoisted]
+        .iter()
+        .filter_map(|s| match s {
+            MIRStatement::CreateVariable {
+                var, value: None, ..
+            } if !var.arg => Some((var.var_idx.unwrap(), var.clone())),
+            _ => None,
+        })
+        .collect();
+
+    let mut merged: HashSet<usize> = HashSet::new();
+
+    for stmt in &mut function.body[num_hoisted..] {
+        if candidates.is_empty() {
+            break;
         }
 
-        // All vars we should consider (excluding virtual arg vars).
-        // var_idx -> its definition.
-        let mut candidates: HashMap<usize, MIRVariable> = function.body[..num_hoisted]
-            .iter()
-            .filter_map(|s| match s {
-                MIRStatement::CreateVariable {
-                    var, value: None, ..
-                } if !var.arg => Some((var.var_idx.unwrap(), var.clone())),
-                _ => None,
-            })
-            .collect();
-
-        let mut merged: HashSet<usize> = HashSet::new();
-
-        for stmt in &mut function.body[num_hoisted..] {
-            if candidates.is_empty() {
-                break;
-            }
-
-            // Check if this is a set we want to merge.
-            let merge_var_idx = if let MIRStatement::SetVariable { place, .. } = &*stmt
+        // Check if this is a set we want to merge.
+        let merge_var_idx = if let MIRStatement::SetVariable { place, .. } = &*stmt
                 // Sets through refs / arrays are too complex to analyze.
                 && let MIRExpressionInner::Variable(_, Some(idx)) = &place.inner
-            {
-                Some(*idx)
-            } else {
-                None
-            };
+        {
+            Some(*idx)
+        } else {
+            None
+        };
 
-            if let Some(var_idx) = merge_var_idx
+        if let Some(var_idx) = merge_var_idx
                 // We need to remove it from the list of candidates to prevent
                 // accidental double merging.
                 && let Some(var) = candidates.remove(&var_idx)
-            {
-                let MIRStatement::SetVariable { value, span, .. } = stmt else {
-                    unreachable!()
-                };
-                *stmt = MIRStatement::CreateVariable {
-                    var,
-                    value: Some(value.clone()),
-                    span: span.clone(),
-                };
-                merged.insert(var_idx);
-                continue;
-            }
+        {
+            let MIRStatement::SetVariable { value, span, .. } = stmt else {
+                unreachable!()
+            };
+            *stmt = MIRStatement::CreateVariable {
+                var,
+                value: Some(value.clone()),
+                span: span.clone(),
+            };
+            merged.insert(var_idx);
+            continue;
+        }
 
-            // If we access any variables in this statement, we need
-            // to invalidate them from the candidates list, since that
-            // candidate now has data flow which is harder to analyze.
-            <StatementExplorer>::explore_block(
-                slice::from_ref(stmt),
-                &mut |stmt, _| {
-                    find_exprs(stmt, &mut |expr, _| {
-                        explore_expr(expr, &mut |expr| {
-                            if let MIRExpressionInner::Variable(_, Some(idx)) = &expr.inner {
-                                candidates.remove(idx);
-                            }
-
-                            true
-                        });
+        // If we access any variables in this statement, we need
+        // to invalidate them from the candidates list, since that
+        // candidate now has data flow which is harder to analyze.
+        <StatementExplorer>::explore_block(
+            slice::from_ref(stmt),
+            &mut |stmt, _| {
+                find_exprs(stmt, &mut |expr, _| {
+                    explore_expr(expr, &mut |expr| {
+                        if let MIRExpressionInner::Variable(_, Some(idx)) = &expr.inner {
+                            candidates.remove(idx);
+                        }
 
                         true
                     });
 
                     true
-                },
-                &|_, _| true,
-                &|_, _| true,
-            );
-        }
+                });
 
-        if merged.is_empty() {
-            continue;
-        }
-
-        // Remove the now-redundant hoisted creates for merged variables.
-        function.body.retain(|stmt| match stmt {
-            MIRStatement::CreateVariable {
-                var, value: None, ..
-            } => !merged.contains(&var.var_idx.unwrap()),
-            _ => true,
-        });
+                true
+            },
+            &|_, _| true,
+            &|_, _| true,
+        );
     }
+
+    if merged.is_empty() {
+        return true;
+    }
+
+    // Remove the now-redundant hoisted creates for merged variables.
+    function.body.retain(|stmt| match stmt {
+        MIRStatement::CreateVariable {
+            var, value: None, ..
+        } => !merged.contains(&var.var_idx.unwrap()),
+        _ => true,
+    });
 
     true
 }
@@ -342,6 +351,9 @@ fn merge_var_declarations(ctx: &mut MIRContext) -> bool {
 /// If this returns Some, the caller should return with the inner value as
 /// the status. Some(true) means we succeeded, but shouldn't go any further
 /// than updating allocations (i.e., the statement should be dropped).
+///
+/// If only_dead is true, then this will only remove dead sets and all drops,
+/// and won't allocate any variables.
 fn update_var_allocations<'a>(
     creates: &mut Vec<MIRStatement<'a>>,
     vars: &mut HashMap<MIRTypeInner<'a>, Vec<usize>>,
@@ -349,6 +361,8 @@ fn update_var_allocations<'a>(
     last_allocations: &mut HashMap<usize, usize>,
     last_allocation_num: &mut usize,
     scope: &mut Scope<'a, (), MinVarDataRef<'a>>,
+    removed_dead: &mut bool,
+    only_dead: bool,
 ) -> Option<bool> {
     match &statement {
         MIRStatement::DropVariable(_, var_idx, _) => {
@@ -381,7 +395,13 @@ fn update_var_allocations<'a>(
                 && !var.arg
             {
                 // Dead variable.
+                *removed_dead = true;
                 return Some(true);
+            }
+
+            if only_dead {
+                // We shouldn't allocate / modify this statement.
+                return None;
             }
 
             let available = {
@@ -474,6 +494,7 @@ fn update_var_allocations<'a>(
 
             if dead {
                 // Don't push to statements.
+                *removed_dead = true;
                 return Some(true);
             }
         }

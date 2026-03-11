@@ -6,21 +6,19 @@ unsigned int*c(unsigned int*d,unsigned int* *e){
 }
 unsigned int main(){
     unsigned int*d;
-    unsigned int*e;
-    unsigned int f=20;
-    unsigned int g=30;
-    b(&g,&d);
-    f=20+g;
-    g=40;
-    d=&g;
-    b(d,&e);
-    f=f+g;
-    f=f+ *e;
-    f=f+ *d;
-    g=40;
-    e=&g;
-    d=c(&g, &e);
-    f=f+g;
-    f=f+ *d;
-    return f;
+    unsigned int e=20;
+    unsigned int f=30;
+    b(&f,&d);
+    e=20+f;
+    f=40;
+    b(&f,&d);
+    e=e+f;
+    e=e+ *d;
+    e=e+f;
+    f=40;
+    d=&f;
+    unsigned int*g=c(&f, &d);
+    e=e+f;
+    e=e+ *g;
+    return e;
 }
