@@ -5,7 +5,7 @@ const HEIGHT: i32 = 15;
 const BALL_WIDTH: i32 = 3;
 const BALL_HEIGHT: i32 = 2;
 const PADDLE_WIDTH: i32 = 3;
-const PADDLE_HEIGHT: i32 = 6;
+const PADDLE_HEIGHT: i32 = 5;
 
 // Higher values means it moves slower.
 const ROBOT_SPEED: i32 = 3;
@@ -23,11 +23,11 @@ static paddleLeftY: i32 = binding paddleLeftYMarker (ROBOT_SPEED * (HEIGHT / 2 -
 static paddleRightX: i32 = binding paddleRightXMarker (WIDTH - PADDLE_WIDTH - STARTING_PADDLE_X);
 static paddleRightY: i32 = binding paddleRightYMarker (HEIGHT / 2 - PADDLE_HEIGHT / 2);
 
-// 0 = pong, 1 = transition to jump, [2, 5] = jump (each number is a different place),
+// 0 = pong, [1, 5] = jump (each number is a different place),
 // 6 = mandelbrot
 static gameState: i32 = binding gameStateMarker (0);
 
-static jumpHeights: [i32; 3] = [1, 3, 1];
+static jumpHeights: [i32; 5] = [1, 3, 1, 4, 1];
 
 static quineStr: &[string] = $quine;
 
@@ -40,7 +40,8 @@ import "std/string.int";
 static idx: i32 = 0;
 // Offset 0 is the comma (optional), 1 is the opening quote, and one past the end of the string
 // is the closing quote.
-static offset: i32 = 0;
+// It's 1 initially to avoid printing the comma for the first item.
+static offset: i32 = 1;
 
 /**
   * Tries to print a single character of the quine array, stepping idx and offset forward.
@@ -52,10 +53,6 @@ helper function printQuineArrayChar() -> bool {
     offset = offset + 1;
 
     if offset == 1 {
-        if idx == 0 {
-            return printQuineArrayChar();
-        }
-
         putchar(',');
         return false;
     }
@@ -185,8 +182,8 @@ inline function pongUpdates(argc: i32, argv: &[string]) {
     // This is optimized for the sides that will actually be hit,
     // so if the ball hits the left paddle while moving right,
     // it will phase through.
-    if (ballX >= paddleLeftX && ballX < paddleLeftX + PADDLE_WIDTH && ballY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && ballY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT)
-       || (ballX + BALL_WIDTH > paddleRightX && ballX < paddleRightX + PADDLE_WIDTH && ballY + BALL_HEIGHT > paddleRightY && ballY < paddleRightY + PADDLE_HEIGHT)
+    if (ballX == paddleLeftX && ballY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && ballY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT)
+       || (ballX + (BALL_WIDTH - 1) == paddleRightX && ballY + BALL_HEIGHT > paddleRightY && ballY < paddleRightY + PADDLE_HEIGHT)
     {
         ballX = ballX - ballSpeedX;
         ballSpeedX = -1 * ballSpeedX;
@@ -231,38 +228,36 @@ inline function pongUpdates(argc: i32, argv: &[string]) {
     }
 }
 
-inline function jumpTransition() {
-    // If the transition is done, move to the jump game.
-    gameState = 2;
-
+inline function jumpUpdates(argc: i32, argv: &[string]) {
+    // Gravity.
     if ballY < HEIGHT - BALL_HEIGHT {
-        gameState = 1;
         ballY = ballY + 1;
     }
 
-    if paddleLeftY / ROBOT_SPEED < HEIGHT - jumpHeights[0] {
-        gameState = 1;
+    // Transition the paddles down before we start moving them.
+    // This means the distance between paddles changes depending on the
+    // user and bot's starting positions, but not to a degree that
+    // matters.
+    if paddleLeftY / ROBOT_SPEED < HEIGHT - jumpHeights[gameState - 1] {
         paddleLeftY = paddleLeftY + ROBOT_SPEED;
+    } else {
+        paddleLeftX = paddleLeftX - 1;
     }
 
-    if paddleRightY < HEIGHT - jumpHeights[0] {
-        gameState = 1;
+    if paddleRightY < HEIGHT - jumpHeights[gameState] {
         paddleRightY = paddleRightY + 1;
+    } else {
+        paddleRightX = paddleRightX - 1;
     }
-}
 
-inline function jumpUpdates(argc: i32, argv: &[string]) {
-    // Compute next paddle position.
-    paddleLeftX = paddleLeftX - 1;
-    paddleRightX = paddleRightX - 1;
-
+    // Swap out paddles when they reach the edge of the screen.
     if paddleLeftX + PADDLE_WIDTH <= 0 {
         gameState = gameState + 1;
         if gameState < 6 {
             paddleLeftX = paddleRightX;
             paddleLeftY = paddleRightY * ROBOT_SPEED;
             paddleRightX = WIDTH;
-            paddleRightY = HEIGHT - jumpHeights[gameState - 2];
+            paddleRightY = HEIGHT - jumpHeights[gameState - 1];
         }
     }
 }
@@ -271,9 +266,7 @@ function main(argc: i32, argv: &[string]) -> i32 {
     // Must be else if since they update gameState.
     if gameState == 0 {
         pongUpdates(argc, argv);
-    } else if gameState == 1 {
-        jumpTransition();
-    } else if gameState > 0 && gameState < 6 {
+    } else if gameState < 6 {
         jumpUpdates(argc, argv);
     }
 
