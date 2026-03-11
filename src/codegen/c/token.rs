@@ -2,7 +2,6 @@ use crate::codegen::c::CLowerer;
 use crate::codegen::token::{Token, TokenInfo, TokenStyle, Tokens};
 use crate::util::name::next_name;
 use std::borrow::Cow;
-use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
@@ -20,19 +19,32 @@ pub const NEWLINE: Token<'static> = Token::new_fancy(Cow::Borrowed("\n"));
 
 impl TokenInfo for CLowerer {
     fn needs_space_between<'a>(&self, left: &Token<'a>, right: &Token<'a>) -> bool {
-        let Some(left) = &left.text else {
-            return false;
-        };
-        let Some(right) = &right.text else {
-            return false;
-        };
-
-        if left.is_empty() || right.is_empty() {
+        if left.style == TokenStyle::Marker && right.style == TokenStyle::Marker {
             return false;
         }
 
-        let left_char = left.chars().last().unwrap();
-        let right_char = right.chars().next().unwrap();
+        let Some(left_text) = &left.text else {
+            return false;
+        };
+        let Some(right_text) = &right.text else {
+            return false;
+        };
+
+        if left_text.is_empty() || right_text.is_empty() {
+            return false;
+        }
+
+        let mut left_char = left_text.chars().last().unwrap();
+        let mut right_char = right_text.chars().next().unwrap();
+
+        // Treat markers as identifiers to be conservative about
+        // inserting spaces.
+        if left.style == TokenStyle::Marker {
+            left_char = 'a';
+        }
+        if right.style == TokenStyle::Marker {
+            right_char = 'a';
+        }
 
         // Words must be separated.
         // For example, int main, return 0, variable1 variable2, 123 456
@@ -358,7 +370,7 @@ fn assign_defines<'a>(
                         let right_space = info.needs_space_between(&Token::new("a".into()), right)
                             && !info.needs_space_between(middle, right);
 
-                        return left_space as i32 + right_space as i32;
+                        left_space as i32 + right_space as i32
                     })
                     .sum();
 
@@ -386,7 +398,7 @@ fn assign_defines<'a>(
             }
             let text = token.text.as_ref().expect("Token text is required");
 
-            if text.as_ref() == &to_replace {
+            if text.as_ref() == to_replace {
                 token.text = Some(define_name.to_string().into());
             }
         }

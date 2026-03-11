@@ -74,7 +74,21 @@ pub trait TokenInfo {
     /// Returns whether merging succeeded.
     #[must_use]
     fn try_merge<'a>(&self, left: &mut Token<'a>, right: &Token<'a>) -> bool {
-        if left.style == TokenStyle::Marker || right.style == TokenStyle::Marker {
+        if left.style == TokenStyle::Marker {
+            return false;
+        }
+
+        // If the write is a marker, we need space between the two
+        // to safely merge it during runtime, even though we shouldn't
+        // merge it here.
+        if right.style == TokenStyle::Marker {
+            // Optimization: if it's safe to put the left side directly
+            // against an identifier without any space, then it's probably
+            // safe to do so with whatever is placed within the marker.
+            // This is fragile, but I can't think of any good cases against it.
+            if self.needs_space_between(left, right) {
+                *left.text.as_mut().expect("Token text is required") += " ";
+            }
             return false;
         }
 
