@@ -10,8 +10,9 @@ const PADDLE_HEIGHT: i32 = 6;
 // Higher values means it moves slower.
 const ROBOT_SPEED: i32 = 3;
 
-static ballX: i32 = binding ballXMarker (WIDTH / 2 - BALL_WIDTH / 2);
-static ballY: i32 = binding ballYMarker (HEIGHT / 2 - BALL_HEIGHT / 2);
+// Subtract 1 so the first run generates a centered and formatted output.
+static ballX: i32 = binding ballXMarker (WIDTH / 2 - BALL_WIDTH / 2 - 1);
+static ballY: i32 = binding ballYMarker (HEIGHT / 2 - BALL_HEIGHT / 2 - 1);
 static ballSpeedX: i32 = binding ballSpeedXMarker (1);
 static ballSpeedY: i32 = binding ballSpeedYMarker (1);
 
@@ -174,123 +175,116 @@ helper function setQuineVar(index: i32, val: i32) {
     stringInto(val, &quineStr[index]);
 }
 
-inline function pongUpdates(argc: i32, argv: &[string], newBallX: &i32, newBallY: &i32, newPaddleLeftY: &i32, newPaddleRightY: &i32) {
+inline function pongUpdates(argc: i32, argv: &[string]) {
     // Compute next ball position.
-    *newBallX = *newBallX + ballSpeedX;
-    *newBallY = *newBallY + ballSpeedY;
+    ballX = ballX + ballSpeedX;
+    ballY = ballY + ballSpeedY;
 
     // Paddle bounce.
     //
     // This is optimized for the sides that will actually be hit,
     // so if the ball hits the left paddle while moving right,
     // it will phase through.
-    if (*newBallX >= paddleLeftX && *newBallX < paddleLeftX + PADDLE_WIDTH && *newBallY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && *newBallY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT)
-       || (*newBallX + BALL_WIDTH > paddleRightX && *newBallX < paddleRightX + PADDLE_WIDTH && *newBallY + BALL_HEIGHT > paddleRightY && *newBallY < paddleRightY + PADDLE_HEIGHT)
+    if (ballX >= paddleLeftX && ballX < paddleLeftX + PADDLE_WIDTH && ballY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && ballY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT)
+       || (ballX + BALL_WIDTH > paddleRightX && ballX < paddleRightX + PADDLE_WIDTH && ballY + BALL_HEIGHT > paddleRightY && ballY < paddleRightY + PADDLE_HEIGHT)
     {
-        *newBallX = *newBallX - ballSpeedX;
+        ballX = ballX - ballSpeedX;
         ballSpeedX = -1 * ballSpeedX;
     }
 
     // Left and right walls means a player lost.
-    if *newBallX < 0 || *newBallX > WIDTH - BALL_WIDTH {
+    if ballX < 0 || ballX > WIDTH - BALL_WIDTH {
         // The user won.
-        if *newBallX < 0 {
+        if ballX < 0 {
             gameState = 1;
         }
 
-        *newBallX = WIDTH / 2 - BALL_WIDTH / 2;
-        *newBallY = HEIGHT / 2 - BALL_HEIGHT / 2;
+        ballX = WIDTH / 2 - BALL_WIDTH / 2;
+        ballY = HEIGHT / 2 - BALL_HEIGHT / 2;
     }
 
     // Top and bottom walls should bounce.
-    if *newBallY < 0 || *newBallY > HEIGHT - BALL_HEIGHT {
-        *newBallY = *newBallY - ballSpeedY;
+    if ballY < 0 || ballY > HEIGHT - BALL_HEIGHT {
+        ballY = ballY - ballSpeedY;
         ballSpeedY = -1 * ballSpeedY;
     }
 
     // Compute paddle updates.
 
     if argc > 1 {
-        if argv[1][0] == 'w' && *newPaddleRightY > 0 {
-            *newPaddleRightY = *newPaddleRightY - 1;
+        if argv[1][0] == 'w' && paddleRightY > 0 {
+            paddleRightY = paddleRightY - 1;
         }
 
-        if argv[1][0] == 's' && *newPaddleRightY < HEIGHT - PADDLE_HEIGHT {
-            *newPaddleRightY = *newPaddleRightY + 1;
+        if argv[1][0] == 's' && paddleRightY < HEIGHT - PADDLE_HEIGHT {
+            paddleRightY = paddleRightY + 1;
         }
     }
 
-    let robotDistance: i32 = *newPaddleLeftY / ROBOT_SPEED - *newBallY + (PADDLE_HEIGHT / 2 - BALL_HEIGHT / 2);
+    let robotDistance: i32 = paddleLeftY / ROBOT_SPEED - ballY + (PADDLE_HEIGHT / 2 - BALL_HEIGHT / 2);
     if robotDistance < 0 {
-        *newPaddleLeftY = *newPaddleLeftY + 1;
+        paddleLeftY = paddleLeftY + 1;
     }
 
     if robotDistance > 0 {
-        *newPaddleLeftY = *newPaddleLeftY - 1;
+        paddleLeftY = paddleLeftY - 1;
     }
 }
 
-inline function jumpTransition(newBallX: &i32, newBallY: &i32, newPaddleLeftY: &i32, newPaddleRightY: &i32) {
+inline function jumpTransition() {
     // If the transition is done, move to the jump game.
     gameState = 2;
 
-    if *newBallY < HEIGHT - BALL_HEIGHT {
+    if ballY < HEIGHT - BALL_HEIGHT {
         gameState = 1;
-        *newBallY = *newBallY + 1;
+        ballY = ballY + 1;
     }
 
-    if *newPaddleLeftY / ROBOT_SPEED < HEIGHT - jumpHeights[0] {
+    if paddleLeftY / ROBOT_SPEED < HEIGHT - jumpHeights[0] {
         gameState = 1;
-        *newPaddleLeftY = *newPaddleLeftY + ROBOT_SPEED;
+        paddleLeftY = paddleLeftY + ROBOT_SPEED;
     }
 
-    if *newPaddleRightY < HEIGHT - jumpHeights[0] {
+    if paddleRightY < HEIGHT - jumpHeights[0] {
         gameState = 1;
-        *newPaddleRightY = *newPaddleRightY + 1;
+        paddleRightY = paddleRightY + 1;
     }
 }
 
-inline function jumpUpdates(argc: i32, argv: &[string], newBallX: &i32, newBallY: &i32, newPaddleLeftX: &i32, newPaddleLeftY: &i32, newPaddleRightX: &i32, newPaddleRightY: &i32) {
+inline function jumpUpdates(argc: i32, argv: &[string]) {
     // Compute next paddle position.
-    *newPaddleLeftX = *newPaddleLeftX - 1;
-    *newPaddleRightX = *newPaddleRightX - 1;
+    paddleLeftX = paddleLeftX - 1;
+    paddleRightX = paddleRightX - 1;
 
-    if *newPaddleLeftX + PADDLE_WIDTH <= 0 {
+    if paddleLeftX + PADDLE_WIDTH <= 0 {
         gameState = gameState + 1;
         if gameState < 6 {
-            *newPaddleLeftX = *newPaddleRightX;
-            *newPaddleLeftY = *newPaddleRightY * ROBOT_SPEED;
-            *newPaddleRightX = WIDTH;
-            *newPaddleRightY = HEIGHT - jumpHeights[gameState - 2];
+            paddleLeftX = paddleRightX;
+            paddleLeftY = paddleRightY * ROBOT_SPEED;
+            paddleRightX = WIDTH;
+            paddleRightY = HEIGHT - jumpHeights[gameState - 2];
         }
     }
 }
 
 function main(argc: i32, argv: &[string]) -> i32 {
-    let newBallX: i32 = ballX;
-    let newBallY: i32 = ballY;
-    let newPaddleLeftX: i32 = paddleLeftX;
-    let newPaddleLeftY: i32 = paddleLeftY;
-    let newPaddleRightX: i32 = paddleRightX;
-    let newPaddleRightY: i32 = paddleRightY;
-
     // Must be else if since they update gameState.
     if gameState == 0 {
-        pongUpdates(argc, argv, &newBallX, &newBallY, &newPaddleLeftY, &newPaddleRightY);
+        pongUpdates(argc, argv);
     } else if gameState == 1 {
-        jumpTransition(&newBallX, &newBallY, &newPaddleLeftY, &newPaddleRightY);
+        jumpTransition();
     } else if gameState > 0 && gameState < 6 {
-        jumpUpdates(argc, argv, &newBallX, &newBallY, &newPaddleLeftX, &newPaddleLeftY, &newPaddleRightX, &newPaddleRightY);
+        jumpUpdates(argc, argv);
     }
 
-    setQuineVar(ballXMarker, newBallX);
-    setQuineVar(ballYMarker, newBallY);
+    setQuineVar(ballXMarker, ballX);
+    setQuineVar(ballYMarker, ballY);
     setQuineVar(ballSpeedXMarker, ballSpeedX);
     setQuineVar(ballSpeedYMarker, ballSpeedY);
-    setQuineVar(paddleLeftXMarker, newPaddleLeftX);
-    setQuineVar(paddleLeftYMarker, newPaddleLeftY);
-    setQuineVar(paddleRightXMarker, newPaddleRightX);
-    setQuineVar(paddleRightYMarker, newPaddleRightY);
+    setQuineVar(paddleLeftXMarker, paddleLeftX);
+    setQuineVar(paddleLeftYMarker, paddleLeftY);
+    setQuineVar(paddleRightXMarker, paddleRightX);
+    setQuineVar(paddleRightYMarker, paddleRightY);
     setQuineVar(gameStateMarker, gameState);
     printQuine1();
 }
