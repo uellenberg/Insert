@@ -4,7 +4,7 @@ void a(int Wb){
 void b(unsigned int Wb){
     return;
 }
-void c(bool Wb){
+void c(int Wb){
     return;
 }
 void d(char*Wb){
@@ -16,7 +16,7 @@ void e(int Wb){
 void f(unsigned int Wb){
     return;
 }
-void g(bool Wb){
+void g(int Wb){
     return;
 }
 void h(int*Wb){
@@ -25,10 +25,10 @@ void h(int*Wb){
 void i(unsigned int*Wb){
     return;
 }
-void j(bool*Wb){
+void j(int*Wb){
     return;
 }
-void k(char* *Wb){
+void k(char**Wb){
     return;
 }
 void l(int*Wb){
@@ -43,10 +43,10 @@ void n(int*Wb){
 void o(unsigned int*Wb){
     return;
 }
-void p(bool*Wb){
+void p(int*Wb){
     return;
 }
-void q(char* *Wb){
+void q(char**Wb){
     return;
 }
 void r(int*Wb){
@@ -61,7 +61,7 @@ void t(int Wb[10]){
 void u(unsigned int Wb[5]){
     return;
 }
-void v(bool Wb[3]){
+void v(int Wb[3]){
     return;
 }
 void w(char*Wb[8]){
@@ -73,43 +73,43 @@ void x(int Wb[10]){
 void y(int Wb[5]){
     return;
 }
-void z(int* *Wb){
+void z(int**Wb){
     return;
 }
-void A(unsigned int* * *Wb){
+void A(unsigned int***Wb){
     return;
 }
-void B(bool* * * *Wb){
+void B(int****Wb){
     return;
 }
-void C(int* *Wb){
+void C(int**Wb){
     return;
 }
-void D(int* *Wb){
+void D(int**Wb){
     return;
 }
-void E(int* *Wb){
+void E(int**Wb){
     return;
 }
-void F(unsigned int* *Wb){
+void F(unsigned int**Wb){
     return;
 }
-void G(int* *Wb){
+void G(int**Wb){
     return;
 }
-void H(bool* * *Wb){
+void H(int***Wb){
     return;
 }
-void I(int* *Wb){
+void I(int**Wb){
     return;
 }
-void J(int* *Wb){
+void J(int**Wb){
     return;
 }
 void K(int*Wb[4]){
     return;
 }
-void L(unsigned int* *Wb[2]){
+void L(unsigned int**Wb[2]){
     return;
 }
 void M(int*Wb[3]){
@@ -121,7 +121,7 @@ void N(int*Wb[3]){
 void O(int(*Wb)[10]){
     return;
 }
-void P(unsigned int(* *Wb)[5]){
+void P(unsigned int(**Wb)[5]){
     return;
 }
 void Q(int(*Wb)[3]){
@@ -130,13 +130,13 @@ void Q(int(*Wb)[3]){
 void R(int(*Wb)[10]){
     return;
 }
-void S(int* * *Wb){
+void S(int***Wb){
     return;
 }
-void T(unsigned int* * *Wb){
+void T(unsigned int***Wb){
     return;
 }
-void U(bool* *Wb[2]){
+void U(int**Wb[2]){
     return;
 }
 void V(int*(*Wb)[5]){
@@ -148,16 +148,16 @@ void W(int Wb[4][3][2]){
 void X(unsigned int(*Wb)[3][2][1]){
     return;
 }
-void Y(int* * *Wb){
+void Y(int***Wb){
     return;
 }
-void Z(unsigned int* * *Wb){
+void Z(unsigned int***Wb){
     return;
 }
 void ab(int Wb[4][4]){
     return;
 }
-void bb(bool Wb[2][2][2]){
+void bb(int Wb[2][2][2]){
     return;
 }
 void cb(int Wb[4][4]){
@@ -169,7 +169,7 @@ void db(void(*Wb)(void)){
 void eb(int(*Wb)(int)){
     return;
 }
-void fb(char*(*Wb)(int,unsigned int,bool)){
+void fb(char*(*Wb)(int,unsigned int,int)){
     return;
 }
 void gb(int(*Wb)(char*,...)){
@@ -184,7 +184,7 @@ void ib(unsigned int*(*Wb)(int)){
 void jb(unsigned int(*Wb)(int*)){
     return;
 }
-void kb(bool*(*Wb)(int*,unsigned int*)){
+void kb(int*(*Wb)(int*,unsigned int*)){
     return;
 }
 void lb(int(*Wb)(int)){
@@ -196,22 +196,22 @@ void mb(int(*Wb)(int)){
 void nb(int(*Wb)(int)){
     return;
 }
-void ob(int(* *Wb)(int)){
+void ob(int(**Wb)(int)){
     return;
 }
-void pb(unsigned int(* * *Wb)(unsigned int)){
+void pb(unsigned int(***Wb)(unsigned int)){
     return;
 }
-void qb(int(* *Wb)(int)){
+void qb(int(**Wb)(int)){
     return;
 }
-void rb(int(* *Wb)(int)){
+void rb(int(**Wb)(int)){
     return;
 }
-void sb(bool(*(*Wb)(int))(unsigned int)){
+void sb(int(*(*Wb)(int))(unsigned int)){
     return;
 }
-void tb(unsigned int(* *(*Wb)(void))(int)){
+void tb(unsigned int(**(*Wb)(void))(int)){
     return;
 }
 void ub(unsigned int(*(*Wb)(void))(int)){
@@ -235,61 +235,61 @@ void zb(int(*Wb)(void)[5]){
 void Ab(unsigned int(*Wb)(int*)){
     return;
 }
-void Bb(int(*Wb)(bool[3])){
+void Bb(int(*Wb)(int[3])){
     return;
 }
 void Cb(unsigned int*(*Wb)(int*)){
     return;
 }
-void Db(int(* *Wb)(int)){
+void Db(int(**Wb)(int)){
     return;
 }
 void Eb(unsigned int(*Wb[4])(unsigned int)){
     return;
 }
-void Fb(int(* *Wb)(int)){
+void Fb(int(**Wb)(int)){
     return;
 }
-void Gb(int(* *Wb)(int)){
+void Gb(int(**Wb)(int)){
     return;
 }
-void Hb(unsigned int* *(*Wb)(int* *)){
+void Hb(unsigned int**(*Wb)(int**)){
     return;
 }
-void Ib(unsigned int*(* *Wb)(int*)){
+void Ib(unsigned int*(**Wb)(int*)){
     return;
 }
 void Jb(unsigned int*(*(*Wb)(int*(*)(int*)))(unsigned int*)){
     return;
 }
-void Kb(bool*(* *Wb[3])(int,unsigned int)){
+void Kb(int*(**Wb[3])(int,unsigned int)){
     return;
 }
-void Lb(unsigned int(* *(*Wb)(int(*(*)[2])(int)))(unsigned int)){
+void Lb(unsigned int(**(*Wb)(int(*(*)[2])(int)))(unsigned int)){
     return;
 }
-void Mb(unsigned int* *(*Wb)(int* *)){
+void Mb(unsigned int**(*Wb)(int**)){
     return;
 }
-void Nb(unsigned int*(* *Wb)(int*)){
+void Nb(unsigned int*(**Wb)(int*)){
     return;
 }
-void Ob(int(* * * *Wb)(int)){
+void Ob(int(****Wb)(int)){
     return;
 }
 void Pb(int(*Wb)(int(*)(int(*)(int)))){
     return;
 }
-void Qb(int*(* * *Wb)(int*)){
+void Qb(int*(***Wb)(int*)){
     return;
 }
-void Rb(int*(* * * *Wb)(int*)){
+void Rb(int*(****Wb)(int*)){
     return;
 }
 void Sb(int Wb){
     return;
 }
-void Tb(int* * *Wb){
+void Tb(int***Wb){
     return;
 }
 void Ub(int*Wb[5]){

@@ -54,11 +54,32 @@ impl TokenInfo for CLowerer {
 
         // Spaces are already allowed between operators,
         // and excluding a space here creates a different meaning.
-        if is_punct_char(left_char) && is_punct_char(right_char)
-            // Special case: = on the left only binds with = on the right.
-            && (left_char != '=' || right_char == '=')
-        {
-            return true;
+        if is_punct_char(left_char) && is_punct_char(right_char) {
+            // Spaces aren't needed if they don't form compound operators.
+            return matches!(
+                (left_char, right_char),
+                ('/', '*')
+                    | ('/', '/')
+                    | ('+', '+')
+                    | ('-', '-')
+                    | ('-', '>')
+                    | ('<', '<')
+                    | ('>', '>')
+                    | ('=', '=')
+                    | ('<', '=')
+                    | ('>', '=')
+                    | ('!', '=')
+                    | ('&', '&')
+                    | ('|', '|')
+                    | ('+', '=')
+                    | ('-', '=')
+                    | ('*', '=')
+                    | ('/', '=')
+                    | ('%', '=')
+                    | ('&', '=')
+                    | ('|', '=')
+                    | ('^', '=')
+            );
         }
 
         // Literal prefixes.

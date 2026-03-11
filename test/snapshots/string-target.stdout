@@ -3,4 +3,4 @@
 #define r return
 #define q *m;asprintf(&m,
 #define p char
-p*g(){p q"%u",10);r m;}p*h(){p q"%i",-10);r m;}p*i(){r"1";}p*a="10";p*b="-10";p*c="true";p d='s';p e='r';p*f="10";void j(p*m,unsigned int n){unsigned int o=0;for(;;){if(o>=n)break;m[o]='\0';o++;}}p*k(){p m[100];p n[10];j(m,10);j(n,10);r strcat(m, n);}p*l(){p q"%u",10);r m;}
+p*g(){p q"%u",10);r m;}p*h(){p q"%i",-10);r m;}p*i(){r"1";}p*a="10";p*b="-10";p*c="true";p d=115;p e=114;p*f="10";void j(p*m,unsigned int n){unsigned int o=0;for(;;){if(o>=n)break;m[o]=0;o++;}}p*k(){p m[100];p n[10];j(m,10);j(n,10);r strcat(m, n);}p*l(){p q"%u",10);r m;}

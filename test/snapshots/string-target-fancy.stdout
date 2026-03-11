@@ -13,11 +13,11 @@ char*h(){
 char*i(){
     return"1";
 }
-char*a="10";char*b="-10";char*c="true";char d='s';char e='r';char*f="10";void j(char*m,unsigned int n){
+char*a="10";char*b="-10";char*c="true";char d=115;char e=114;char*f="10";void j(char*m,unsigned int n){
     unsigned int o=0;
     for(;;){
         if(o>=n)break;
-        m[o]='\0';
+        m[o]=0;
         o++;
     }
 }

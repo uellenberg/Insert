@@ -9,6 +9,7 @@ use crate::mir::{
     MIRDeclarationKey, MIRExpression, MIRExpressionInner, MIRFnSource, MIRFunction,
     MIRFunctionType, MIRProgram, MIRStatement, MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
+use crate::parser::span::Span;
 use std::borrow::Cow;
 
 pub const C: &'static dyn Codegen = &CLowerer {
@@ -630,13 +631,99 @@ impl Codegen for CLowerer {
             }};
         }
 
+        // This is a hack - there isn't a unary negation type, but
+        // deref is also a unary op and has the same precedence level.
+        fn unary_op_outer<'a>() -> MIRExpression<'a> {
+            MIRExpression {
+                inner: MIRExpressionInner::Deref(Box::new(MIRExpression {
+                    inner: MIRExpressionInner::Unit,
+                    ty: None,
+                    span: Span::empty(),
+                })),
+                ty: None,
+                span: Span::empty(),
+            }
+        }
+
         match &expr.inner {
             MIRExpressionInner::Add(left, right) => lower_binary!(left, "+", right),
             MIRExpressionInner::Sub(left, right) => lower_binary!(left, "-", right),
-            MIRExpressionInner::Mul(left, right) => lower_binary!(left, "*", right),
+            MIRExpressionInner::Mul(left, right) => {
+                // Optimize -1 multiplication to negation.
+                match (left, right) {
+                    (
+                        box MIRExpression {
+                            inner: MIRExpressionInner::Number(-1),
+                            ..
+                        },
+                        _,
+                    ) => {
+                        let right = self.lower_wrap_expression(right, &unary_op_outer());
+                        spread![Token::new("-".into()), ...right]
+                    }
+
+                    (
+                        _,
+                        box MIRExpression {
+                            inner: MIRExpressionInner::Number(-1),
+                            ..
+                        },
+                    ) => {
+                        let left = self.lower_wrap_expression(left, &unary_op_outer());
+                        spread![Token::new("-".into()), ...left]
+                    }
+
+                    _ => {
+                        let left = self.lower_wrap_expression(left, expr);
+                        let right = self.lower_wrap_expression(right, expr);
+
+                        spread![...left, Token::new("*".into()), ...right]
+                    }
+                }
+            }
             MIRExpressionInner::Div(left, right) => lower_binary!(left, "/", right),
-            MIRExpressionInner::Equal(left, right) => lower_binary!(left, "==", right),
-            MIRExpressionInner::NotEqual(left, right) => lower_binary!(left, "!=", right),
+            MIRExpressionInner::NotEqual(left, right) => {
+                // Comparison against zero values like a != 0 can always be simplified to a (truthy coercion).
+                match (&left.inner, &right.inner) {
+                    (
+                        _,
+                        MIRExpressionInner::Number(0)
+                        | MIRExpressionInner::Bool(false)
+                        | MIRExpressionInner::Char('\0'),
+                    ) => self.lower_wrap_expression(left, expr),
+                    (
+                        MIRExpressionInner::Number(0)
+                        | MIRExpressionInner::Bool(false)
+                        | MIRExpressionInner::Char('\0'),
+                        _,
+                    ) => self.lower_wrap_expression(right, expr),
+                    _ => lower_binary!(left, "!=", right),
+                }
+            }
+            MIRExpressionInner::Equal(left, right) => {
+                // Comparison against zero values like a == 0 can always be simplified to !a (truthy coercion).
+                match (&left.inner, &right.inner) {
+                    (
+                        _,
+                        MIRExpressionInner::Number(0)
+                        | MIRExpressionInner::Bool(false)
+                        | MIRExpressionInner::Char('\0'),
+                    ) => {
+                        let left = self.lower_wrap_expression(left, &unary_op_outer());
+                        spread![Token::new("!".into()), ...left]
+                    }
+                    (
+                        MIRExpressionInner::Number(0)
+                        | MIRExpressionInner::Bool(false)
+                        | MIRExpressionInner::Char('\0'),
+                        _,
+                    ) => {
+                        let right = self.lower_wrap_expression(right, &unary_op_outer());
+                        spread![Token::new("!".into()), ...right]
+                    }
+                    _ => lower_binary!(left, "==", right),
+                }
+            }
             MIRExpressionInner::Less(left, right) => lower_binary!(left, "<", right),
             MIRExpressionInner::Greater(left, right) => lower_binary!(left, ">", right),
             MIRExpressionInner::LessEq(left, right) => lower_binary!(left, "<=", right),
@@ -659,9 +746,18 @@ impl Codegen for CLowerer {
                 }
             }
             MIRExpressionInner::Unit => spread![Token::new("void".into())],
-            MIRExpressionInner::Char(c) => spread![Token::new(
-                ("'".to_string() + &escape_char(&c.to_string()) + "'").into()
-            )],
+            MIRExpressionInner::Char(c) => {
+                // 'c' is 3 chars, so it's always more or as efficient to use
+                // numbers if it fits.
+                let c = *c as u32;
+                if c < 999 {
+                    spread![Token::new(c.to_string().into())]
+                } else {
+                    spread![Token::new(
+                        ("'".to_string() + &escape_char(&c.to_string()) + "'").into()
+                    )]
+                }
+            }
             MIRExpressionInner::Variable(name, _) => spread![Token::new(name.clone())],
             MIRExpressionInner::FunctionCall(call) => {
                 let args = call
@@ -765,7 +861,7 @@ impl Codegen for CLowerer {
                 spread![Token::new("char".into()), Token::new("*".into())],
                 [].into(),
             ),
-            MIRTypeInner::Bool => (spread![Token::new("bool".into())], [].into()),
+            MIRTypeInner::Bool => (spread![Token::new("int".into())], [].into()),
             MIRTypeInner::Unit => (spread![Token::new("void".into())], [].into()),
             MIRTypeInner::Char => (spread![Token::new("char".into())], [].into()),
             MIRTypeInner::Named(name) => (spread![Token::new(name.clone())], [].into()),

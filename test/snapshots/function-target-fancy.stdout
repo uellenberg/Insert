@@ -1,13 +1,13 @@
-bool main(){
+int main(){
     a(10,11,12,13,14,15);
-    bool d=b(1, 0, 0, 0, 0, b(1, 0, 0, 0, 0, 0));
+    int d=b(1, 0, 0, 0, 0, b(1, 0, 0, 0, 0, 0));
     return d;
 }
 unsigned int a(unsigned int d,unsigned int e,unsigned int f,unsigned int g,unsigned int h,unsigned int i){
     unsigned int j=d+10;
     return j*i;
 }
-bool b(bool d,bool e,bool f,bool g,bool h,bool i){
+int b(int d,int e,int f,int g,int h,int i){
     return i;
 }
 unsigned int c(){

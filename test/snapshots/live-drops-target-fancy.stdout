@@ -1,7 +1,7 @@
-unsigned int a=250;void b(unsigned int*d,unsigned int* *e){
+unsigned int a=250;void b(unsigned int*d,unsigned int**e){
     *e=d;
 }
-unsigned int*c(unsigned int*d,unsigned int* *e){
+unsigned int*c(unsigned int*d,unsigned int**e){
     return d;
 }
 unsigned int main(){
