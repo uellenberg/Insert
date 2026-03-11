@@ -7,9 +7,6 @@ const BALL_HEIGHT: i32 = 2;
 const PADDLE_WIDTH: i32 = 3;
 const PADDLE_HEIGHT: i32 = 6;
 
-const PADDLE_LEFT_X: i32 = 5;
-const PADDLE_RIGHT_X: i32 = WIDTH - PADDLE_WIDTH - PADDLE_LEFT_X;
-
 // Higher values means it moves slower.
 const ROBOT_SPEED: i32 = 3;
 
@@ -18,8 +15,18 @@ static ballY: i32 = binding ballYMarker (HEIGHT / 2 - BALL_HEIGHT / 2);
 static ballSpeedX: i32 = binding ballSpeedXMarker (1);
 static ballSpeedY: i32 = binding ballSpeedYMarker (1);
 
+const STARTING_PADDLE_X: i32 = 5;
+
+static paddleLeftX: i32 = binding paddleLeftXMarker (STARTING_PADDLE_X);
 static paddleLeftY: i32 = binding paddleLeftYMarker (ROBOT_SPEED * (HEIGHT / 2 - PADDLE_HEIGHT / 2));
+static paddleRightX: i32 = binding paddleRightXMarker (WIDTH - PADDLE_WIDTH - STARTING_PADDLE_X);
 static paddleRightY: i32 = binding paddleRightYMarker (HEIGHT / 2 - PADDLE_HEIGHT / 2);
+
+// 0 = pong, 1 = transition to jump, [2, 5] = jump (each number is a different place),
+// 6 = mandelbrot
+static gameState: i32 = binding gameStateMarker (0);
+
+static jumpHeights: [i32; 3] = [1, 3, 1];
 
 static quineStr: &[string] = $quine;
 
@@ -99,8 +106,8 @@ helper function printQuineArr() {
     for let row: i32 = 0; row < HEIGHT; row = row + 1; {
         for let col: i32 = 0; col < WIDTH; col = col + 1; {
             if idx >= $quineLen || (col >= ballX && row >= ballY && col - ballX < BALL_WIDTH && row - ballY < BALL_HEIGHT)
-               || (col >= PADDLE_LEFT_X && row >= paddleLeftY / ROBOT_SPEED && col - PADDLE_LEFT_X < PADDLE_WIDTH && row - paddleLeftY / ROBOT_SPEED < PADDLE_HEIGHT)
-               || (col >= PADDLE_RIGHT_X && row >= paddleRightY && col - PADDLE_RIGHT_X < PADDLE_WIDTH && row - paddleRightY < PADDLE_HEIGHT)
+               || (col >= paddleLeftX && row >= paddleLeftY / ROBOT_SPEED && col - paddleLeftX < PADDLE_WIDTH && row - paddleLeftY / ROBOT_SPEED < PADDLE_HEIGHT)
+               || (col >= paddleRightX && row >= paddleRightY && col - paddleRightX < PADDLE_WIDTH && row - paddleRightY < PADDLE_HEIGHT)
             {
                 putchar(' ');
             } else {
@@ -152,6 +159,10 @@ helper function printQuineItem(s: string) {
 
 helper function printQuine1() {
     for let i: i32 = 0; i < $quineLen; i = i + 1; {
+        if i != 0 {
+            putchar(' ');
+        }
+
         printQuineItem(quineStr[i]);
     }
 
@@ -163,63 +174,123 @@ helper function setQuineVar(index: i32, val: i32) {
     stringInto(val, &quineStr[index]);
 }
 
-function main(argc: i32, argv: &[string]) -> i32 {
+inline function pongUpdates(argc: i32, argv: &[string], newBallX: &i32, newBallY: &i32, newPaddleLeftY: &i32, newPaddleRightY: &i32) {
     // Compute next ball position.
-    let newBallX: i32 = ballX + ballSpeedX;
-    let newBallY: i32 = ballY + ballSpeedY;
+    *newBallX = *newBallX + ballSpeedX;
+    *newBallY = *newBallY + ballSpeedY;
 
     // Paddle bounce.
     //
     // This is optimized for the sides that will actually be hit,
     // so if the ball hits the left paddle while moving right,
     // it will phase through.
-    if (newBallX >= PADDLE_LEFT_X && newBallX < PADDLE_LEFT_X + PADDLE_WIDTH && newBallY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && newBallY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT)
-       || (newBallX + BALL_WIDTH > PADDLE_RIGHT_X && newBallX < PADDLE_RIGHT_X + PADDLE_WIDTH && newBallY + BALL_HEIGHT > paddleRightY && newBallY < paddleRightY + PADDLE_HEIGHT)
+    if (*newBallX >= paddleLeftX && *newBallX < paddleLeftX + PADDLE_WIDTH && *newBallY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && *newBallY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT)
+       || (*newBallX + BALL_WIDTH > paddleRightX && *newBallX < paddleRightX + PADDLE_WIDTH && *newBallY + BALL_HEIGHT > paddleRightY && *newBallY < paddleRightY + PADDLE_HEIGHT)
     {
-        newBallX = newBallX - ballSpeedX;
+        *newBallX = *newBallX - ballSpeedX;
         ballSpeedX = -1 * ballSpeedX;
     }
 
     // Left and right walls means a player lost.
-    if newBallX < 0 || newBallX > WIDTH - BALL_WIDTH {
-        newBallX = WIDTH / 2 - BALL_WIDTH / 2;
-        newBallY = HEIGHT / 2 - BALL_HEIGHT / 2;
+    if *newBallX < 0 || *newBallX > WIDTH - BALL_WIDTH {
+        // The user won.
+        if *newBallX < 0 {
+            gameState = 1;
+        }
+
+        *newBallX = WIDTH / 2 - BALL_WIDTH / 2;
+        *newBallY = HEIGHT / 2 - BALL_HEIGHT / 2;
     }
 
     // Top and bottom walls should bounce.
-    if newBallY < 0 || newBallY > HEIGHT - BALL_HEIGHT {
-        newBallY = newBallY - ballSpeedY;
+    if *newBallY < 0 || *newBallY > HEIGHT - BALL_HEIGHT {
+        *newBallY = *newBallY - ballSpeedY;
         ballSpeedY = -1 * ballSpeedY;
     }
 
     // Compute paddle updates.
-    let newPaddleLeftY: i32 = paddleLeftY;
-    let newPaddleRightY: i32 = paddleRightY;
 
     if argc > 1 {
-        if argv[1][0] == 'w' && newPaddleRightY > 0 {
-            newPaddleRightY = newPaddleRightY - 1;
+        if argv[1][0] == 'w' && *newPaddleRightY > 0 {
+            *newPaddleRightY = *newPaddleRightY - 1;
         }
 
-        if argv[1][0] == 's' && newPaddleRightY < HEIGHT - PADDLE_HEIGHT {
-            newPaddleRightY = newPaddleRightY + 1;
+        if argv[1][0] == 's' && *newPaddleRightY < HEIGHT - PADDLE_HEIGHT {
+            *newPaddleRightY = *newPaddleRightY + 1;
         }
     }
 
-    let robotDistance: i32 = newPaddleLeftY / ROBOT_SPEED - newBallY + (PADDLE_HEIGHT / 2 - BALL_HEIGHT / 2);
+    let robotDistance: i32 = *newPaddleLeftY / ROBOT_SPEED - *newBallY + (PADDLE_HEIGHT / 2 - BALL_HEIGHT / 2);
     if robotDistance < 0 {
-        newPaddleLeftY = newPaddleLeftY + 1;
+        *newPaddleLeftY = *newPaddleLeftY + 1;
     }
 
     if robotDistance > 0 {
-        newPaddleLeftY = newPaddleLeftY - 1;
+        *newPaddleLeftY = *newPaddleLeftY - 1;
+    }
+}
+
+inline function jumpTransition(newBallX: &i32, newBallY: &i32, newPaddleLeftY: &i32, newPaddleRightY: &i32) {
+    // If the transition is done, move to the jump game.
+    gameState = 2;
+
+    if *newBallY < HEIGHT - BALL_HEIGHT {
+        gameState = 1;
+        *newBallY = *newBallY + 1;
+    }
+
+    if *newPaddleLeftY / ROBOT_SPEED < HEIGHT - jumpHeights[0] {
+        gameState = 1;
+        *newPaddleLeftY = *newPaddleLeftY + ROBOT_SPEED;
+    }
+
+    if *newPaddleRightY < HEIGHT - jumpHeights[0] {
+        gameState = 1;
+        *newPaddleRightY = *newPaddleRightY + 1;
+    }
+}
+
+inline function jumpUpdates(argc: i32, argv: &[string], newBallX: &i32, newBallY: &i32, newPaddleLeftX: &i32, newPaddleLeftY: &i32, newPaddleRightX: &i32, newPaddleRightY: &i32) {
+    // Compute next paddle position.
+    *newPaddleLeftX = *newPaddleLeftX - 1;
+    *newPaddleRightX = *newPaddleRightX - 1;
+
+    if *newPaddleLeftX + PADDLE_WIDTH <= 0 {
+        gameState = gameState + 1;
+        if gameState < 6 {
+            *newPaddleLeftX = *newPaddleRightX;
+            *newPaddleLeftY = *newPaddleRightY * ROBOT_SPEED;
+            *newPaddleRightX = WIDTH;
+            *newPaddleRightY = HEIGHT - jumpHeights[gameState - 2];
+        }
+    }
+}
+
+function main(argc: i32, argv: &[string]) -> i32 {
+    let newBallX: i32 = ballX;
+    let newBallY: i32 = ballY;
+    let newPaddleLeftX: i32 = paddleLeftX;
+    let newPaddleLeftY: i32 = paddleLeftY;
+    let newPaddleRightX: i32 = paddleRightX;
+    let newPaddleRightY: i32 = paddleRightY;
+
+    // Must be else if since they update gameState.
+    if gameState == 0 {
+        pongUpdates(argc, argv, &newBallX, &newBallY, &newPaddleLeftY, &newPaddleRightY);
+    } else if gameState == 1 {
+        jumpTransition(&newBallX, &newBallY, &newPaddleLeftY, &newPaddleRightY);
+    } else if gameState > 0 && gameState < 6 {
+        jumpUpdates(argc, argv, &newBallX, &newBallY, &newPaddleLeftX, &newPaddleLeftY, &newPaddleRightX, &newPaddleRightY);
     }
 
     setQuineVar(ballXMarker, newBallX);
     setQuineVar(ballYMarker, newBallY);
     setQuineVar(ballSpeedXMarker, ballSpeedX);
     setQuineVar(ballSpeedYMarker, ballSpeedY);
+    setQuineVar(paddleLeftXMarker, newPaddleLeftX);
     setQuineVar(paddleLeftYMarker, newPaddleLeftY);
+    setQuineVar(paddleRightXMarker, newPaddleRightX);
     setQuineVar(paddleRightYMarker, newPaddleRightY);
+    setQuineVar(gameStateMarker, gameState);
     printQuine1();
 }
