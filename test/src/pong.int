@@ -59,39 +59,39 @@ helper function printQuineArrayChar() -> bool {
     offset = offset + 1;
 
     if offset == 1 {
-        putchar(',');
-        return false;
+        // false
+        return putchar(',') == '\0';
     }
 
     if offset == 2 {
-        putchar('"');
-        return false;
+        // false
+        return putchar('"') == '\0';
     }
 
     let c: char = quineStr[idx][offset - 3];
 
     if c == '\0' {
-        putchar('"');
         offset = 0;
         idx = idx + 1;
-        return false;
+        // false
+        return putchar('"') == '\0';
     }
 
     if c == '"' {
         putchar('\\');
-        putchar('\"');
-        return true;
+        // true
+        return putchar('\"') != '\0';
     }
 
     if c == '\\' {
         putchar('\\');
-        putchar('\\');
-        return true;
+        // true
+        return putchar('\\') != '\0';
     }
 
     if c != ' ' && c != '\n' {
-        putchar(c);
-        return false;
+        // false (c is never \0).
+        return putchar(c) == '\0';
     }
 
     return printQuineArrayChar();
