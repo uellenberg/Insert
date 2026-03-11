@@ -226,23 +226,36 @@ pub fn inline_primitives<'a>(function: &mut MIRFunction<'a>) -> (bool, bool) {
             //       the invalidated list from parent_data.
 
             // Now, we can inline any primitive variables that are currently valid.
+            // Inlining in SetVariable is safe here because we only save its value after inlining.
             if !find_exprs_mut(statement, &mut |expr, write_place| {
-                // This means it's SetVariable (or similar)'s write place, which we don't want
-                // to inline as it needs to be preserved (only reads get inlined to their known
-                // values). SetVariable is safe here because we only save its variable after inlining.
-                if write_place {
-                    return true;
-                }
-
                 explore_expr_mut(expr, &mut |expr| {
-                    // This may refer to a static if var_idx == None.
-                    if let MIRExpressionInner::Variable(_, Some(var_idx)) = expr.inner {
-                        let scope_data = scope.scope_data.0.borrow();
+                    let var_idx = match expr.inner {
+                        // We can't inline raw variables inside the write place, since we're
+                        // writing to the location of that variable and not the value inside it.
+                        //
+                        // This may refer to a static if var_idx == None, which we can't inline
+                        // as the value is unpredictable.
+                        MIRExpressionInner::Variable(_, Some(var_idx)) if !write_place => var_idx,
+                        // Inlining through a deref is always safe, since we care only about the value
+                        // inside the variable, and not the variable itself.
+                        MIRExpressionInner::Deref(box MIRExpression {
+                            inner: MIRExpressionInner::Variable(_, Some(var_idx)),
+                            ..
+                        }) => var_idx,
+                        _ => return true,
+                    };
 
-                        if let Some(var_data) = scope_data.values.get(&var_idx) {
+                    let scope_data = scope.scope_data.0.borrow();
+
+                    if let Some(var_data) = scope_data.values.get(&var_idx) {
+                        // Deref needs to be preserved, since inlining doesn't change the type.
+                        if let MIRExpressionInner::Deref(inner) = &mut expr.inner {
+                            inner.inner = var_data.clone();
+                        } else {
                             expr.inner = var_data.clone();
-                            modified = true;
                         }
+
+                        modified = true;
                     }
 
                     true
@@ -290,7 +303,7 @@ fn invalidate_refs(
                 scope_data.perm_invalidated.insert(var_idx);
                 // We need to invalidate directly, since we need it to affect
                 // the next statement.
-                cascade_invalidations(var_idx, &mut *scope_data);
+                cascade_invalidations(var_idx, &mut scope_data);
                 if let Some(parent) = &scope_data.parent {
                     parent
                         .0
@@ -356,7 +369,7 @@ fn process_var_write<'a>(
 
         // Preemptively invalidate this variable - if we write to it, it'll be
         // valid again, and we need to properly handle cascading on every write.
-        cascade_invalidations(var_idx, &mut *data);
+        cascade_invalidations(var_idx, &mut data);
 
         // On our scope however, this is a direct set, and can potentially be inlined.
         if !data.perm_invalidated.contains(&var_idx)
@@ -374,8 +387,8 @@ fn process_var_write<'a>(
                     | MIRExpressionInner::String(_)
                     | MIRExpressionInner::Unit
                     | MIRExpressionInner::Ref(_)
-                    // A read from a static is always valid to inline.
-                    | MIRExpressionInner::Variable(_, None)
+                    // A read from a static is not valid to inline,
+                    // as it may change between now and the inline site.
                 )
             // If the variable was never a reference, we can inline it until
             // it's next written / referenced.
