@@ -8,11 +8,13 @@ cat main.c
 
 while true
 do
-  gcc main.c -o a.out || break
+  gcc main.c -o a.out &
+  pid=$!
 
   key=""
   while IFS= read -r -t 0.1 -n 1 ch; do key="$ch"; done
 
+  wait $pid || break
   output=$(./a.out $key) || break
   echo "$output" > main.c
 
