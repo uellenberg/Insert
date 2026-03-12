@@ -225,19 +225,26 @@ pub fn min_vars<'a>(function: &mut MIRFunction<'a>, only_dead: bool) -> (bool, b
         &|statement, _, _| {
             match statement {
                 MIRStatement::ScopeStatement { body, .. } => {
+                    // Drops may be inserted anywhere in scope, which is perfectly
+                    // valid for a for loop.
+                    let mut filtered_body = body
+                        .iter()
+                        .filter(|stmt| !matches!(stmt, MIRStatement::DropVariable(..)));
+
                     // Mark any variables originally declared in the for loop initializer,
                     // that way we can add them back later instead of hoisting them to the
                     // top.
-                    if body.len() >= 2
-                        && let Some(MIRStatement::CreateVariable {
+                    if let Some(MIRStatement::CreateVariable {
                             var:
                                 MIRVariable {
                                     var_idx: Some(var_idx),
                                     ..
                                 },
                             ..
-                        }) = body.first()
-                        && matches!(body.get(1), Some(MIRStatement::LoopStatement { .. }))
+                        }) = filtered_body.next()
+                        && matches!(filtered_body.next(), Some(MIRStatement::LoopStatement { .. }))
+                        // For loops should only have a var and a loop (excluding drops).
+                        && filtered_body.next().is_none()
                     {
                         for_loop_vars.borrow_mut().insert(*var_idx);
                     }
@@ -310,8 +317,8 @@ fn merge_var_declarations(function: &mut MIRFunction, for_loop_vars: &HashSet<us
 
         // Check if this is a set we want to merge.
         let merge_var_idx = if let MIRStatement::SetVariable { place, .. } = &*stmt
-                // Sets through refs / arrays are too complex to analyze.
-                && let MIRExpressionInner::Variable(_, Some(idx)) = &place.inner
+            // Sets through refs / arrays are too complex to analyze.
+            && let MIRExpressionInner::Variable(_, Some(idx)) = &place.inner
         {
             Some(*idx)
         } else {
@@ -319,9 +326,9 @@ fn merge_var_declarations(function: &mut MIRFunction, for_loop_vars: &HashSet<us
         };
 
         if let Some(var_idx) = merge_var_idx
-                // We need to remove it from the list of candidates to prevent
-                // accidental double merging.
-                && let Some(var) = candidates.remove(&var_idx)
+            // We need to remove it from the list of candidates to prevent
+            // accidental double merging.
+            && let Some(var) = candidates.remove(&var_idx)
         {
             let MIRStatement::SetVariable { value, span, .. } = stmt else {
                 unreachable!()
@@ -369,18 +376,26 @@ fn merge_var_declarations(function: &mut MIRFunction, for_loop_vars: &HashSet<us
         &mut function.body,
         &mut |statement, _| {
             if let MIRStatement::ScopeStatement { body, .. } = statement {
-                let new_stmt = if body.len() >= 2
-                    && let Some(MIRStatement::SetVariable {
+                // Drops may be inserted anywhere in scope, which is perfectly
+                // valid for a for loop.
+                let mut filtered_body = body
+                    .iter_mut()
+                    .filter(|stmt| !matches!(stmt, MIRStatement::DropVariable(..)));
+
+                let new_stmt = if let Some(
+                    MIRStatement::SetVariable {
                         place:
-                            MIRExpression {
-                                inner: MIRExpressionInner::Variable(_, Some(var_idx)),
-                                ..
-                            },
+                        MIRExpression {
+                            inner: MIRExpressionInner::Variable(_, Some(var_idx)),
+                            ..
+                        },
                         span,
                         value,
                         ..
-                    }) = body.first()
-                    && matches!(body.get(1), Some(MIRStatement::LoopStatement { .. }))
+                    }) = filtered_body.next()
+                    && matches!(filtered_body.next(), Some(MIRStatement::LoopStatement { .. }))
+                    // For loops should only have a var and a loop (excluding drops).
+                    && filtered_body.next().is_none()
                     // This means the variable isn't being reused for something else,
                     // so it's safe to move it down.
                     && for_loop_vars.contains(var_idx)
