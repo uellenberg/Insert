@@ -310,89 +310,54 @@ impl Codegen for CLowerer {
 
             MIRStatement::SetVariable { place, value, .. } => {
                 let place_tokens = self.lower_expression(place);
+                let expr = self.lower_expression(value);
 
-                // Optimize to shorthand += / ++ / etc
-                // if we can (i.e., a = a + 1 -> a++).
-                match &value.inner {
-                    MIRExpressionInner::Add(
-                        box left,
-                        box MIRExpression {
-                            inner: MIRExpressionInner::Number(1),
-                            ..
-                        },
-                    ) if left == place => Some(spread![
-                        ...place_tokens,
-                        Token::new("++".into()),
-                        SEMI,
-                    ]),
+                Some(spread![
+                    ...place_tokens,
+                    Token::new("=".into()),
+                    ...expr,
+                    SEMI,
+                ])
+            }
 
-                    MIRExpressionInner::Sub(
-                        box left,
-                        box MIRExpression {
-                            inner: MIRExpressionInner::Number(1),
-                            ..
-                        },
-                    ) if left == place => Some(spread![
-                        ...place_tokens,
-                        Token::new("--".into()),
-                        SEMI,
-                    ]),
+            MIRStatement::IncrementVariable { place, .. } => {
+                let place_tokens = self.lower_expression(place);
 
-                    MIRExpressionInner::Add(box left, box right) if left == place => {
-                        let expr = self.lower_expression(right);
+                Some(spread![...place_tokens, Token::new("++".into()), SEMI])
+            }
 
-                        Some(spread![
-                            ...place_tokens,
-                            Token::new("+=".into()),
-                            ...expr,
-                            SEMI,
-                        ])
-                    }
+            MIRStatement::DecrementVariable { place, .. } => {
+                let place_tokens = self.lower_expression(place);
 
-                    MIRExpressionInner::Sub(box left, box right) if left == place => {
-                        let expr = self.lower_expression(right);
+                Some(spread![...place_tokens, Token::new("--".into()), SEMI])
+            }
 
-                        Some(spread![
-                            ...place_tokens,
-                            Token::new("-=".into()),
-                            ...expr,
-                            SEMI,
-                        ])
-                    }
+            MIRStatement::AddAssign { place, value, .. } => {
+                let place_tokens = self.lower_expression(place);
+                let expr = self.lower_expression(value);
 
-                    MIRExpressionInner::Mul(box left, box right) if left == place => {
-                        let expr = self.lower_expression(right);
+                Some(spread![...place_tokens, Token::new("+=".into()), ...expr, SEMI])
+            }
 
-                        Some(spread![
-                            ...place_tokens,
-                            Token::new("*=".into()),
-                            ...expr,
-                            SEMI,
-                        ])
-                    }
+            MIRStatement::SubAssign { place, value, .. } => {
+                let place_tokens = self.lower_expression(place);
+                let expr = self.lower_expression(value);
 
-                    MIRExpressionInner::Div(box left, box right) if left == place => {
-                        let expr = self.lower_expression(right);
+                Some(spread![...place_tokens, Token::new("-=".into()), ...expr, SEMI])
+            }
 
-                        Some(spread![
-                            ...place_tokens,
-                            Token::new("/=".into()),
-                            ...expr,
-                            SEMI,
-                        ])
-                    }
+            MIRStatement::MulAssign { place, value, .. } => {
+                let place_tokens = self.lower_expression(place);
+                let expr = self.lower_expression(value);
 
-                    _ => {
-                        let expr = self.lower_expression(value);
+                Some(spread![...place_tokens, Token::new("*=".into()), ...expr, SEMI,])
+            }
 
-                        Some(spread![
-                            ...place_tokens,
-                            Token::new("=".into()),
-                            ...expr,
-                            SEMI,
-                        ])
-                    }
-                }
+            MIRStatement::DivAssign { place, value, .. } => {
+                let place_tokens = self.lower_expression(place);
+                let expr = self.lower_expression(value);
+
+                Some(spread![...place_tokens, Token::new("/=".into()), ...expr, SEMI])
             }
 
             MIRStatement::FunctionCall(call) => {
@@ -405,14 +370,14 @@ impl Codegen for CLowerer {
                     .flatten()
                     .collect::<Tokens<'a>>();
 
-                Some(spread![...fn_src, LEFT_PAREN, ...args, RIGHT_PAREN, SEMI,])
+                Some(spread![...fn_src, LEFT_PAREN, ...args, RIGHT_PAREN, SEMI])
             }
 
             MIRStatement::Return { expr, .. } => {
                 if let Some(expr) = expr {
                     let ret_expr = self.lower_expression(expr);
 
-                    Some(spread![Token::new("return".into()), ...ret_expr, SEMI,])
+                    Some(spread![Token::new("return".into()), ...ret_expr, SEMI])
                 } else {
                     Some(spread![Token::new("return".into()), SEMI])
                 }
@@ -648,82 +613,12 @@ impl Codegen for CLowerer {
         match &expr.inner {
             MIRExpressionInner::Add(left, right) => lower_binary!(left, "+", right),
             MIRExpressionInner::Sub(left, right) => lower_binary!(left, "-", right),
-            MIRExpressionInner::Mul(left, right) => {
-                // Optimize -1 multiplication to negation.
-                match (left, right) {
-                    (
-                        box MIRExpression {
-                            inner: MIRExpressionInner::Number(-1),
-                            ..
-                        },
-                        _,
-                    ) => {
-                        let right = self.lower_wrap_expression(right, &unary_op_outer());
-                        spread![Token::new("-".into()), ...right]
-                    }
-
-                    (
-                        _,
-                        box MIRExpression {
-                            inner: MIRExpressionInner::Number(-1),
-                            ..
-                        },
-                    ) => {
-                        let left = self.lower_wrap_expression(left, &unary_op_outer());
-                        spread![Token::new("-".into()), ...left]
-                    }
-
-                    _ => {
-                        let left = self.lower_wrap_expression(left, expr);
-                        let right = self.lower_wrap_expression(right, expr);
-
-                        spread![...left, Token::new("*".into()), ...right]
-                    }
-                }
-            }
+            MIRExpressionInner::Mul(left, right) => lower_binary!(left, "*", right),
             MIRExpressionInner::Div(left, right) => lower_binary!(left, "/", right),
-            MIRExpressionInner::NotEqual(left, right) => {
-                // Comparison against zero values like a != 0 can always be simplified to a (truthy coercion).
-                match (&left.inner, &right.inner) {
-                    (
-                        _,
-                        MIRExpressionInner::Number(0)
-                        | MIRExpressionInner::Bool(false)
-                        | MIRExpressionInner::Char('\0'),
-                    ) => self.lower_wrap_expression(left, expr),
-                    (
-                        MIRExpressionInner::Number(0)
-                        | MIRExpressionInner::Bool(false)
-                        | MIRExpressionInner::Char('\0'),
-                        _,
-                    ) => self.lower_wrap_expression(right, expr),
-                    _ => lower_binary!(left, "!=", right),
-                }
-            }
-            MIRExpressionInner::Equal(left, right) => {
-                // Comparison against zero values like a == 0 can always be simplified to !a (truthy coercion).
-                match (&left.inner, &right.inner) {
-                    (
-                        _,
-                        MIRExpressionInner::Number(0)
-                        | MIRExpressionInner::Bool(false)
-                        | MIRExpressionInner::Char('\0'),
-                    ) => {
-                        let left = self.lower_wrap_expression(left, &unary_op_outer());
-                        spread![Token::new("!".into()), ...left]
-                    }
-                    (
-                        MIRExpressionInner::Number(0)
-                        | MIRExpressionInner::Bool(false)
-                        | MIRExpressionInner::Char('\0'),
-                        _,
-                    ) => {
-                        let right = self.lower_wrap_expression(right, &unary_op_outer());
-                        spread![Token::new("!".into()), ...right]
-                    }
-                    _ => lower_binary!(left, "==", right),
-                }
-            }
+            MIRExpressionInner::NotEqual(left, right) => lower_binary!(left, "!=", right),
+            MIRExpressionInner::Equal(left, right) => lower_binary!(left, "==", right),
+            MIRExpressionInner::Neg(inner) => lower_unary!("-", inner),
+            MIRExpressionInner::Not(inner) => lower_unary!("!", inner),
             MIRExpressionInner::Less(left, right) => lower_binary!(left, "<", right),
             MIRExpressionInner::Greater(left, right) => lower_binary!(left, ">", right),
             MIRExpressionInner::LessEq(left, right) => lower_binary!(left, "<=", right),
@@ -989,7 +884,10 @@ impl Codegen for CLowerer {
 
             MIRExpressionInner::Member(..) | MIRExpressionInner::Index(..) => Some(1),
 
-            MIRExpressionInner::Ref(..) | MIRExpressionInner::Deref(..) => Some(2),
+            MIRExpressionInner::Ref(..)
+            | MIRExpressionInner::Deref(..)
+            | MIRExpressionInner::Neg(..)
+            | MIRExpressionInner::Not(..) => Some(2),
 
             MIRExpressionInner::Mul(..) | MIRExpressionInner::Div(..) => Some(3),
 

@@ -1,14 +1,14 @@
 function main() : () {
     let c (0): u32 = 10;
     loop {
-        if (c (0) == 0) {
+        if (!c (0)) {
             break;
         }
-        c (0) = (c (0) - 1);
+        c (0)--;
     }
 }
-function a(c (0): bool, d (1): i32) : i32 {
-    let c (0): bool;
+function a(c (0): i32, d (1): i32) : i32 {
+    let c (0): i32;
     let d (1): i32;
     let e (2): i32 = d (1);
     if c (0) {

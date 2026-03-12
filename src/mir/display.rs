@@ -272,6 +272,42 @@ impl<'a> Display for MIRStatement<'a> {
                     writeln!(f, " /* {span} */")?;
                 }
             }
+            MIRStatement::IncrementVariable { place, span } => {
+                write!(f, "{}++;", place)?;
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::DecrementVariable { place, span } => {
+                write!(f, "{}--;", place)?;
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::AddAssign { place, value, span } => {
+                write!(f, "{} += {};", place, value)?;
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::SubAssign { place, value, span } => {
+                write!(f, "{} -= {};", place, value)?;
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::MulAssign { place, value, span } => {
+                write!(f, "{} *= {};", place, value)?;
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::DivAssign { place, value, span } => {
+                write!(f, "{} /= {};", place, value)?;
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
             MIRStatement::MarkerStatement { name, span, .. } => {
                 write!(f, "marker {name};")?;
 
@@ -323,6 +359,8 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::FunctionCall(fn_call) => (**fn_call).fmt(f),
             MIRExpressionInner::Ref(inner) => write!(f, "(&{})", inner),
             MIRExpressionInner::Deref(inner) => write!(f, "(*{})", inner),
+            MIRExpressionInner::Neg(inner) => write!(f, "(-{})", inner),
+            MIRExpressionInner::Not(inner) => write!(f, "(!{})", inner),
             MIRExpressionInner::Member(base, field) => write!(f, "({}.{})", base, field),
             MIRExpressionInner::Index(base, index) => write!(f, "({}[{}])", base, index),
             MIRExpressionInner::Array(elems) => {

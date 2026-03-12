@@ -500,6 +500,24 @@ impl<'a> Interpreter<'a> {
 
                 Ok(InterpreterData::Array(Rc::new(RefCell::new(elems))))
             }
+            MIRExpressionInner::Neg(inner) => {
+                let inner = self.eval_expr(inner, scope, place)?;
+
+                match inner {
+                    InterpreterData::I32(val) => Ok(InterpreterData::I32(-val)),
+                    InterpreterData::U32(val) => panic!("Cannot negate unsigned number!"),
+                    InterpreterData::UnknownNumber(val) => Ok(InterpreterData::UnknownNumber(-val)),
+                    _ => panic!("Cannot negate non-number!"),
+                }
+            }
+            MIRExpressionInner::Not(inner) => {
+                let inner = self.eval_expr(inner, scope, place)?;
+
+                match inner {
+                    InterpreterData::Bool(val) => Ok(InterpreterData::Bool(!val)),
+                    _ => panic!("Cannot negate non-bool!"),
+                }
+            }
             MIRExpressionInner::Quine
             | MIRExpressionInner::QuineLen
             | MIRExpressionInner::QuineSpace
@@ -614,13 +632,113 @@ impl<'a> Interpreter<'a> {
                     .variables
                     .insert(var.name.clone(), Rc::new(RefCell::new(value)));
             }
-            MIRStatement::SetVariable { place, value, .. } => {
+            MIRStatement::SetVariable { place, value, .. }
+            | MIRStatement::AddAssign { place, value, .. }
+            | MIRStatement::SubAssign { place, value, .. }
+            | MIRStatement::MulAssign { place, value, .. }
+            | MIRStatement::DivAssign { place, value, .. } => {
+                let value = match statement {
+                    MIRStatement::SetVariable { .. } => self.eval_expr(value, scope, false)?,
+                    MIRStatement::AddAssign { .. } => self.eval_expr(
+                        &MIRExpression {
+                            inner: MIRExpressionInner::Add(
+                                Box::new(place.clone()),
+                                Box::new(value.clone()),
+                            ),
+                            ty: value.ty.clone(),
+                            span: Span::empty(),
+                        },
+                        scope,
+                        false,
+                    )?,
+                    MIRStatement::SubAssign { .. } => self.eval_expr(
+                        &MIRExpression {
+                            inner: MIRExpressionInner::Sub(
+                                Box::new(place.clone()),
+                                Box::new(value.clone()),
+                            ),
+                            ty: value.ty.clone(),
+                            span: Span::empty(),
+                        },
+                        scope,
+                        false,
+                    )?,
+                    MIRStatement::MulAssign { .. } => self.eval_expr(
+                        &MIRExpression {
+                            inner: MIRExpressionInner::Mul(
+                                Box::new(place.clone()),
+                                Box::new(value.clone()),
+                            ),
+                            ty: value.ty.clone(),
+                            span: Span::empty(),
+                        },
+                        scope,
+                        false,
+                    )?,
+                    MIRStatement::DivAssign { .. } => self.eval_expr(
+                        &MIRExpression {
+                            inner: MIRExpressionInner::Div(
+                                Box::new(place.clone()),
+                                Box::new(value.clone()),
+                            ),
+                            ty: value.ty.clone(),
+                            span: Span::empty(),
+                        },
+                        scope,
+                        false,
+                    )?,
+                    _ => unreachable!(),
+                };
+
                 let InterpreterData::Ref(place, _) = self.eval_expr(place, scope, true)? else {
                     panic!("SetVariable place is not a reference!");
                 };
-                let value = Some(self.eval_expr(value, scope, false)?);
 
-                *place.borrow_mut() = value;
+                *place.borrow_mut() = Some(value);
+            }
+            MIRStatement::IncrementVariable { place, .. }
+            | MIRStatement::DecrementVariable { place, .. } => {
+                let value = match statement {
+                    MIRStatement::IncrementVariable { .. } => self.eval_expr(
+                        &MIRExpression {
+                            inner: MIRExpressionInner::Add(
+                                Box::new(place.clone()),
+                                Box::new(MIRExpression {
+                                    inner: MIRExpressionInner::Number(1),
+                                    ty: place.ty.clone(),
+                                    span: Span::empty(),
+                                }),
+                            ),
+                            ty: place.ty.clone(),
+                            span: Span::empty(),
+                        },
+                        scope,
+                        false,
+                    )?,
+                    MIRStatement::DecrementVariable { .. } => self.eval_expr(
+                        &MIRExpression {
+                            inner: MIRExpressionInner::Sub(
+                                Box::new(place.clone()),
+                                Box::new(MIRExpression {
+                                    inner: MIRExpressionInner::Number(1),
+                                    ty: place.ty.clone(),
+                                    span: Span::empty(),
+                                }),
+                            ),
+                            ty: place.ty.clone(),
+                            span: Span::empty(),
+                        },
+                        scope,
+                        false,
+                    )?,
+                    _ => unreachable!(),
+                };
+
+                let InterpreterData::Ref(place, _) = self.eval_expr(place, scope, true)? else {
+                    panic!("SetVariable place is not a reference!");
+                };
+
+                *place.borrow_mut() = Some(value);
             }
             MIRStatement::DropVariable(_, _, _) => {
                 // Dropping has no effect on the interpreter.

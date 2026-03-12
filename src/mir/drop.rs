@@ -1,8 +1,8 @@
 use crate::mir::expr::{explore_expr, explore_outer_place, find_exprs};
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
-    MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFunction, MIRStatement,
-    MIRTypeInner, MIRVariable,
+    MIRExpression, MIRExpressionInner, MIRFnCall, MIRFunction, MIRStatement, MIRTypeInner,
+    MIRVariable,
 };
 use crate::parser::span::{Span, eprintln_span};
 use std::cell::RefCell;
@@ -568,7 +568,7 @@ fn collect_refs(
             .flat_map(|expr| collect_refs(expr, relationships))
             .collect(),
 
-        // Binary ops, literals, etc: no refs flow through
+        // Binary ops, unary ops, literals, etc: no refs flow through
         MIRExpressionInner::Add(..)
         | MIRExpressionInner::Sub(..)
         | MIRExpressionInner::Mul(..)
@@ -581,6 +581,8 @@ fn collect_refs(
         | MIRExpressionInner::GreaterEq(..)
         | MIRExpressionInner::BoolAnd(..)
         | MIRExpressionInner::BoolOr(..)
+        | MIRExpressionInner::Neg(..)
+        | MIRExpressionInner::Not(..)
         | MIRExpressionInner::Number(..)
         | MIRExpressionInner::String(..)
         | MIRExpressionInner::Bool(..)

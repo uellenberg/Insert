@@ -18,10 +18,12 @@ use crate::mir::function::{
 };
 use crate::mir::interpreter::Interpreter;
 use crate::mir::mangle::mangle_names;
-use crate::mir::opt::{inline_primitives, remove_dead_code, remove_trivial_ifs};
+use crate::mir::opt::{
+    compact_statements, inline_primitives, remove_dead_code, remove_trivial_ifs,
+};
 use crate::mir::quine::{check_markers, ensure_no_first_marker};
 use crate::mir::type_check::{
-    convert_types, type_check, types_could_match, types_could_match_ordered,
+    convert_bools_to_ints, convert_types, type_check, types_could_match, types_could_match_ordered,
 };
 use crate::mir::var::{make_vars_unique, min_vars};
 use crate::parser::file_cache::file_cache;
@@ -120,7 +122,7 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         loop {
             let mut modified = false;
 
-            let (success, modified1) = optimize_exprs(function);
+            let (success, modified1) = optimize_exprs(function, ctx.target.truthy_coercion());
             if !success {
                 return false;
             }
@@ -163,7 +165,15 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
                 break;
             }
         }
+    }
 
+    convert_bools_to_ints(ctx);
+
+    // Bools are now all ints (if requested by the target).
+    // This should happen before min_vars to get the maximum
+    // opportunity for merging.
+
+    for function in ctx.program.functions.values_mut() {
         if !add_live_drops(function) {
             return false;
         }
@@ -176,6 +186,10 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         }
 
         // Variables now use space more efficiently, and drops are gone.
+
+        compact_statements(function);
+
+        // SetVariable has been replaced with compact versions (++, +=).
     }
 
     // TODO: Add a pass to remove unit variables (probably part of SSA -> function scope var generation).
@@ -1008,6 +1022,78 @@ pub enum MIRStatement<'a> {
         span: Span<'a>,
     },
 
+    /// Increments a place by one (place++).
+    IncrementVariable {
+        /// The place to increment.
+        place: MIRExpression<'a>,
+
+        /// The code that created
+        /// this item.
+        span: Span<'a>,
+    },
+
+    /// Decrements a place by one (place--).
+    DecrementVariable {
+        /// The place to decrement.
+        place: MIRExpression<'a>,
+
+        /// The code that created
+        /// this item.
+        span: Span<'a>,
+    },
+
+    /// Adds a value to a place in-place (place += value).
+    AddAssign {
+        /// The place to add to.
+        place: MIRExpression<'a>,
+
+        /// The value to add.
+        value: MIRExpression<'a>,
+
+        /// The code that created
+        /// this item.
+        span: Span<'a>,
+    },
+
+    /// Subtracts a value from a place in-place (place -= value).
+    SubAssign {
+        /// The place to subtract from.
+        place: MIRExpression<'a>,
+
+        /// The value to subtract.
+        value: MIRExpression<'a>,
+
+        /// The code that created
+        /// this item.
+        span: Span<'a>,
+    },
+
+    /// Multiplies a place by a value in-place (place *= value).
+    MulAssign {
+        /// The place to multiply.
+        place: MIRExpression<'a>,
+
+        /// The value to multiply by.
+        value: MIRExpression<'a>,
+
+        /// The code that created
+        /// this item.
+        span: Span<'a>,
+    },
+
+    /// Divides a place by a value in-place (place /= value).
+    DivAssign {
+        /// The place to divide.
+        place: MIRExpression<'a>,
+
+        /// The value to divide by.
+        value: MIRExpression<'a>,
+
+        /// The code that created
+        /// this item.
+        span: Span<'a>,
+    },
+
     /// A marker statement within a function body.
     /// This only stores
     MarkerStatement {
@@ -1084,6 +1170,12 @@ pub enum MIRExpressionInner<'a> {
 
     /// Logical (boolean) or.
     BoolOr(Box<MIRExpression<'a>>, Box<MIRExpression<'a>>),
+
+    /// Unary negation (-x).
+    Neg(Box<MIRExpression<'a>>),
+
+    /// Logical (boolean) not (!x).
+    Not(Box<MIRExpression<'a>>),
 
     /// Number literal.
     /// Using 128-bit is less efficient but lets us
@@ -1174,6 +1266,8 @@ impl<'a> PartialEq for MIRExpressionInner<'a> {
             (Self::GreaterEq(a1, a2), Self::GreaterEq(b1, b2)) => a1 == b1 && a2 == b2,
             (Self::BoolAnd(a1, a2), Self::BoolAnd(b1, b2)) => a1 == b1 && a2 == b2,
             (Self::BoolOr(a1, a2), Self::BoolOr(b1, b2)) => a1 == b1 && a2 == b2,
+            (Self::Neg(a), Self::Neg(b)) => a == b,
+            (Self::Not(a), Self::Not(b)) => a == b,
             (Self::Number(a), Self::Number(b)) => a == b,
             (Self::String(a), Self::String(b)) => a == b,
             (Self::Char(a), Self::Char(b)) => a == b,

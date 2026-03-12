@@ -2,8 +2,10 @@ use crate::mir::expr::{explore_expr, explore_expr_mut, find_exprs, find_exprs_mu
 use crate::mir::quine::ensure_no_markers_block;
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{MIRExpression, MIRExpressionInner, MIRFunction, MIRStatement, MIRVariable};
+use crate::parser::span::Span;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::os::linux::raw::stat;
 use std::rc::Rc;
 use std::slice;
 
@@ -549,4 +551,95 @@ fn forward_invalidations(scope: &Scope<InvalidateParentData, PrimitiveDataRef>) 
     // Unless permanently invalidated, if we set the value again, it'll be valid
     // for inlining once more.
     data.needs_invalidation.clear();
+}
+
+/// Converts `SetVariable` statements into compact assignment forms (++, --, +=, etc.)
+/// where possible.
+pub fn compact_statements(function: &mut MIRFunction) -> bool {
+    fn try_compact<'a>(
+        place: &MIRExpression<'a>,
+        value: &MIRExpression<'a>,
+        span: &Span<'a>,
+    ) -> Option<MIRStatement<'a>> {
+        match &value.inner {
+            MIRExpressionInner::Add(
+                box left,
+                box MIRExpression {
+                    inner: MIRExpressionInner::Number(1),
+                    ..
+                },
+            ) if left == place => Some(MIRStatement::IncrementVariable {
+                place: place.clone(),
+                span: span.clone(),
+            }),
+
+            MIRExpressionInner::Sub(
+                box left,
+                box MIRExpression {
+                    inner: MIRExpressionInner::Number(1),
+                    ..
+                },
+            ) if left == place => Some(MIRStatement::DecrementVariable {
+                place: place.clone(),
+                span: span.clone(),
+            }),
+
+            MIRExpressionInner::Add(box left, box right) if left == place => {
+                Some(MIRStatement::AddAssign {
+                    place: place.clone(),
+                    value: right.clone(),
+                    span: span.clone(),
+                })
+            }
+
+            MIRExpressionInner::Sub(box left, box right) if left == place => {
+                Some(MIRStatement::SubAssign {
+                    place: place.clone(),
+                    value: right.clone(),
+                    span: span.clone(),
+                })
+            }
+
+            MIRExpressionInner::Mul(box left, box right) if left == place => {
+                Some(MIRStatement::MulAssign {
+                    place: place.clone(),
+                    value: right.clone(),
+                    span: span.clone(),
+                })
+            }
+
+            MIRExpressionInner::Div(box left, box right) if left == place => {
+                Some(MIRStatement::DivAssign {
+                    place: place.clone(),
+                    value: right.clone(),
+                    span: span.clone(),
+                })
+            }
+
+            _ => None,
+        }
+    }
+
+    if !<StatementExplorer>::explore_block_mut(
+        &mut function.body,
+        &mut |statement, _scope| {
+            let compact = if let MIRStatement::SetVariable { place, value, span } = &statement {
+                try_compact(place, value, span)
+            } else {
+                None
+            };
+
+            if let Some(new_stmt) = compact {
+                *statement = new_stmt;
+            }
+
+            true
+        },
+        &mut |_, _| true,
+        &mut |_, _| true,
+    ) {
+        return false;
+    }
+
+    true
 }

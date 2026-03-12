@@ -1,9 +1,10 @@
-use crate::mir::expr::explore_outer_place;
+use crate::mir::expr::{explore_expr_mut, explore_outer_place, find_exprs_mut};
 use crate::mir::function::get_fn_type;
 use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
+    MIRVariable,
 };
 use crate::parser::file_cache::file_cache;
 use crate::parser::span::{Span, eprintln_span};
@@ -140,6 +141,53 @@ fn check_static<'a>(ctx: &MIRContext<'a>, static_data: &mut MIRStatic<'a>) -> bo
 fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> bool {
     // TODO: Check return types.
 
+    fn set_var_helper<'a>(
+        ctx: &MIRContext<'a>,
+        scope: &Scope<'a>,
+        place: &mut MIRExpression<'a>,
+    ) -> Option<MIRType<'a>> {
+        // Make sure we aren't trying to modify a const.
+        // If a const appears inside a place expression (e.g., a[const]), then
+        // we aren't modifying the const.
+        // If it appears outside (e.g., const[a]), then we are, so should error.
+        if !explore_outer_place(place, &mut |expr| {
+            if let MIRExpressionInner::Variable(var, _) = &expr.inner
+                && ctx.program.const_names.contains_key(var)
+            {
+                eprintln_span!(Some(expr.span.clone()), "Cannot set constants!");
+                return false;
+            }
+
+            true
+        }) {
+            return None;
+        }
+
+        // When we allocate variables, we want to use args before creating new variables.
+        // Therefore, it's useful for args to be simplified, as it's tricky to allocate into
+        // a variable which has a complex lifetime. There's basically no need to anyway, since
+        // variable allocation will make efficient use of the space.
+        //
+        // However, setting the data inside a variable is a legitimate operation, so we need
+        // to allow it. Therefore, any such operation is considered a read and a write for
+        // optimization. This is important because a write with no read after it will just
+        // be removed.
+        //
+        // So, the only case we need to disallow is directly setting a variable.
+        if let MIRExpressionInner::Variable(var, _) = &place.inner
+            && let Some(scope_var) = scope.get_variable(var)
+            && scope_var.arg
+        {
+            eprintln_span!(Some(place.span.clone()), "Cannot set args!");
+            return None;
+        }
+
+        // This will handle the types of locals/statics the same way as normal expressions,
+        // which works for our purposes here.
+        let var_ty = check_expression(ctx, place, Some(scope))?;
+        Some(var_ty.clone())
+    }
+
     <StatementExplorer>::explore_block_mut(
         &mut function.body,
         &mut |statement, scope| {
@@ -198,51 +246,24 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                     }
                 }
 
-                MIRStatement::SetVariable { value, place, .. } => {
-                    // Make sure we aren't trying to modify a const.
-                    // If a const appears inside a place expression (e.g., a[const]), then
-                    // we aren't modifying the const.
-                    // If it appears outside (e.g., const[a]), then we are, so should error.
-                    if !explore_outer_place(place, &mut |expr| {
-                        if let MIRExpressionInner::Variable(var, _) = &expr.inner
-                            && ctx.program.const_names.contains_key(var)
-                        {
-                            eprintln_span!(Some(expr.span.clone()), "Cannot set constants!");
-                            return false;
-                        }
-
-                        true
-                    }) {
-                        return false;
-                    }
-
-                    // When we allocate variables, we want to use args before creating new variables.
-                    // Therefore, it's useful for args to be simplified, as it's tricky to allocate into
-                    // a variable which has a complex lifetime. There's basically no need to anyway, since
-                    // variable allocation will make efficient use of the space.
-                    //
-                    // However, setting the data inside a variable is a legitimate operation, so we need
-                    // to allow it. Therefore, any such operation is considered a read and a write for
-                    // optimization. This is important because a write with no read after it will just
-                    // be removed.
-                    //
-                    // So, the only case we need to disallow is directly setting a variable.
-                    if let MIRExpressionInner::Variable(var, _) = &place.inner
-                        && let Some(scope_var) = scope.get_variable(var)
-                        && scope_var.arg
-                    {
-                        eprintln_span!(Some(place.span.clone()), "Cannot set args!");
-                        return false;
-                    }
-
-                    // This will handle the types of locals/statics the same way as normal expressions,
-                    // which works for our purposes here.
-                    let Some(var_ty) = check_expression(ctx, place, Some(scope)) else {
+                MIRStatement::SetVariable { value, place, .. }
+                | MIRStatement::AddAssign { value, place, .. }
+                | MIRStatement::SubAssign { value, place, .. }
+                | MIRStatement::MulAssign { value, place, .. }
+                | MIRStatement::DivAssign { value, place, .. } => {
+                    let Some(var_ty) = set_var_helper(ctx, scope, place) else {
                         return false;
                     };
 
                     value.ty = Some(var_ty.clone());
                     if check_expression(ctx, value, Some(scope)).is_none() {
+                        return false;
+                    }
+                }
+
+                MIRStatement::IncrementVariable { place, .. }
+                | MIRStatement::DecrementVariable { place, .. } => {
+                    if set_var_helper(ctx, scope, place).is_none() {
                         return false;
                     }
                 }
@@ -1006,6 +1027,26 @@ fn check_expression<'a, 'b>(
                 let inner_ty = check_expression(ctx, inner, scope)?;
                 Some(inner_ty.clone())
             }
+            MIRExpressionInner::Neg(inner) => {
+                // Negation can only be applied against an i32.
+                inner.ty = Some(MIRType {
+                    ty: MIRTypeInner::I32,
+                    span: None,
+                });
+
+                let inner_ty = check_expression(ctx, inner, scope)?;
+                Some(inner_ty.clone())
+            }
+            MIRExpressionInner::Not(inner) => {
+                // Not can only be applied against a bool.
+                inner.ty = Some(MIRType {
+                    ty: MIRTypeInner::Bool,
+                    span: None,
+                });
+
+                let inner_ty = check_expression(ctx, inner, scope)?;
+                Some(inner_ty.clone())
+            }
 
             // TODO: Implement type checking for place expressions.
             MIRExpressionInner::Member(_, _) => todo!(),
@@ -1059,5 +1100,80 @@ pub fn convert_types(target: &dyn Target, ty: &mut MIRTypeInner) {
         }
         MIRTypeInner::Named(_) => todo!(),
         _ => {}
+    }
+}
+
+/// If the target treats bools as numbers, replaces all bools with i32 and true/false
+/// literals with 1/0.
+pub fn convert_bools_to_ints(ctx: &mut MIRContext<'_>) {
+    if !ctx.target.bool_as_i32() {
+        return;
+    }
+
+    fn convert_type(ty: &mut MIRTypeInner) {
+        match ty {
+            MIRTypeInner::Bool => *ty = MIRTypeInner::I32,
+            MIRTypeInner::Ref(inner)
+            | MIRTypeInner::Array(inner)
+            | MIRTypeInner::ArrayFixed(inner, _) => convert_type(inner),
+            MIRTypeInner::FunctionPtr(args, ret) => {
+                for arg_ty in &mut args.args {
+                    convert_type(arg_ty);
+                }
+                convert_type(ret);
+            }
+            _ => {}
+        }
+    }
+
+    fn convert_expr_types(expr: &mut MIRExpression) {
+        explore_expr_mut(expr, &mut |expr| {
+            match &expr.inner {
+                MIRExpressionInner::Bool(true) => expr.inner = MIRExpressionInner::Number(1),
+                MIRExpressionInner::Bool(false) => expr.inner = MIRExpressionInner::Number(0),
+                _ => {}
+            }
+            if let Some(ty) = &mut expr.ty {
+                convert_type(&mut ty.ty);
+            }
+
+            true
+        });
+    }
+
+    for function in ctx.program.functions.values_mut() {
+        convert_type(&mut function.ret_ty.ty);
+        for arg in &mut function.args {
+            convert_type(&mut arg.ty.ty);
+        }
+
+        <StatementExplorer>::explore_block_mut(
+            &mut function.body,
+            &mut |statement, _scope| {
+                if let MIRStatement::CreateVariable { var, .. } = statement {
+                    convert_type(&mut var.ty.ty);
+                }
+
+                find_exprs_mut(statement, &mut |expr, _| {
+                    convert_expr_types(expr);
+
+                    true
+                });
+
+                true
+            },
+            &|_, _| true,
+            &mut |_, _| true,
+        );
+    }
+
+    for static_ in ctx.program.statics.values_mut() {
+        convert_type(&mut static_.ty.ty);
+        convert_expr_types(&mut static_.value);
+    }
+
+    for const_ in ctx.program.constants.values_mut() {
+        convert_type(&mut const_.ty.ty);
+        convert_expr_types(&mut const_.value);
     }
 }

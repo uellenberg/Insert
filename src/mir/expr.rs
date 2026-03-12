@@ -101,14 +101,14 @@ pub fn inline_consts(ctx: &mut MIRContext) -> bool {
 /// whether it was successful.
 /// This MUST occur after const inlining.
 /// Returns (success, modified).
-pub fn optimize_exprs(function: &mut MIRFunction) -> (bool, bool) {
+pub fn optimize_exprs(function: &mut MIRFunction, truthy_coercion: bool) -> (bool, bool) {
     let mut modified = false;
 
     let res = <StatementExplorer>::explore_block_mut(
         &mut function.body,
         &mut |statement, _scope| {
             find_exprs_mut(statement, &mut |expr, _| {
-                let (success, modified1) = reduce_expr(expr);
+                let (success, modified1) = reduce_expr(expr, truthy_coercion);
                 modified |= modified1;
 
                 success
@@ -130,7 +130,7 @@ pub fn optimize_exprs(function: &mut MIRFunction) -> (bool, bool) {
 /// Attempts to reduce an expression
 /// using simple constant evaluation.
 /// Returns (success, modified).
-fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
+fn reduce_expr(expr: &mut MIRExpression, truthy_coercion: bool) -> (bool, bool) {
     let mut modified = false;
 
     macro_rules! simple_binary {
@@ -147,6 +147,15 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
         }};
     }
 
+    let is_falsy = |expr: &MIRExpression| -> bool {
+        match &expr.inner {
+            MIRExpressionInner::Bool(false) => true,
+            MIRExpressionInner::Number(0) if truthy_coercion => true,
+            MIRExpressionInner::Char('\0') if truthy_coercion => true,
+            _ => false,
+        }
+    };
+
     if !explore_expr_mut(expr, &mut |expr| {
         let mut failed = false;
 
@@ -158,15 +167,62 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
                 simple_binary!(left, right, Number, Number, -)
             }
             MIRExpressionInner::Mul(left, right) => {
-                simple_binary!(left, right, Number, Number, *)
+                // Constant folding first, then -1 negation shorthand.
+                match (&left.inner, &right.inner) {
+                    // Normal reduction.
+                    (MIRExpressionInner::Number(l), MIRExpressionInner::Number(r)) => {
+                        Some(MIRExpressionInner::Number(l * r))
+                    }
+
+                    // -1*x can be replaced with -x.
+                    (MIRExpressionInner::Number(-1), _) => {
+                        Some(MIRExpressionInner::Neg(right.clone()))
+                    }
+                    (_, MIRExpressionInner::Number(-1)) => {
+                        Some(MIRExpressionInner::Neg(left.clone()))
+                    }
+                    _ => None,
+                }
             }
             MIRExpressionInner::Div(left, right) => {
                 simple_binary!(left, right, Number, Number, /)
             }
             MIRExpressionInner::Equal(left, right) => {
+                // For falsey values, a == 0 can be reduced to !a.
+                if is_falsy(right) {
+                    return Some(MIRExpressionInner::Not(left.clone()));
+                }
+                if is_falsy(left) {
+                    return Some(MIRExpressionInner::Not(right.clone()));
+                }
+
+                // We can also reduce a == true to just a.
+                if matches!(&right.inner, MIRExpressionInner::Bool(true)) {
+                    return Some(left.inner.clone());
+                }
+                if matches!(&left.inner, MIRExpressionInner::Bool(true)) {
+                    return Some(right.inner.clone());
+                }
+
                 simple_binary!(left, right, Number | Bool, Bool, ==)
             }
             MIRExpressionInner::NotEqual(left, right) => {
+                // For falsy values, a != 0 can be reduced to a.
+                if is_falsy(right) {
+                    return Some(left.inner.clone());
+                }
+                if is_falsy(left) {
+                    return Some(right.inner.clone());
+                }
+
+                // We can also reduce a == true to just !a.
+                if matches!(&right.inner, MIRExpressionInner::Bool(true)) {
+                    return Some(MIRExpressionInner::Not(left.clone()));
+                }
+                if matches!(&left.inner, MIRExpressionInner::Bool(true)) {
+                    return Some(MIRExpressionInner::Not(right.clone()));
+                }
+
                 simple_binary!(left, right, Number | Bool, Bool, !=)
             }
             MIRExpressionInner::Greater(left, right) => {
@@ -187,6 +243,20 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             MIRExpressionInner::BoolOr(left, right) => {
                 simple_binary!(left, right, Bool, Bool, ||)
             }
+            MIRExpressionInner::Neg(box MIRExpression {
+                inner: MIRExpressionInner::Number(n),
+                ..
+            }) => Some(MIRExpressionInner::Number(-n)),
+            MIRExpressionInner::Not(inner) => match &inner.inner {
+                MIRExpressionInner::Bool(b) => Some(MIRExpressionInner::Bool(!b)),
+                MIRExpressionInner::Number(n) if truthy_coercion => {
+                    Some(MIRExpressionInner::Bool(*n == 0))
+                }
+                MIRExpressionInner::Char(n) if truthy_coercion => {
+                    Some(MIRExpressionInner::Bool(*n == '\0'))
+                }
+                _ => None,
+            },
             MIRExpressionInner::Ref(box MIRExpression {
                 inner: MIRExpressionInner::Deref(inner),
                 ..
@@ -250,6 +320,7 @@ fn reduce_expr(expr: &mut MIRExpression) -> (bool, bool) {
             | MIRExpressionInner::Variable(_, _)
             | MIRExpressionInner::Ref(_)
             | MIRExpressionInner::Deref(_)
+            | MIRExpressionInner::Neg(_)
             | MIRExpressionInner::Array(_)
             | MIRExpressionInner::Quine
             | MIRExpressionInner::QuineLen
@@ -307,7 +378,9 @@ macro_rules! explore_expr_body {
             // Unary expressions.
             MIRExpressionInner::Ref(inner)
             | MIRExpressionInner::Deref(inner)
-            | MIRExpressionInner::Member(inner, _) => {
+            | MIRExpressionInner::Member(inner, _)
+            | MIRExpressionInner::Neg(inner)
+            | MIRExpressionInner::Not(inner) => {
                 if !$recurse(inner, $visit) {
                     return false;
                 }
@@ -475,11 +548,22 @@ macro_rules! extract_expr_body {
                 }
             }
 
-            MIRStatement::SetVariable { place, value, .. } => {
+            MIRStatement::SetVariable { place, value, .. }
+            | MIRStatement::AddAssign { place, value, .. }
+            | MIRStatement::SubAssign { place, value, .. }
+            | MIRStatement::MulAssign { place, value, .. }
+            | MIRStatement::DivAssign { place, value, .. } => {
                 if !$for_each(place, true) {
                     return false;
                 }
                 if !$for_each(value, false) {
+                    return false;
+                }
+            }
+
+            MIRStatement::IncrementVariable { place, .. }
+            | MIRStatement::DecrementVariable { place, .. } => {
+                if !$for_each(place, true) {
                     return false;
                 }
             }

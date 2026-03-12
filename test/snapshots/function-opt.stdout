@@ -1,6 +1,6 @@
-function main() : bool {
+function main() : i32 {
     a(10, 11, 12, 13, 14, 15)
-    let d (0): bool = b(true, false, false, false, false, b(true, false, false, false, false, false));
+    let d (0): i32 = b(1, 0, 0, 0, 0, b(1, 0, 0, 0, 0, 0));
     return d (0);
 }
 function a(d (0): u32, e (1): u32, f (2): u32, g (3): u32, h (4): u32, i (5): u32) : u32 {
@@ -13,13 +13,13 @@ function a(d (0): u32, e (1): u32, f (2): u32, g (3): u32, h (4): u32, i (5): u3
     let j (6): u32 = (d (0) + 10);
     return (j (6) * i (5));
 }
-function b(d (0): bool, e (1): bool, f (2): bool, g (3): bool, h (4): bool, i (5): bool) : bool {
-    let d (0): bool;
-    let e (1): bool;
-    let f (2): bool;
-    let g (3): bool;
-    let h (4): bool;
-    let i (5): bool;
+function b(d (0): i32, e (1): i32, f (2): i32, g (3): i32, h (4): i32, i (5): i32) : i32 {
+    let d (0): i32;
+    let e (1): i32;
+    let f (2): i32;
+    let g (3): i32;
+    let h (4): i32;
+    let i (5): i32;
     return i (5);
 }
 function c() : u32 {

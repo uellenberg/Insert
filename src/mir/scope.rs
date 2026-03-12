@@ -123,6 +123,12 @@ macro_rules! explore_recurse {
             MIRStatement::ContinueStatement { .. } => {}
             MIRStatement::BreakStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
+            MIRStatement::IncrementVariable { .. } => {}
+            MIRStatement::DecrementVariable { .. } => {}
+            MIRStatement::AddAssign { .. } => {}
+            MIRStatement::SubAssign { .. } => {}
+            MIRStatement::MulAssign { .. } => {}
+            MIRStatement::DivAssign { .. } => {}
 
             MIRStatement::LoopStatement { body, iterate, .. } => {
                 let $list = body;
@@ -224,6 +230,12 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             MIRStatement::LoopStatement { .. } => {}
             MIRStatement::ScopeStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
+            MIRStatement::IncrementVariable { .. } => {}
+            MIRStatement::DecrementVariable { .. } => {}
+            MIRStatement::AddAssign { .. } => {}
+            MIRStatement::SubAssign { .. } => {}
+            MIRStatement::MulAssign { .. } => {}
+            MIRStatement::DivAssign { .. } => {}
 
             MIRStatement::CreateVariable { var, .. } => {
                 scope.variables.insert(var.name.clone(), var.clone());

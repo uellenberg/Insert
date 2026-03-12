@@ -16,6 +16,12 @@ pub trait Target {
 
     /// Returns whether strings should be represented as arrays of characters.
     fn str_char_arr(&self) -> bool;
+
+    /// Returns whether booleans should be represented as integers (i32).
+    fn bool_as_i32(&self) -> bool;
+
+    /// Whether the language supports C-style truthy coercion (i.e, 0 -> false, 1 -> true).
+    fn truthy_coercion(&self) -> bool;
 }
 
 pub struct C;
@@ -34,6 +40,14 @@ impl Target for C {
     }
 
     fn str_char_arr(&self) -> bool {
+        true
+    }
+
+    fn bool_as_i32(&self) -> bool {
+        true
+    }
+
+    fn truthy_coercion(&self) -> bool {
         true
     }
 }

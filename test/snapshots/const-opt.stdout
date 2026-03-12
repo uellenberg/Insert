@@ -5,7 +5,7 @@ function b(c (0): u32) : u32 {
         if (d (1) >= c (0)) {
             break;
         }
-        d (1) = (d (1) + 1);
+        d (1)++;
     }
     return d (1);
 }
