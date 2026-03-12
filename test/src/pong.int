@@ -143,18 +143,18 @@ inline function printQuineItem(s: string) {
     // This is the quine part of the string if it's completely
     // empty, except for spaces and newlines.
     let quinePart: bool = true;
-    for let i: i32 = 0; s[i] != '\0'; i = i + 1; {
-        if s[i] == $quineSpace {
+    for let c: &[char] = s; c[0] != '\0'; c = &c[1]; {
+        if c[0] == $quineSpace {
             putchar(' ');
-        } else if s[i] == $quineLine {
+        } else if c[0] == $quineLine {
             putchar('\n');
-        } else if s[i] != ' ' && s[i] != '\n' {
+        } else if c[0] != ' ' && c[0] != '\n' {
             quinePart = false;
-            putchar(s[i]);
+            putchar(c[0]);
 
             // iocccsize doesn't count these chars if they're
             // followed by a space.
-            if s[i] == '{' || s[i] == '}' || s[i] == ';' {
+            if c[0] == '{' || c[0] == '}' || c[0] == ';' {
                 putchar(' ');
             }
         }
@@ -179,7 +179,7 @@ inline function printQuine() {
 }
 
 helper function setQuineVar(index: i32, val: i32) {
-    stringInto(val, &quineStr[index]);
+    asprintf(&quineStr[index], "%i", val);
 }
 
 inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: bool, paddleRightCollision: bool) {
