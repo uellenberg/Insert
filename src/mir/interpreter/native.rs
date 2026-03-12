@@ -1,7 +1,7 @@
 use crate::mir::interpreter::InterpreterData;
 use crate::mir::{
-    MIRContext, MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType, MIRType,
-    MIRTypeInner, MIRVariable,
+    FunctionOverloads, MIRContext, MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRFunctionType,
+    MIRType, MIRTypeInner, MIRVariable,
 };
 use crate::parser::span::Span;
 use slotmap::SparseSecondaryMap;
@@ -60,7 +60,7 @@ pub fn register_natives(ctx: &mut MIRContext) -> Result<NativeFunctions, ()> {
             .program
             .function_names
             .entry((*name).into())
-            .or_default();
+            .or_insert(FunctionOverloads::new(ctx.target));
 
         // This will shadow existing functions without an error.
         // This isn't desirable, but it's very complicated to do so otherwise,

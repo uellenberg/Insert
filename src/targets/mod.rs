@@ -1,8 +1,9 @@
 use crate::codegen;
 use crate::codegen::Codegen;
+use std::fmt::Debug;
 
 /// Contains information about a target language.
-pub trait Target {
+pub trait Target: Debug {
     /// Gets an instance of the lowerer for this target.
     fn lowerer(&self) -> &'static dyn Codegen;
 
@@ -22,8 +23,13 @@ pub trait Target {
 
     /// Whether the language supports C-style truthy coercion (i.e, 0 -> false, 1 -> true).
     fn truthy_coercion(&self) -> bool;
+
+    /// Whether arrays are internally references (and can be dereferenced / have
+    /// arithmetic performed on them).
+    fn array_as_ref(&self) -> bool;
 }
 
+#[derive(Debug)]
 pub struct C;
 
 impl Target for C {
@@ -48,6 +54,10 @@ impl Target for C {
     }
 
     fn truthy_coercion(&self) -> bool {
+        true
+    }
+
+    fn array_as_ref(&self) -> bool {
         true
     }
 }

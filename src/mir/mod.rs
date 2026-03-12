@@ -122,7 +122,7 @@ pub fn visit_mir(ctx: &mut MIRContext<'_>) -> bool {
         loop {
             let mut modified = false;
 
-            let (success, modified1) = optimize_exprs(function, ctx.target.truthy_coercion());
+            let (success, modified1) = optimize_exprs(function, ctx.target);
             if !success {
                 return false;
             }
@@ -233,17 +233,24 @@ pub enum MIRDeclarationKey {
 
 /// A list of function overloads for a single function name.
 /// Stores args alongside keys to avoid slotmap lookups during search.
-#[derive(Debug, Default, Clone)]
-pub struct FunctionOverloads<'a>(Vec<(MIRFunctionArgs<'a>, MIRFunctionKey)>);
+#[derive(Debug, Clone)]
+pub struct FunctionOverloads<'a>(
+    Vec<(MIRFunctionArgs<'a>, MIRFunctionKey)>,
+    &'static dyn Target,
+);
 
 impl<'a> FunctionOverloads<'a> {
+    pub fn new(target: &'static dyn Target) -> Self {
+        Self(Vec::new(), target)
+    }
+
     /// Finds a function compatible with the given call arguments.
     /// Returns None if no match or ambiguous.
     pub fn find_compatible(&self, call_args: &[MIRTypeInner<'a>]) -> Option<MIRFunctionKey> {
         let mut matches = self
             .0
             .iter()
-            .filter(|(args, _)| Self::args_compatible(args, call_args))
+            .filter(|(args, _)| Self::args_compatible(self.1, args, call_args))
             .map(|(_, key)| *key);
 
         let first = matches.next()?;
@@ -259,7 +266,7 @@ impl<'a> FunctionOverloads<'a> {
     pub fn count_compatible(&self, call_args: &[MIRTypeInner<'a>]) -> usize {
         self.0
             .iter()
-            .filter(|(args, _)| Self::args_compatible(args, call_args))
+            .filter(|(args, _)| Self::args_compatible(self.1, args, call_args))
             .count()
     }
 
@@ -268,14 +275,14 @@ impl<'a> FunctionOverloads<'a> {
     pub fn find_conflict(&self, new_args: &MIRFunctionArgs<'a>) -> Option<MIRFunctionKey> {
         self.0
             .iter()
-            .find(|(args, _)| Self::signatures_conflict(args, new_args))
+            .find(|(args, _)| Self::signatures_conflict(self.1, args, new_args))
             .map(|(_, key)| *key)
     }
 
     /// Removes all conflicts to a new function with the given args.
     pub fn remove_conflicts(&mut self, new_args: &MIRFunctionArgs<'a>) {
         self.0
-            .retain(|(args, _)| !Self::signatures_conflict(args, new_args))
+            .retain(|(args, _)| !Self::signatures_conflict(self.1, args, new_args))
     }
 
     /// Adds a function overload.
@@ -305,7 +312,11 @@ impl<'a> FunctionOverloads<'a> {
 
     /// Checks if call_args are compatible with func_args.
     /// This is true if call_args can be used to call a function with func_args.
-    fn args_compatible(func_args: &MIRFunctionArgs<'a>, call_args: &[MIRTypeInner<'a>]) -> bool {
+    fn args_compatible(
+        target: &dyn Target,
+        func_args: &MIRFunctionArgs<'a>,
+        call_args: &[MIRTypeInner<'a>],
+    ) -> bool {
         let fixed_count = func_args.args.len();
 
         if func_args.variadic {
@@ -326,11 +337,15 @@ impl<'a> FunctionOverloads<'a> {
             .iter()
             .zip(call_args.iter())
             // Ordered, since we need to allow fixed length -> unknown length conversion.
-            .all(|(func_arg, call_arg)| types_could_match_ordered(func_arg, call_arg))
+            .all(|(func_arg, call_arg)| types_could_match_ordered(target, func_arg, call_arg))
     }
 
     /// Checks if two function signatures could match the same call.
-    fn signatures_conflict(a: &MIRFunctionArgs<'a>, b: &MIRFunctionArgs<'a>) -> bool {
+    fn signatures_conflict(
+        target: &dyn Target,
+        a: &MIRFunctionArgs<'a>,
+        b: &MIRFunctionArgs<'a>,
+    ) -> bool {
         let a_fixed = a.args.len();
         let b_fixed = b.args.len();
 
@@ -367,7 +382,7 @@ impl<'a> FunctionOverloads<'a> {
         b.args
             .iter()
             .zip(a.args.iter())
-            .all(|(x, y)| types_could_match(x, y))
+            .all(|(x, y)| types_could_match(target, x, y))
     }
 }
 
@@ -465,7 +480,7 @@ impl<'a> MIRContext<'a> {
                 self.program
                     .function_names
                     .entry(name)
-                    .or_default()
+                    .or_insert(FunctionOverloads::new(self.target))
                     .push(args_ty, key);
             }
             MIRDeclarationKey::Marker(key) => {
@@ -652,7 +667,7 @@ impl<'a> MIRContext<'a> {
                 self.program
                     .function_names
                     .entry(name)
-                    .or_default()
+                    .or_insert(FunctionOverloads::new(self.target))
                     .push(args_ty, key);
                 Some(MIRDeclarationKey::Function(key))
             }

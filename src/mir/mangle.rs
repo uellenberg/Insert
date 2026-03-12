@@ -122,7 +122,7 @@ pub fn mangle_names(ctx: &mut MIRContext) {
         ctx.program
             .function_names
             .entry(func_data.name.clone())
-            .or_default()
+            .or_insert(FunctionOverloads::new(ctx.target))
             .push(func_data.args_ty.clone(), key);
     }
 }

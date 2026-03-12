@@ -24,3 +24,22 @@ function sum() -> i32 {
 }
 
 static d: i32 = sum();
+
+function array_ref(idx: i32) -> &[i32] {
+    let view: &[i32] = &a[1 + idx];
+    return &view[0];
+}
+
+function array_modification(idx: i32) -> &[i32] {
+    let values: &[i32] = [1, 2, 3];
+    let view: &[i32] = &values[idx];
+
+    view[0] = values[0];
+
+    // This return of course isn't valid C, but the
+    // interpreter uses reference counting so it's
+    // valid during compile time.
+    return values;
+}
+
+static new_arr: &[i32] = array_modification(1);

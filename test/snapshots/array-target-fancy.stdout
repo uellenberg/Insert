@@ -1,11 +1,21 @@
-int*a={1,2,3};int b[3]={1,2,3};int c=2;int*d=&a[1];int e=2;int*f={};int h(){
-    int i=0;
-    unsigned int j=0;
+int*a={1,2,3};int b[3]={1,2,3};int c=2;int*d=&a[1];int e=2;int*f={};int i(){
+    int l=0;
+    unsigned int m=0;
     for(;;){
-        if(j>=3)break;
-        i+=a[j];
-        j++;
+        if(m>=3)break;
+        l+=a[m];
+        m++;
     }
-    return i;
+    return l;
 }
-int g=6;
+int g=6;int*j(int l){
+    int*m=a+1+l;
+    return m;
+}
+int*k(int l){
+    int*m={1,2,3};
+    int*n=m+l;
+    *n=*m;
+    return m;
+}
+int*h={1,1,3};

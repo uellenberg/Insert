@@ -414,7 +414,9 @@ fn process_var_write<'a>(
                     | MIRExpressionInner::Bool(_)
                     | MIRExpressionInner::String(_)
                     | MIRExpressionInner::Unit
-                    | MIRExpressionInner::Ref(_)
+                    // References and other place exprs can depend on other variables,
+                    // so we conservatively only inline direct references.
+                    | MIRExpressionInner::Ref(box MIRExpression {inner: MIRExpressionInner::Variable(..), ..})
                     // A read from a static is not valid to inline,
                     // as it may change between now and the inline site.
                 )

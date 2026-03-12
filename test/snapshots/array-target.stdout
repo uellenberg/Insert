@@ -1,2 +1,2 @@
-#define k int
-k*a={1,2,3};k b[3]={1,2,3};k c=2;k*d=&a[1];k e=2;k*f={};k h(){k i=0;unsigned k j=0;for(;;){if(j>=3)break;i+=a[j];j++;}return i;}k g=6;
+#define o int
+o*a={1,2,3};o b[3]={1,2,3};o c=2;o*d=&a[1];o e=2;o*f={};o i(){o l=0;unsigned o m=0;for(;;){if(m>=3)break;l+=a[m];m++;}return l;}o g=6;o*j(o l){o*m=a+1+l;return m;}o*k(o l){o*m={1,2,3};o*n=m+l;*n=*m;return m;}o*h={1,1,3};

@@ -671,16 +671,10 @@ impl Codegen for CLowerer {
                 spread![...base, Token::new(".".into()), Token::new(field.clone())]
             }
             MIRExpressionInner::Index(base, index) => {
-                // Accessing index 0 is the same as a dereference.
-                if index.inner == MIRExpressionInner::Number(0) {
-                    let base = self.lower_wrap_expression(base, &unary_op_outer());
-                    spread![Token::new("*".into()), ...base]
-                } else {
-                    let base = self.lower_wrap_expression(base, expr);
-                    // Already wrapped by [], so no need to wrap it again.
-                    let index = self.lower_expression(index);
-                    spread![...base, Token::new("[".into()), ...index, Token::new("]".into())]
-                }
+                let base = self.lower_wrap_expression(base, expr);
+                // Already wrapped by [], so no need to wrap it again.
+                let index = self.lower_expression(index);
+                spread![...base, Token::new("[".into()), ...index, Token::new("]".into())]
             }
             MIRExpressionInner::Array(elems) => {
                 let elems = elems

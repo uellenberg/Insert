@@ -4,6 +4,7 @@ use crate::mir::{
     MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource, MIRFunction,
     MIRStatement,
 };
+use crate::targets::Target;
 
 /// Attempts to evaluate all constants and statics, returning
 /// whether it was successful.
@@ -101,14 +102,14 @@ pub fn inline_consts(ctx: &mut MIRContext) -> bool {
 /// whether it was successful.
 /// This MUST occur after const inlining.
 /// Returns (success, modified).
-pub fn optimize_exprs(function: &mut MIRFunction, truthy_coercion: bool) -> (bool, bool) {
+pub fn optimize_exprs(function: &mut MIRFunction, target: &dyn Target) -> (bool, bool) {
     let mut modified = false;
 
     let res = <StatementExplorer>::explore_block_mut(
         &mut function.body,
         &mut |statement, _scope| {
             find_exprs_mut(statement, &mut |expr, _| {
-                let (success, modified1) = reduce_expr(expr, truthy_coercion);
+                let (success, modified1) = reduce_expr(expr, target);
                 modified |= modified1;
 
                 success
@@ -130,7 +131,7 @@ pub fn optimize_exprs(function: &mut MIRFunction, truthy_coercion: bool) -> (boo
 /// Attempts to reduce an expression
 /// using simple constant evaluation.
 /// Returns (success, modified).
-fn reduce_expr(expr: &mut MIRExpression, truthy_coercion: bool) -> (bool, bool) {
+fn reduce_expr(expr: &mut MIRExpression, target: &dyn Target) -> (bool, bool) {
     let mut modified = false;
 
     macro_rules! simple_binary {
@@ -150,8 +151,8 @@ fn reduce_expr(expr: &mut MIRExpression, truthy_coercion: bool) -> (bool, bool) 
     let is_falsy = |expr: &MIRExpression| -> bool {
         match &expr.inner {
             MIRExpressionInner::Bool(false) => true,
-            MIRExpressionInner::Number(0) if truthy_coercion => true,
-            MIRExpressionInner::Char('\0') if truthy_coercion => true,
+            MIRExpressionInner::Number(0) if target.truthy_coercion() => true,
+            MIRExpressionInner::Char('\0') if target.truthy_coercion() => true,
             _ => false,
         }
     };
@@ -249,10 +250,10 @@ fn reduce_expr(expr: &mut MIRExpression, truthy_coercion: bool) -> (bool, bool) 
             }) => Some(MIRExpressionInner::Number(-n)),
             MIRExpressionInner::Not(inner) => match &inner.inner {
                 MIRExpressionInner::Bool(b) => Some(MIRExpressionInner::Bool(!b)),
-                MIRExpressionInner::Number(n) if truthy_coercion => {
+                MIRExpressionInner::Number(n) if target.truthy_coercion() => {
                     Some(MIRExpressionInner::Bool(*n == 0))
                 }
-                MIRExpressionInner::Char(n) if truthy_coercion => {
+                MIRExpressionInner::Char(n) if target.truthy_coercion() => {
                     Some(MIRExpressionInner::Bool(*n == '\0'))
                 }
                 _ => None,
@@ -307,6 +308,23 @@ fn reduce_expr(expr: &mut MIRExpression, truthy_coercion: bool) -> (bool, bool) 
                 Some(MIRExpressionInner::Char(
                     elems.chars().nth(*idx as usize).unwrap(),
                 ))
+            }
+
+            // a[0] can be written as *a if arrays are refs.
+            MIRExpressionInner::Index(
+                inner,
+                box MIRExpression {
+                    inner: MIRExpressionInner::Number(0),
+                    ..
+                },
+            ) if target.array_as_ref() => Some(MIRExpressionInner::Deref(inner.clone())),
+
+            // &a[b] can be written as a+b if arrays are refs.
+            MIRExpressionInner::Ref(box MIRExpression {
+                inner: MIRExpressionInner::Index(base, offset),
+                ..
+            }) if target.array_as_ref() => {
+                Some(MIRExpressionInner::Add(base.clone(), offset.clone()))
             }
 
             // Already fully simplified (recursion handled by explore_expr_mut).

@@ -4,7 +4,6 @@ use crate::mir::scope::{Scope, StatementExplorer};
 use crate::mir::{
     MIRConstant, MIRContext, MIRExpression, MIRExpressionInner, MIRFnCall, MIRFnSource,
     MIRFunction, MIRFunctionArgs, MIRFunctionKey, MIRStatement, MIRStatic, MIRType, MIRTypeInner,
-    MIRVariable,
 };
 use crate::parser::file_cache::file_cache;
 use crate::parser::span::{Span, eprintln_span};
@@ -445,7 +444,7 @@ fn check_fn_call<'a>(
         .take(fixed_arg_count)
         .zip(expected_args.args.iter_mut())
     {
-        if !types_equal_inner(&mut actual.ty, expected) {
+        if !types_equal_inner(ctx.target, &mut actual.ty, expected) {
             print_unexpected_expr_ty(
                 MIRType {
                     ty: expected.clone(),
@@ -527,12 +526,16 @@ fn print_left_right_unequal(
 /// if UnknownNumber can be resolved, it will be.
 /// After calling this function, it is guaranteed that
 /// ty1 == ty2.
-fn types_equal<'a>(ty1: &mut MIRType<'a>, ty2: &mut MIRType<'a>) -> bool {
-    types_equal_inner(&mut ty1.ty, &mut ty2.ty)
+fn types_equal<'a>(target: &dyn Target, ty1: &mut MIRType<'a>, ty2: &mut MIRType<'a>) -> bool {
+    types_equal_inner(target, &mut ty1.ty, &mut ty2.ty)
 }
 
 /// This is the same as [types_equal] except for inner types.
-fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>) -> bool {
+fn types_equal_inner<'a>(
+    target: &dyn Target,
+    ty1: &mut MIRTypeInner<'a>,
+    ty2: &mut MIRTypeInner<'a>,
+) -> bool {
     if ty1 == ty2 {
         return true;
     }
@@ -551,13 +554,13 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
         | (to @ MIRTypeInner::ArrayFixed(..), from @ MIRTypeInner::Array(..)) => {
             if let MIRTypeInner::Array(val1) = to
                 && let MIRTypeInner::ArrayFixed(val2, _) = from
-                && !types_equal_inner(val1, val2)
+                && !types_equal_inner(target, val1, val2)
             {
                 return false;
             }
             if let MIRTypeInner::ArrayFixed(val1, _) = to
                 && let MIRTypeInner::Array(val2) = from
-                && !types_equal_inner(val1, val2)
+                && !types_equal_inner(target, val1, val2)
             {
                 return false;
             }
@@ -566,9 +569,51 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
 
             true
         }
-        (MIRTypeInner::Array(val1), MIRTypeInner::Array(val2)) => types_equal_inner(val1, val2),
+        (MIRTypeInner::Array(val1), MIRTypeInner::Array(val2)) => {
+            types_equal_inner(target, val1, val2)
+        }
         (MIRTypeInner::ArrayFixed(val1, len1), MIRTypeInner::ArrayFixed(val2, len2)) => {
-            len1 == len2 && types_equal_inner(val1, val2)
+            len1 == len2 && types_equal_inner(target, val1, val2)
+        }
+        // Downgrading from array to ref.
+        (to @ MIRTypeInner::Array(..), from @ MIRTypeInner::Ref(..))
+        | (to @ MIRTypeInner::Ref(..), from @ MIRTypeInner::Array(..)) => {
+            if let MIRTypeInner::Array(val1) = to
+                && let MIRTypeInner::Ref(val2) = from
+                && !types_equal_inner(target, val1, val2)
+            {
+                return false;
+            }
+            if let MIRTypeInner::Ref(val1) = to
+                && let MIRTypeInner::Array(val2) = from
+                && !types_equal_inner(target, val1, val2)
+            {
+                return false;
+            }
+
+            *to = from.clone();
+
+            true
+        }
+        // Downgrading from array fixed to ref.
+        (to @ MIRTypeInner::ArrayFixed(..), from @ MIRTypeInner::Ref(..))
+        | (to @ MIRTypeInner::Ref(..), from @ MIRTypeInner::ArrayFixed(..)) => {
+            if let MIRTypeInner::ArrayFixed(val1, _) = to
+                && let MIRTypeInner::Ref(val2) = from
+                && !types_equal_inner(target, val1, val2)
+            {
+                return false;
+            }
+            if let MIRTypeInner::Ref(val1) = to
+                && let MIRTypeInner::ArrayFixed(val2, _) = from
+                && !types_equal_inner(target, val1, val2)
+            {
+                return false;
+            }
+
+            *to = from.clone();
+
+            true
         }
         // Recursive types need special handling to fully resolve.
         (MIRTypeInner::FunctionPtr(args1, ret1), MIRTypeInner::FunctionPtr(args2, ret2)) => {
@@ -581,7 +626,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
             let mut new_ret1 = (**ret1).clone();
             let mut new_ret2 = (**ret2).clone();
 
-            if !types_equal_inner(&mut new_ret1, &mut new_ret2) {
+            if !types_equal_inner(target, &mut new_ret1, &mut new_ret2) {
                 return false;
             }
 
@@ -589,7 +634,7 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
             let mut new_args2 = args2.clone();
 
             for (arg1, arg2) in new_args1.args.iter_mut().zip(new_args2.args.iter_mut()) {
-                if !types_equal_inner(arg1, arg2) {
+                if !types_equal_inner(target, arg1, arg2) {
                     return false;
                 }
             }
@@ -614,7 +659,11 @@ fn types_equal_inner<'a>(ty1: &mut MIRTypeInner<'a>, ty2: &mut MIRTypeInner<'a>)
 /// passed to the function arg.
 /// For variable sets, from is the type of the variable, to is the type
 /// of the expression.
-pub fn types_could_match_ordered<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<'a>) -> bool {
+pub fn types_could_match_ordered<'a>(
+    target: &dyn Target,
+    from: &MIRTypeInner<'a>,
+    to: &MIRTypeInner<'a>,
+) -> bool {
     if from == to {
         return true;
     }
@@ -628,13 +677,25 @@ pub fn types_could_match_ordered<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<
         // convert a fixed size array to an unknown size array.
         (MIRTypeInner::Array(ty1), MIRTypeInner::ArrayFixed(ty2, _))
         | (MIRTypeInner::Array(ty1), MIRTypeInner::Array(ty2))
-            if types_could_match_ordered(ty1, ty2) =>
+            if types_could_match_ordered(target, ty1, ty2) =>
         {
             true
         }
         // Array sizes MUST match.
         (MIRTypeInner::ArrayFixed(ty1, count1), MIRTypeInner::ArrayFixed(ty2, count2))
-            if count1 == count2 && types_could_match_ordered(ty1, ty2) =>
+            if count1 == count2 && types_could_match_ordered(target, ty1, ty2) =>
+        {
+            true
+        }
+        // An array can degrade into a pointer (if allowed by the target).
+        (MIRTypeInner::Ref(ty1), MIRTypeInner::Array(ty2))
+        | (MIRTypeInner::Ref(ty1), MIRTypeInner::ArrayFixed(ty2, _))
+            if target.array_as_ref() && types_could_match_ordered(target, ty1, ty2) =>
+        {
+            true
+        }
+        (MIRTypeInner::Ref(ty1), MIRTypeInner::Ref(ty2))
+            if types_could_match_ordered(target, ty1, ty2) =>
         {
             true
         }
@@ -645,7 +706,11 @@ pub fn types_could_match_ordered<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<
 /// Checks if two types could match (considering inference).
 /// This is true in more cases than types_could_match, and should
 /// only be used to prevent conflicts.
-pub fn types_could_match<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<'a>) -> bool {
+pub fn types_could_match<'a>(
+    target: &dyn Target,
+    from: &MIRTypeInner<'a>,
+    to: &MIRTypeInner<'a>,
+) -> bool {
     if from == to {
         return true;
     }
@@ -659,14 +724,26 @@ pub fn types_could_match<'a>(from: &MIRTypeInner<'a>, to: &MIRTypeInner<'a>) -> 
         (MIRTypeInner::ArrayFixed(ty1, _), MIRTypeInner::Array(ty2))
         | (MIRTypeInner::Array(ty1), MIRTypeInner::ArrayFixed(ty2, _))
         | (MIRTypeInner::Array(ty1), MIRTypeInner::Array(ty2))
-            if types_could_match(ty1, ty2) =>
+            if types_could_match(target, ty1, ty2) =>
         {
             true
         }
         // Array sizes MUST match.
         (MIRTypeInner::ArrayFixed(ty1, count1), MIRTypeInner::ArrayFixed(ty2, count2))
-            if count1 == count2 && types_could_match(ty1, ty2) =>
+            if count1 == count2 && types_could_match(target, ty1, ty2) =>
         {
+            true
+        }
+        // An array can degrade into a pointer (if allowed by the target).
+        (MIRTypeInner::Ref(ty1), MIRTypeInner::Array(ty2))
+        | (MIRTypeInner::Array(ty1), MIRTypeInner::Ref(ty2))
+        | (MIRTypeInner::Ref(ty1), MIRTypeInner::ArrayFixed(ty2, _))
+        | (MIRTypeInner::ArrayFixed(ty1, _), MIRTypeInner::Ref(ty2))
+            if target.array_as_ref() && types_could_match(target, ty1, ty2) =>
+        {
+            true
+        }
+        (MIRTypeInner::Ref(ty1), MIRTypeInner::Ref(ty2)) if types_could_match(target, ty1, ty2) => {
             true
         }
         _ => false,
@@ -739,7 +816,7 @@ fn check_expression<'a, 'b>(
             let t_left = check_expression(ctx, $left, scope)?;
             let t_right = check_expression(ctx, $right, scope)?;
 
-            if !types_equal(t_left, t_right) {
+            if !types_equal(ctx.target, t_left, t_right) {
                 print_left_right_unequal($name, t_left.clone(), t_right.clone(), expr.span.clone());
                 return None;
             }
@@ -909,10 +986,13 @@ fn check_expression<'a, 'b>(
                 }
 
                 // Resolve the inner (non-reference) type.
+                // The ref operator can only create an array by aliasing another
+                // array through indexing (&a[b]). The inner index should be the
+                // inner type of the array, not a ref type to it.
                 if let Some(MIRType {
-                    ty: MIRTypeInner::Ref(inherit_ty),
+                    ty: MIRTypeInner::Ref(inherit_ty) | MIRTypeInner::Array(inherit_ty),
                     span,
-                }) = &mut expr.ty
+                }) = &expr.ty
                 {
                     inner.ty = Some(MIRType {
                         ty: (**inherit_ty).clone(),
@@ -922,10 +1002,21 @@ fn check_expression<'a, 'b>(
                 let inner_ty = check_expression(ctx, inner, scope)?.clone();
 
                 // Extract the type of the reference (outer).
-                Some(MIRType {
-                    ty: MIRTypeInner::Ref(Box::new(inner_ty.ty)),
-                    span: inner_ty.span,
-                })
+                match &inner.inner {
+                    MIRExpressionInner::Index(..) => {
+                        // &a[b] is an array alias, and should
+                        // inherit the array type.
+                        Some(MIRType {
+                            ty: MIRTypeInner::Array(Box::new(inner_ty.ty)),
+                            span: inner_ty.span,
+                        })
+                    }
+
+                    _ => Some(MIRType {
+                        ty: MIRTypeInner::Ref(Box::new(inner_ty.ty)),
+                        span: inner_ty.span,
+                    }),
+                }
             }
             MIRExpressionInner::Deref(inner) => {
                 // Resolve the inner (reference) type.
@@ -998,11 +1089,14 @@ fn check_expression<'a, 'b>(
                     });
                 }
                 let MIRType {
-                    ty: MIRTypeInner::Array(inner) | MIRTypeInner::ArrayFixed(inner, _),
+                    ty:
+                        MIRTypeInner::Array(inner)
+                        | MIRTypeInner::ArrayFixed(inner, _)
+                        | MIRTypeInner::Ref(inner),
                     span,
                 } = check_expression(ctx, base, scope)?.clone()
                 else {
-                    panic!("Indexing a non-array!");
+                    panic!("Indexing a non-array/ref!");
                 };
 
                 Some(MIRType { ty: *inner, span })
@@ -1064,7 +1158,7 @@ fn check_expression<'a, 'b>(
     // This is used for, e.g., throwing an error if "-10u32" is written, and
     // propagating the explicitly written type if it is valid.
     if let Some(existing_ty) = &mut expr.ty
-        && !types_equal(existing_ty, &mut ty)
+        && !types_equal(ctx.target, existing_ty, &mut ty)
     {
         print_unexpected_expr_ty(existing_ty.clone(), ty.clone(), expr.span.clone());
         return None;

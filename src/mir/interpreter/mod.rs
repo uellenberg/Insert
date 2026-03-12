@@ -61,10 +61,17 @@ pub enum InterpreterData<'a> {
     /// This is None while the expression is being evaluated, but will always be Some
     /// afterwards.
     Ref(VariableData<'a>, Option<Box<MIRExpression<'a>>>),
-    /// An array, passed by reference.
+    /// An array (and start offset), passed by reference.
     /// This needs to store VariableData to allow taking references
     /// to individual indices.
-    Array(Rc<RefCell<Vec<VariableData<'a>>>>),
+    ///
+    /// Similar to Ref, this also contains the original source MIR
+    /// of the array.
+    Array(
+        Rc<RefCell<Vec<VariableData<'a>>>>,
+        usize,
+        Option<Box<MIRExpression<'a>>>,
+    ),
 }
 
 /// Contains information about the function currently being called
@@ -386,15 +393,6 @@ impl<'a> Interpreter<'a> {
                 }
             },
             MIRExpressionInner::Ref(inner) => {
-                // We need to go into place mode to capture a reference to
-                // the inner expression.
-                let mut res = self.eval_expr(inner, scope, true)?;
-                let InterpreterData::Ref(_, expr) = &mut res else {
-                    unreachable!("Inner data for reference wasn't a reference!");
-                };
-                // We need to use the top-level expr to preserve full information.
-                *expr = Some(inner.clone());
-
                 // When we switch into place mode, that by itself adds a level
                 // of indirection, so we don't need to directly add a reference.
                 // However, if we're already in place mode, then we do need to
@@ -403,28 +401,60 @@ impl<'a> Interpreter<'a> {
                     unreachable!(
                         "Cannot create references in place mode (type check should have caught this)!"
                     );
-                } else {
-                    Ok(res)
                 }
+
+                // We need to go into place mode to capture a reference to
+                // the inner expression.
+                let mut res = self.eval_expr(inner, scope, true)?;
+                match &mut res {
+                    InterpreterData::Ref(_, inner_expr) => {
+                        // We need to use the top-level expr to preserve full information.
+                        *inner_expr = Some(Box::new(expr.clone()));
+                    }
+                    InterpreterData::Array(_, _, inner_expr) => {
+                        *inner_expr = Some(Box::new(expr.clone()));
+                    }
+                    _ => unreachable!("Inner data for reference wasn't a reference!"),
+                }
+
+                Ok(res)
             }
             MIRExpressionInner::Deref(inner) => {
-                let InterpreterData::Ref(inner, _) = self.eval_expr(inner, scope, place)? else {
-                    unreachable!("Inner data for dereference wasn't a reference!");
-                };
-
-                // In place mode, we want a reference to the data behind the reference.
-                // Place mode by default already has one layer of indirection, so if a: &i32
-                // and we write *a, we'll see Ref<Ref<i32>>, where the inner ref represents the
-                // variable a is pointing to, and the outer ref represents a.
-                // Our job is to strip that away.
-                //
-                // In non-place mode, we'll just see Ref<i32>, then strip it to i32.
-                //
-                // So in both cases, we strip away the outer Ref.
-                Ok(inner
-                    .borrow()
-                    .clone()
-                    .expect("Dereferenced uninitialized reference"))
+                match self.eval_expr(inner, scope, place)? {
+                    InterpreterData::Ref(inner, _) => {
+                        // In place mode, we want a reference to the data behind the reference.
+                        // Place mode by default already has one layer of indirection, so if a: &i32
+                        // and we write *a, we'll see Ref<Ref<i32>>, where the inner ref represents the
+                        // variable a is pointing to, and the outer ref represents a.
+                        // Our job is to strip that away.
+                        //
+                        // In non-place mode, we'll just see Ref<i32>, then strip it to i32.
+                        //
+                        // So in both cases, we strip away the outer Ref.
+                        Ok(inner
+                            .borrow()
+                            .clone()
+                            .expect("Dereferenced uninitialized reference"))
+                    }
+                    InterpreterData::Array(elems, offset, orig_expr) => {
+                        // *(&elems[offset])
+                        //
+                        // In place mode, we can just return the array since it's already
+                        // a ref to the right data.
+                        if place {
+                            Ok(InterpreterData::Array(elems, offset, orig_expr))
+                        } else {
+                            Ok(elems
+                                .borrow()
+                                .get(offset)
+                                .expect("Array index out of bounds!")
+                                .borrow()
+                                .clone()
+                                .expect("Uninitialized array element"))
+                        }
+                    }
+                    _ => unreachable!("Inner data for dereference wasn't a reference!"),
+                }
             }
             MIRExpressionInner::Member(_base, _name) => {
                 todo!()
@@ -456,16 +486,13 @@ impl<'a> Interpreter<'a> {
                 };
 
                 match base {
-                    InterpreterData::Array(elems) => {
+                    InterpreterData::Array(elems, offset, original_expr) => {
                         if index >= elems.borrow().len() {
                             panic!("Index out of bounds!");
                         }
 
                         if place {
-                            Ok(InterpreterData::Ref(
-                                Rc::clone(&elems.borrow()[index]),
-                                None,
-                            ))
+                            Ok(InterpreterData::Array(elems, offset + index, original_expr))
                         } else {
                             Ok(elems.borrow()[index]
                                 .borrow()
@@ -498,7 +525,14 @@ impl<'a> Interpreter<'a> {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 
-                Ok(InterpreterData::Array(Rc::new(RefCell::new(elems))))
+                Ok(InterpreterData::Array(
+                    Rc::new(RefCell::new(elems)),
+                    0,
+                    // No original expression, as we can fully reconstruct the array
+                    // and want to preserve any modifications made to it.
+                    // This is only for references to the array.
+                    None,
+                ))
             }
             MIRExpressionInner::Neg(inner) => {
                 let inner = self.eval_expr(inner, scope, place)?;
@@ -690,11 +724,21 @@ impl<'a> Interpreter<'a> {
                     _ => unreachable!(),
                 };
 
-                let InterpreterData::Ref(place, _) = self.eval_expr(place, scope, true)? else {
-                    panic!("SetVariable place is not a reference!");
-                };
-
-                *place.borrow_mut() = Some(value);
+                match self.eval_expr(place, scope, true)? {
+                    InterpreterData::Ref(place, _) => {
+                        *place.borrow_mut() = Some(value);
+                    }
+                    InterpreterData::Array(elems, offset, _) => {
+                        *elems
+                            .borrow_mut()
+                            .get_mut(offset)
+                            .expect("Array index out of range!")
+                            .borrow_mut() = Some(value);
+                    }
+                    _ => {
+                        panic!("SetVariable place is not a reference!");
+                    }
+                }
             }
             MIRStatement::IncrementVariable { place, .. }
             | MIRStatement::DecrementVariable { place, .. } => {
@@ -734,11 +778,21 @@ impl<'a> Interpreter<'a> {
                     _ => unreachable!(),
                 };
 
-                let InterpreterData::Ref(place, _) = self.eval_expr(place, scope, true)? else {
-                    panic!("SetVariable place is not a reference!");
-                };
-
-                *place.borrow_mut() = Some(value);
+                match self.eval_expr(place, scope, true)? {
+                    InterpreterData::Ref(place, _) => {
+                        *place.borrow_mut() = Some(value);
+                    }
+                    InterpreterData::Array(elems, offset, _) => {
+                        *elems
+                            .borrow_mut()
+                            .get_mut(offset)
+                            .expect("Array index out of range!")
+                            .borrow_mut() = Some(value);
+                    }
+                    _ => {
+                        panic!("SetVariable place is not a reference!");
+                    }
+                }
             }
             MIRStatement::DropVariable(_, _, _) => {
                 // Dropping has no effect on the interpreter.
@@ -835,22 +889,35 @@ impl<'a> From<InterpreterData<'a>> for MIRExpressionInner<'a> {
             InterpreterData::FunctionPtr(_v) => {
                 todo!("Figure out how to handle function pointers to overloaded functions")
             }
-            InterpreterData::Ref(_, expr) => MIRExpressionInner::Ref(expr.unwrap()),
-            InterpreterData::Array(elems) => MIRExpressionInner::Array(
-                elems
-                    .borrow()
-                    .iter()
-                    .map(|expr| MIRExpression {
-                        inner: expr
-                            .borrow()
-                            .clone()
-                            .expect("Uninitialized array element!")
-                            .into(),
-                        ty: None,
-                        span: Span::empty(),
-                    })
-                    .collect(),
-            ),
+            InterpreterData::Ref(_, expr) => expr.unwrap().inner,
+            InterpreterData::Array(elems, offset, orig_expr) => {
+                // orig_expr is used for references to the array.
+                // The array itself should be reconstructed to preserve
+                // modifications.
+                if let Some(expr) = orig_expr {
+                    return expr.inner;
+                }
+
+                if offset != 0 {
+                    panic!("Array reference should have been returned as an original expression!");
+                }
+
+                MIRExpressionInner::Array(
+                    elems
+                        .borrow()
+                        .iter()
+                        .map(|expr| MIRExpression {
+                            inner: expr
+                                .borrow()
+                                .clone()
+                                .expect("Uninitialized array element!")
+                                .into(),
+                            ty: None,
+                            span: Span::empty(),
+                        })
+                        .collect(),
+                )
+            }
         }
     }
 }
