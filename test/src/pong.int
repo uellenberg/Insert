@@ -178,7 +178,10 @@ helper function setQuineVar(index: i32, val: i32) {
 
 inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: bool, paddleRightCollision: bool) {
     // Paddle bounce.
-    if paddleLeftCollision || paddleRightCollision {
+    // paddleLeftCollision is conditional, here we select
+    // for only right side collision, since we don't need collision on
+    // the left side.
+    if (ballX == paddleLeftX + (PADDLE_WIDTH - 1) && paddleLeftCollision) || paddleRightCollision {
         ballX = ballX - ballSpeedX;
         ballSpeedX = -1 * ballSpeedX;
     }
@@ -284,7 +287,10 @@ inline function jumpUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
     }
 
     // If we collide with the paddle, restart.
-    if paddleLeftCollision || paddleRightCollision {
+    // paddleLeftCollision is conditional, here we select
+    // for only left side collision (since that's the only side
+    // the ball can collide with).
+    if (ballX + (BALL_WIDTH - 1) == paddleLeftX && paddleLeftCollision) || paddleRightCollision {
         ballSpeedX = 2;
         paddleLeftX = STARTING_PADDLE_LEFT_X;
         paddleLeftY = ROBOT_SPEED * (HEIGHT - JUMP_HEIGHT_0);
@@ -300,13 +306,13 @@ function main(argc: i32, argv: &[string]) -> i32 {
     }
     ballY = ballY + ballSpeedY;
 
-    // The left paddle needs collision on both sides, since
-    // it needs the right side for pong and the left side for jump.
-    // The right paddle uses the left side for both.
+    // The left paddle needs conditional collision based on
+    // the game mode (pong always collides on the right, jump
+    // only on the left).
     //
     // Top collision is excluded both for efficiency and to
     // make the games easier.
-    let paddleLeftCollision: bool = (ballX + (BALL_WIDTH - 1) == paddleLeftX || ballX == paddleLeftX) && ballY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && ballY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT;
+    let paddleLeftCollision: bool = ballY + BALL_HEIGHT > paddleLeftY / ROBOT_SPEED && ballY < paddleLeftY / ROBOT_SPEED + PADDLE_HEIGHT;
     let paddleRightCollision: bool = ballX + (BALL_WIDTH - 1) == paddleRightX && ballY + BALL_HEIGHT > paddleRightY && ballY < paddleRightY + PADDLE_HEIGHT;
 
     // Must be else if since they update gameState.
