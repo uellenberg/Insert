@@ -151,6 +151,12 @@ inline function printQuineItem(s: string) {
         } else if s[i] != ' ' && s[i] != '\n' {
             quinePart = false;
             putchar(s[i]);
+
+            // iocccsize doesn't count these chars if they're
+            // followed by a space.
+            if s[i] == '{' || s[i] == '}' || s[i] == ';' {
+                putchar(' ');
+            }
         }
     }
 
