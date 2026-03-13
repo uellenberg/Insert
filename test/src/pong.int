@@ -35,7 +35,9 @@ static paddleRightY: i32 = binding paddleRightYMarker (HEIGHT / 2 - PADDLE_HEIGH
 // and assumes that statics are always modified.
 const JUMP_HEIGHT_0: i32 = 1;
 const JUMP_HEIGHT_1: i32 = 3;
-static jumpHeights: [i32; 5] = [JUMP_HEIGHT_0, JUMP_HEIGHT_1, 1, 4, 1];
+// The last jump height has to be 0 so that we get a clean
+// scene with no paddles during the transition back to pong.
+static jumpHeights: [i32; 6] = [JUMP_HEIGHT_0, JUMP_HEIGHT_1, 1, 4, 1, 0];
 
 static quineStr: &[string] = $quine;
 
