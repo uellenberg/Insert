@@ -26,6 +26,10 @@ impl<'a> Display for MIRProgram<'a> {
                     self.markers[*key].fmt(f)?;
                     writeln!(f)?;
                 }
+                MIRDeclarationKey::Raw(key) => {
+                    write!(f, "raw \"{}\";", self.raws[*key].text)?;
+                    writeln!(f)?;
+                }
             }
         }
 
@@ -315,6 +319,13 @@ impl<'a> Display for MIRStatement<'a> {
             }
             MIRStatement::MarkerStatement { name, span, .. } => {
                 write!(f, "marker {name};")?;
+
+                if f.alternate() {
+                    writeln!(f, " /* {span} */")?;
+                }
+            }
+            MIRStatement::RawStatement { text, span, .. } => {
+                write!(f, "raw \"{text}\";")?;
 
                 if f.alternate() {
                     writeln!(f, " /* {span} */")?;

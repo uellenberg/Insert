@@ -1,0 +1,8 @@
+raw "/* comment here */
+";
+function main() : () {
+    if false {
+        raw "return 0;";
+    }
+    raw "return 1;";
+}

@@ -588,6 +588,7 @@ macro_rules! extract_expr_body {
             } => {}
             MIRStatement::ScopeStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
+            MIRStatement::RawStatement { .. } => {}
 
             MIRStatement::LoopStatement {
                 condition: Some(condition),

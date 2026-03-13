@@ -14,6 +14,7 @@ declaration = _{
     | importDeclaration
     | targetDeclaration
     | markerStatement
+    | rawStatement
 }
 
 staticDeclaration = { static_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";"  }
@@ -102,6 +103,7 @@ functionStatement = _{
     | divAssign
     | setVariable
     | markerStatement
+    | rawStatement
 }
 
 createVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ ";" }
@@ -166,6 +168,8 @@ breakStatement = { break_ ~ ";" }
 continueStatement = { continue_ ~ ";" }
 
 markerStatement = { marker ~ space ~ identifier ~ ";" }
+
+rawStatement = { raw_ ~ string ~ ";" }
 
 variableType = { "i32" | "u32" | "bool" | "()" | "string" | "char" | refType | arrayType | fixedArrayType | fnType | "(" ~ variableType ~ ")" }
 
@@ -291,8 +295,9 @@ marker = _{ "marker" }
 binding = _{ "binding" }
 while_ = _{ "while" }
 for_ = _{ "for" }
+raw_ = _{ "raw" }
 
 inlineOut = { inline }
 helperOut = { helper }
 
-keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | while_ | for_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ | fn_ }
+keyword = _{ static_ | const_ | function | let_ | return_ | if_ | else_ | loop_ | while_ | for_ | break_ | continue_ | inline | helper | true_ | false_ | import | target | extern_ | from_ | fn_ | raw_ }

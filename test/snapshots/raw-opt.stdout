@@ -1,0 +1,5 @@
+raw "/* comment here */
+";
+function main() : () {
+    raw "return 1;";
+}

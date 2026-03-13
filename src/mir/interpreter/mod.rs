@@ -879,6 +879,9 @@ impl<'a> Interpreter<'a> {
                 // The chunk statement writes to them, and that's
                 // interpreter-only, so we must handle it here.
             }
+            MIRStatement::RawStatement { .. } => {
+                // Raw statements don't affect interpreter execution.
+            }
         }
 
         Ok(None)

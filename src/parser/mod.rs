@@ -3,8 +3,8 @@ pub mod span;
 
 use crate::mir::{
     MIRConstant, MIRContext, MIRDeclaration, MIRExpression, MIRExpressionInner, MIRFnCall,
-    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRMarker, MIRStatement, MIRStatic,
-    MIRType, MIRTypeInner, MIRVariable,
+    MIRFnSource, MIRFunction, MIRFunctionArgs, MIRFunctionType, MIRMarker, MIRRaw, MIRStatement,
+    MIRStatic, MIRType, MIRTypeInner, MIRVariable,
 };
 use crate::parser::file_cache::file_cache;
 use pest::Parser;
@@ -105,6 +105,9 @@ fn parse_declarations<'a>(
             Rule::markerStatement => {
                 res.push(MIRDeclaration::Marker(parse_marker(location, pair)));
             }
+            Rule::rawStatement => {
+                res.push(MIRDeclaration::Raw(parse_raw(location, pair)));
+            }
             _ => unreachable!(),
         }
     }
@@ -146,6 +149,16 @@ fn parse_marker<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRMarker<'a> 
         name: Cow::Borrowed(identifier),
         span,
     }
+}
+
+fn parse_raw<'a>(location: &'a Path, value: Pair<'a, Rule>) -> MIRRaw<'a> {
+    assert_eq!(value.as_rule(), Rule::rawStatement);
+
+    let span = to_span(location, value.as_span());
+    let mut data = value.into_inner();
+
+    let text = parse_string(data.next().unwrap()).into();
+    MIRRaw { text, span }
 }
 
 fn parse_constant<'a>(
@@ -649,6 +662,13 @@ fn parse_statement<'a>(
             Some(MIRStatement::MarkerStatement {
                 name: marker.name,
                 span: marker.span,
+            })
+        }
+        Rule::rawStatement => {
+            let raw = parse_raw(location, pair);
+            Some(MIRStatement::RawStatement {
+                text: raw.text,
+                span: raw.span,
             })
         }
         _ => unreachable!(),

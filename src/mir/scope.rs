@@ -129,6 +129,7 @@ macro_rules! explore_recurse {
             MIRStatement::SubAssign { .. } => {}
             MIRStatement::MulAssign { .. } => {}
             MIRStatement::DivAssign { .. } => {}
+            MIRStatement::RawStatement { .. } => {}
 
             MIRStatement::LoopStatement { body, iterate, .. } => {
                 let $list = body;
@@ -230,6 +231,7 @@ impl<ParentData: Clone + Default, ScopeData: Clone + Default>
             MIRStatement::LoopStatement { .. } => {}
             MIRStatement::ScopeStatement { .. } => {}
             MIRStatement::MarkerStatement { .. } => {}
+            MIRStatement::RawStatement { .. } => {}
             MIRStatement::IncrementVariable { .. } => {}
             MIRStatement::DecrementVariable { .. } => {}
             MIRStatement::AddAssign { .. } => {}

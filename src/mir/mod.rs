@@ -220,6 +220,7 @@ new_key_type! {
     pub struct MIRStaticKey;
     pub struct MIRFunctionKey;
     pub struct MIRMarkerKey;
+    pub struct MIRRawKey;
 }
 
 /// A declaration (base-level statement).
@@ -229,6 +230,7 @@ pub enum MIRDeclarationKey {
     Static(MIRStaticKey),
     Function(MIRFunctionKey),
     Marker(MIRMarkerKey),
+    Raw(MIRRawKey),
 }
 
 /// A list of function overloads for a single function name.
@@ -409,6 +411,9 @@ pub struct MIRProgram<'a> {
     /// A list of markers in the program.
     pub markers: SlotMap<MIRMarkerKey, MIRMarker<'a>>,
 
+    /// A list of raw statements in the program.
+    pub raws: SlotMap<MIRRawKey, MIRRaw<'a>>,
+
     /// Name -> Constant.
     pub const_names: HashMap<Cow<'a, str>, MIRConstKey>,
 
@@ -432,8 +437,11 @@ impl<'a> MIRContext<'a> {
     /// This doesn't modify the usage site of this declaration, so just
     /// calling this by itself will leave the program in an invalid state.
     pub fn try_rename(&mut self, key: MIRDeclarationKey, name: Cow<'a, str>) -> bool {
-        // Markers cannot be renamed.
-        if matches!(key, MIRDeclarationKey::Marker(_)) {
+        // Markers and raws cannot be renamed.
+        if matches!(
+            key,
+            MIRDeclarationKey::Marker(_) | MIRDeclarationKey::Raw(_)
+        ) {
             return false;
         } else if self.program.const_names.contains_key(&name)
             || self.program.static_names.contains_key(&name)
@@ -490,6 +498,8 @@ impl<'a> MIRContext<'a> {
                 self.program.markers[key].name = name.clone();
                 self.program.marker_names.insert(name, key);
             }
+            // Raw statements can't be renamed.
+            MIRDeclarationKey::Raw(_) => unreachable!(),
         }
 
         true
@@ -527,6 +537,11 @@ impl<'a> MIRContext<'a> {
                     self.program
                         .decls
                         .retain(|val| val != &MIRDeclarationKey::Marker(key));
+                }
+                MIRDeclarationKey::Raw(key) => {
+                    self.program
+                        .decls
+                        .retain(|val| val != &MIRDeclarationKey::Raw(key));
                 }
             }
         }
@@ -626,6 +641,8 @@ impl<'a> MIRContext<'a> {
                 // so we can just use the const check.
                 self.check_no_duplicates(&marker.name, None, &marker.span)
             }
+            // Raw statements have no name.
+            MIRDeclaration::Raw(_) => true,
         };
         if !no_duplicates {
             // Error has already been printed.
@@ -670,6 +687,10 @@ impl<'a> MIRContext<'a> {
                     .or_insert(FunctionOverloads::new(self.target))
                     .push(args_ty, key);
                 Some(MIRDeclarationKey::Function(key))
+            }
+            MIRDeclaration::Raw(raw) => {
+                let key = self.program.raws.insert(raw);
+                Some(MIRDeclarationKey::Raw(key))
             }
             MIRDeclaration::Marker(marker) => {
                 let name = marker.name.clone();
@@ -733,6 +754,17 @@ pub enum MIRDeclaration<'a> {
     Static(MIRStatic<'a>),
     Function(MIRFunction<'a>),
     Marker(MIRMarker<'a>),
+    Raw(MIRRaw<'a>),
+}
+
+/// A raw statement that emits text directly into the output.
+#[derive(Debug, Clone)]
+pub struct MIRRaw<'a> {
+    /// The text to emit.
+    pub text: Cow<'a, str>,
+
+    /// The code that created this item.
+    pub span: Span<'a>,
 }
 
 /// A constant variable.
@@ -1122,6 +1154,15 @@ pub enum MIRStatement<'a> {
         /// This MUST not be changed, since it's
         /// in sync with MIRMarker.
         name: Cow<'a, str>,
+
+        /// The code that created this item.
+        span: Span<'a>,
+    },
+
+    /// A raw statement that emits text directly into the output.
+    RawStatement {
+        /// The text to emit.
+        text: Cow<'a, str>,
 
         /// The code that created this item.
         span: Span<'a>,

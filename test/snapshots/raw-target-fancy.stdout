@@ -1,0 +1,4 @@
+/* comment here */
+void main(){
+    return 1;
+}

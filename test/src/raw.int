@@ -1,0 +1,11 @@
+//@check
+
+raw "/* comment here */\n";
+
+function main() {
+    if false {
+        raw "return 0;";
+    }
+
+    raw "return 1;";
+}

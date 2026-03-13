@@ -202,6 +202,7 @@ fn check_function<'a>(ctx: &MIRContext<'a>, function: &mut MIRFunction<'a>) -> b
                 } => {}
                 MIRStatement::ScopeStatement { .. } => {}
                 MIRStatement::MarkerStatement { .. } => {}
+                MIRStatement::RawStatement { .. } => {}
 
                 MIRStatement::LoopStatement {
                     condition: Some(condition),

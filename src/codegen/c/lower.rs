@@ -60,6 +60,9 @@ impl Codegen for CLowerer {
                         style: TokenStyle::Marker,
                     });
                 }
+                MIRDeclarationKey::Raw(key) => {
+                    body.push(Token::new(program.raws[*key].text.clone()));
+                }
             }
         }
 
@@ -560,6 +563,10 @@ impl Codegen for CLowerer {
                 text: Some(name.clone()),
                 style: TokenStyle::Marker,
             }]),
+
+            MIRStatement::RawStatement { text, .. } => {
+                Some(spread![Token::new(text.clone())])
+            }
         }
     }
 
