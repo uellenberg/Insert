@@ -1,6 +1,6 @@
 //@check
 
-raw "\n/* IOCCC 2026, w = up, e = down */\n\n";
+raw "\n/* IOCCC29, w = up, e = down */\n\n";
 
 const WIDTH: i32 = 70;
 const HEIGHT: i32 = 15;
