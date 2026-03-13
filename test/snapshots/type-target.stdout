@@ -1,12 +1,17 @@
-#define hc (char
-#define gc ,unsigned int
-#define fc *Wb)
+#define hc ,unsigned int
+#define gc (*Wb)
+#define fc (int*
 #define ec (int Wb
-#define dc (int*
-#define cc (*Wb)
-#define bc (int
+#define dc (int
+#define cc **Wb)(int
+#define bc (*Wb)(int
 #define ac ){return;}void
 #define Zb (unsigned int
 #define Yb *Wb){return;}void
 #define Xb )){return;}void
-void a ec ac b Zb Wb ac c ec ac d hc Yb e ec ac f Zb Wb ac g ec ac h bc Yb i Zb Yb j bc Yb k hc*Yb l bc Yb m bc Yb n bc Yb o Zb Yb p bc Yb q hc*Yb r bc Yb s bc Yb t ec[10]ac u Zb Wb[5]ac v ec[3]ac w hc*Wb[8]ac x ec[10]ac y ec[5]ac z dc Yb A Zb**Yb B dc**Yb C dc Yb D dc Yb E dc Yb F Zb*Yb G dc Yb H dc*Yb I dc Yb J dc Yb K bc*Wb[4]ac L Zb**Wb[2]ac M bc*Wb[3]ac N bc*Wb[3]ac O bc cc[10]ac P Zb(*fc[5]ac Q bc cc[3]ac R bc cc[10]ac S dc*Yb T Zb**Yb U dc*Wb[2]ac V dc cc[5]ac W ec[4][3][2]ac X Zb cc[3][2][1]ac Y dc*Yb Z Zb**Yb ab ec[4][4]ac bb ec[2][2][2]ac cb ec[4][4]ac db(void cc(void Xb eb bc cc bc Xb fb hc*cc bc gc,int Xb gb bc cc hc*,...Xb hb bc cc(...Xb ib Zb*cc bc Xb jb Zb cc dc Xb kb dc cc dc gc*Xb lb bc cc bc Xb mb bc cc bc Xb nb bc cc bc Xb ob bc(*fc bc Xb pb Zb(**fc Zb Xb qb bc(*fc bc Xb rb bc(*fc bc Xb sb bc(*cc bc))Zb Xb tb Zb(**cc(void))bc Xb ub Zb(*cc(void))bc Xb vb Zb cc bc(*)bc)Xb wb Zb(*cc bc(*)bc)))Zb Xb xb Zb cc bc(*)bc)Xb yb Zb*cc bc Xb zb bc cc(void)[5]ac Ab Zb cc dc Xb Bb bc cc bc[3]Xb Cb Zb*cc dc Xb Db bc(*fc bc Xb Eb Zb(*Wb[4])Zb Xb Fb bc(*fc bc Xb Gb bc(*fc bc Xb Hb Zb**cc dc*Xb Ib Zb*(*fc dc Xb Jb Zb*(*cc dc(*)dc)))Zb*Xb Kb dc(**Wb[3])bc gc Xb Lb Zb(**cc bc(*(*)[2])bc)))Zb Xb Mb Zb**cc dc*Xb Nb Zb*(*fc dc Xb Ob bc(***fc bc Xb Pb bc cc bc(*)bc(*)bc))Xb Qb dc(**fc dc Xb Rb dc(***fc dc Xb Sb ec ac Tb dc*Yb Ub bc*Wb[5]ac Vb Zb cc bc)){return;}
+#define mc dc gc
+#define lc dc bc Xb
+#define kc fc Yb
+#define jc dc Yb
+#define ic dc(cc Xb
+void a ec ac b Zb Wb ac c ec ac d(char Yb e ec ac f Zb Wb ac g ec ac h jc i Zb Yb j jc k(char*Yb l jc m jc n jc o Zb Yb p jc q(char*Yb r jc s jc t ec[10]ac u Zb Wb[5]ac v ec[3]ac w(char*Wb[8]ac x ec[10]ac y ec[5]ac z kc A Zb**Yb B fc**Yb C kc D kc E kc F Zb*Yb G kc H fc*Yb I kc J kc K dc*Wb[4]ac L Zb**Wb[2]ac M dc*Wb[3]ac N dc*Wb[3]ac O mc[10]ac P Zb(**Wb)[5]ac Q mc[3]ac R mc[10]ac S fc*Yb T Zb**Yb U fc*Wb[2]ac V fc gc[5]ac W ec[4][3][2]ac X Zb gc[3][2][1]ac Y fc*Yb Z Zb**Yb ab ec[4][4]ac bb ec[2][2][2]ac cb ec[4][4]ac db(void gc(void Xb eb lc fb(char*bc hc,int Xb gb mc(char*,...Xb hb mc(...Xb ib Zb*bc Xb jb Zb bc*Xb kb fc bc*hc*Xb lb lc mb lc nb lc ob ic pb Zb(***Wb)Zb Xb qb ic rb ic sb dc(*bc))Zb Xb tb Zb(**gc(void))dc Xb ub Zb(*gc(void))dc Xb vb Zb bc(*)dc)Xb wb Zb(*bc(*)dc)))Zb Xb xb Zb bc(*)dc)Xb yb Zb*bc Xb zb mc(void)[5]ac Ab Zb bc*Xb Bb dc bc[3]Xb Cb Zb*bc*Xb Db ic Eb Zb(*Wb[4])Zb Xb Fb ic Gb ic Hb Zb**bc**Xb Ib Zb*(cc*Xb Jb Zb*(*bc*(*)fc)))Zb*Xb Kb fc(**Wb[3])dc hc Xb Lb Zb(**bc(*(*)[2])dc)))Zb Xb Mb Zb**bc**Xb Nb Zb*(cc*Xb Ob dc(**cc Xb Pb dc bc(*)dc(*)dc))Xb Qb fc(*cc*Xb Rb fc(**cc*Xb Sb ec ac Tb fc*Yb Ub dc*Wb[5]ac Vb Zb bc)){return;}

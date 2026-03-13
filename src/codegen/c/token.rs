@@ -156,30 +156,20 @@ pub fn append_escape(append: &mut String, c: char) {
     append.push_str(add);
 }
 
-/// The length we assume a replacement (define name) will be.
-/// For simplicity this is kept at 1, as it's more challenging to
-/// determine the current next valid name for each define.
-///
-/// As a result, the cost calculation may be slightly off, and it may
-/// incorrectly create a define when it shouldn't.
-/// However, this will probably only cause a loss of a few characters,
-/// and is unlikely to begin with.
-const REPLACE_LEN: usize = 1;
-
 /// The full cost of a define line: `#define {name} {text}\n`.
 ///
 /// If the value contains newlines, each one requires an extra
 /// backslash, adding to the cost.
-fn define_line_cost(text: &str) -> i32 {
+fn define_line_cost(text: &str, replace_len: usize) -> i32 {
     let newline_cost = text.bytes().filter(|&b| b == b'\n').count();
-    ("#define ".len() + REPLACE_LEN + " ".len() + text.len() + newline_cost + "\n".len()) as i32
+    ("#define ".len() + replace_len + " ".len() + text.len() + newline_cost + "\n".len()) as i32
 }
 
 /// How many characters are saved by replacing a token with text `text`,
 /// appearing `count` times, with a define.
-fn define_savings(text: &str, count: usize) -> i32 {
-    let saved_per_use = text.len() as i32 - REPLACE_LEN as i32;
-    let line_cost = define_line_cost(text);
+fn define_savings(text: &str, count: usize, replace_len: usize) -> i32 {
+    let saved_per_use = text.len() as i32 - replace_len as i32;
+    let line_cost = define_line_cost(text, replace_len);
     saved_per_use * count as i32 - line_cost
 }
 
@@ -265,7 +255,7 @@ impl<'a> MergeState<'a> {
     /// A merge is profitable when after > before, i.e. merging
     /// lets us save more text than could be done with both tokens
     /// individually.
-    fn find_best_merge(&self) -> Option<(Cow<'a, str>, Cow<'a, str>)> {
+    fn find_best_merge(&self, replace_len: usize) -> Option<(Cow<'a, str>, Cow<'a, str>)> {
         // This is used to keep a consistent sort order
         // when we get the same benefit.
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -284,13 +274,13 @@ impl<'a> MergeState<'a> {
                 // We have a min of 0 because if we don't save anything from making
                 // this token a define, we wouldn't do so in the first place, i.e.,
                 // zero savings.
-                let before = define_savings(left, left_count).max(0)
-                    + define_savings(right, right_count).max(0);
+                let before = define_savings(left, left_count, replace_len).max(0)
+                    + define_savings(right, right_count, replace_len).max(0);
 
-                let after = define_savings(pair_merged, *pair_count).max(0)
+                let after = define_savings(pair_merged, *pair_count, replace_len).max(0)
                     // left and right no longer get to claim the savings for this pair.
-                    + define_savings(left, left_count - *pair_count).max(0)
-                    + define_savings(right, right_count - *pair_count).max(0);
+                    + define_savings(left, left_count - *pair_count, replace_len).max(0)
+                    + define_savings(right, right_count - *pair_count, replace_len).max(0);
 
                 let benefit = after - before;
                 // This makes us stop iterating once we can't compress anymore.
@@ -307,12 +297,12 @@ impl<'a> MergeState<'a> {
 
 /// Iteratively merges the most beneficial adjacent pair until no
 /// profitable merges remain.
-fn merge_pairs(info: &impl TokenInfo, body: &mut Tokens<'_>) {
+fn merge_pairs(info: &impl TokenInfo, body: &mut Tokens<'_>, replace_len: usize) {
     loop {
         // It's somewhat expensive to recompute the MergeState every iteration,
         // but updating it correctly is very complex.
         let state = MergeState::new(info, body);
-        let Some((merge_left, merge_right)) = state.find_best_merge() else {
+        let Some((merge_left, merge_right)) = state.find_best_merge(replace_len) else {
             break;
         };
 
@@ -365,6 +355,8 @@ fn assign_defines<'a>(
     // The neighbors of each token change as we do more replacements.
     // Therefore, we must recompute at each step to determine profitability.
     loop {
+        let define_name = next_name(&mut name_num, used);
+
         // This is used to keep a consistent sort order
         // when we get the same savings.
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -395,7 +387,7 @@ fn assign_defines<'a>(
                     })
                     .sum();
 
-                let s = define_savings(token, count) - num_spaces;
+                let s = define_savings(token, count, define_name.len()) - num_spaces;
                 if s <= 0 {
                     // This token is not worth compressing.
                     return None;
@@ -410,7 +402,6 @@ fn assign_defines<'a>(
         };
         counts.remove(&to_replace);
 
-        let define_name = next_name(&mut name_num, used);
         defines.push((to_replace.clone(), define_name.to_string()));
 
         for token in body.iter_mut() {
@@ -456,6 +447,14 @@ pub fn compress_with_defines<'a>(
         .flat_map(|token| token.text.clone())
         .collect();
 
+    // Use the minimum possible next identifier size as a good estimate
+    // to use for calculating define cost for merging.
+    // This doesn't take into account the size increasing midway through,
+    // once we reach the next length, but doing is very complex,
+    // and merge_pairs does do it, so we won't create defines that
+    // make the output longer.
+    let replace_len = next_name(&mut 0, &used).len();
+
     // Merge adjacent tokens if doing so allows saving more space
     // overall.
     // For example, if a is always followed by b, then we'd want to merge
@@ -465,7 +464,7 @@ pub fn compress_with_defines<'a>(
     //
     // The main complexity is with cases in between these, as it may make sense to merge
     // both a+b and a+d.
-    merge_pairs(info, body);
+    merge_pairs(info, body, replace_len);
 
     // Now that tokens are maximized, compress the ones with the biggest savings by
     // turning them into defines.

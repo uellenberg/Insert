@@ -70,7 +70,17 @@ impl Codegen for CLowerer {
             strip_fancy_tokens(&mut header);
             strip_fancy_tokens(&mut body);
 
-            compress_with_defines(self, &mut header, &mut body);
+            // If compress_with_defines modified the code,
+            // it will have added a new define to the header.
+            let mut old_header_size: usize = header.len();
+            loop {
+                compress_with_defines(self, &mut header, &mut body);
+
+                if header.len() == old_header_size {
+                    break;
+                }
+                old_header_size = header.len();
+            }
         }
 
         body.splice(0..0, header);
@@ -564,9 +574,7 @@ impl Codegen for CLowerer {
                 style: TokenStyle::Marker,
             }]),
 
-            MIRStatement::RawStatement { text, .. } => {
-                Some(spread![Token::new(text.clone())])
-            }
+            MIRStatement::RawStatement { text, .. } => Some(spread![Token::new(text.clone())]),
         }
     }
 
