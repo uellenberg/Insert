@@ -717,7 +717,11 @@ fn parse_logical<'a>(
             "||" => MIRExpressionInner::BoolOr(Box::new(lhs), Box::new(rhs)),
             _ => unreachable!(),
         };
-        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
+        lhs = MIRExpression {
+            inner: expr,
+            ty: None,
+            span: span.clone(),
+        };
     }
 
     lhs
@@ -746,7 +750,11 @@ fn parse_comparison<'a>(
             "<=" => MIRExpressionInner::LessEq(Box::new(lhs), Box::new(rhs)),
             _ => unreachable!(),
         };
-        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
+        lhs = MIRExpression {
+            inner: expr,
+            ty: None,
+            span: span.clone(),
+        };
     }
 
     lhs
@@ -771,7 +779,11 @@ fn parse_addition<'a>(
             "-" => MIRExpressionInner::Sub(Box::new(lhs), Box::new(rhs)),
             _ => unreachable!(),
         };
-        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
+        lhs = MIRExpression {
+            inner: expr,
+            ty: None,
+            span: span.clone(),
+        };
     }
 
     lhs
@@ -796,7 +808,11 @@ fn parse_multiplication<'a>(
             "/" => MIRExpressionInner::Div(Box::new(lhs), Box::new(rhs)),
             _ => unreachable!(),
         };
-        lhs = MIRExpression { inner: expr, ty: None, span: span.clone() };
+        lhs = MIRExpression {
+            inner: expr,
+            ty: None,
+            span: span.clone(),
+        };
     }
 
     lhs

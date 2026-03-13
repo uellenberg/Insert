@@ -218,7 +218,12 @@ impl<'a> Display for MIRStatement<'a> {
                     writeln!(f, " /* {span} */")?;
                 }
             }
-            MIRStatement::LoopStatement { condition, body, iterate, span } => {
+            MIRStatement::LoopStatement {
+                condition,
+                body,
+                iterate,
+                span,
+            } => {
                 if let Some(cond) = condition {
                     writeln!(f, "while {} {{", cond)?;
                 } else {
