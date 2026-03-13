@@ -445,6 +445,72 @@ fn parse_statement<'a>(
 
             Some(MIRStatement::SetVariable { place, value, span })
         }
+        // These get converted to SetVariable to make future analysis easier,
+        // but will get re-compacted later in the compilation process.
+        Rule::addAssign => {
+            let mut data = pair.into_inner();
+
+            let place = parse_place_expr(location, data.next().unwrap(), ctx);
+            let value = parse_expression(location, data.next().unwrap(), ctx);
+
+            Some(MIRStatement::SetVariable {
+                place: place.clone(),
+                value: MIRExpression {
+                    inner: MIRExpressionInner::Add(Box::new(place), Box::new(value)),
+                    ty: None,
+                    span: span.clone(),
+                },
+                span,
+            })
+        }
+        Rule::subAssign => {
+            let mut data = pair.into_inner();
+
+            let place = parse_place_expr(location, data.next().unwrap(), ctx);
+            let value = parse_expression(location, data.next().unwrap(), ctx);
+
+            Some(MIRStatement::SetVariable {
+                place: place.clone(),
+                value: MIRExpression {
+                    inner: MIRExpressionInner::Sub(Box::new(place), Box::new(value)),
+                    ty: None,
+                    span: span.clone(),
+                },
+                span,
+            })
+        }
+        Rule::mulAssign => {
+            let mut data = pair.into_inner();
+
+            let place = parse_place_expr(location, data.next().unwrap(), ctx);
+            let value = parse_expression(location, data.next().unwrap(), ctx);
+
+            Some(MIRStatement::SetVariable {
+                place: place.clone(),
+                value: MIRExpression {
+                    inner: MIRExpressionInner::Mul(Box::new(place), Box::new(value)),
+                    ty: None,
+                    span: span.clone(),
+                },
+                span,
+            })
+        }
+        Rule::divAssign => {
+            let mut data = pair.into_inner();
+
+            let place = parse_place_expr(location, data.next().unwrap(), ctx);
+            let value = parse_expression(location, data.next().unwrap(), ctx);
+
+            Some(MIRStatement::SetVariable {
+                place: place.clone(),
+                value: MIRExpression {
+                    inner: MIRExpressionInner::Div(Box::new(place), Box::new(value)),
+                    ty: None,
+                    span: span.clone(),
+                },
+                span,
+            })
+        }
         Rule::functionCallDirect => {
             let mut data = pair.into_inner();
 

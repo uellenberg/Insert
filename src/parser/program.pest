@@ -96,6 +96,10 @@ functionStatement = _{
     | forStatement
     | continueStatement
     | breakStatement
+    | addAssign
+    | subAssign
+    | mulAssign
+    | divAssign
     | setVariable
     | markerStatement
 }
@@ -105,6 +109,10 @@ createVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ ";" }
 createSetVariable = { let_ ~ space ~ identifier ~ ":" ~ variableType ~ "=" ~ expression ~ ";" }
 
 setVariable = { placeExpr ~ "=" ~ expression ~ ";" }
+addAssign = { placeExpr ~ "+=" ~ expression ~ ";" }
+subAssign = { placeExpr ~ "-=" ~ expression ~ ";" }
+mulAssign = { placeExpr ~ "*=" ~ expression ~ ";" }
+divAssign = { placeExpr ~ "/=" ~ expression ~ ";" }
 
 functionCallDirect = { identifier ~ "(" ~ functionCallArgs? ~ ")"  }
 functionCallDirectStmt = _{ functionCallDirect ~ ";" }

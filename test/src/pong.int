@@ -56,7 +56,7 @@ static offset: i32 = 1;
   * This uses recursion to skip an offset while still printing out a character in the end.
   */
 helper function printQuineArrayChar() -> bool {
-    offset = offset + 1;
+    offset += 1;
 
     if offset == 1 {
         // false
@@ -72,7 +72,7 @@ helper function printQuineArrayChar() -> bool {
 
     if c == '\0' {
         offset = 0;
-        idx = idx + 1;
+        idx += 1;
         // false
         return putchar('"') == '\0';
     }
@@ -107,15 +107,15 @@ inline function printQuineArr() {
     putchar('\\');
     putchar('\n');
 
-    for let row: i32 = 0; row < HEIGHT; row = row + 1; {
-        for let col: i32 = 0; col < WIDTH; col = col + 1; {
+    for let row: i32 = 0; row < HEIGHT; row += 1; {
+        for let col: i32 = 0; col < WIDTH; col += 1; {
             if idx >= $quineLen || (col >= ballX && row >= ballY && col - ballX < BALL_WIDTH && row - ballY < BALL_HEIGHT)
                || (col >= paddleLeftX && row >= paddleLeftY / ROBOT_SPEED && col - paddleLeftX < PADDLE_WIDTH && row - paddleLeftY / ROBOT_SPEED < PADDLE_HEIGHT)
                || (col >= paddleRightX && row >= paddleRightY && col - paddleRightX < PADDLE_WIDTH && row - paddleRightY < PADDLE_HEIGHT)
             {
                 putchar(' ');
             } else if printQuineArrayChar() {
-                col = col + 1;
+                col += 1;
             }
         }
 
@@ -166,7 +166,7 @@ inline function printQuineItem(s: string) {
 }
 
 inline function printQuine() {
-    for let i: i32 = 0; i < $quineLen; i = i + 1; {
+    for let i: i32 = 0; i < $quineLen; i += 1; {
         if i != 0 {
             putchar(' ');
         }
@@ -188,7 +188,7 @@ inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
     // for only right side collision, since we don't need collision on
     // the left side.
     if (ballX == paddleLeftX + (PADDLE_WIDTH - 1) && paddleLeftCollision) || paddleRightCollision {
-        ballX = ballX - ballSpeedX;
+        ballX -= ballSpeedX;
         ballSpeedX = -1 * ballSpeedX;
     }
 
@@ -207,45 +207,45 @@ inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
 
     // Top and bottom walls should bounce.
     if ballY < 0 || ballY > HEIGHT - BALL_HEIGHT {
-        ballY = ballY - ballSpeedY;
+        ballY -= ballSpeedY;
         ballSpeedY = -1 * ballSpeedY;
     }
 
     // Compute paddle updates.
 
     if paddleLeftY / ROBOT_SPEED > HEIGHT - PADDLE_HEIGHT {
-        paddleLeftY = paddleLeftY - ROBOT_SPEED;
+        paddleLeftY -= ROBOT_SPEED;
     }
 
     if paddleRightY > HEIGHT - PADDLE_HEIGHT {
-        paddleRightY = paddleRightY - 1;
+        paddleRightY -= 1;
     }
 
     if argc > 1 {
         if argv[1][0] == 'w' && paddleRightY > 0 {
-            paddleRightY = paddleRightY - 1;
+            paddleRightY -= 1;
         }
 
         if argv[1][0] == 's' && paddleRightY < HEIGHT - PADDLE_HEIGHT {
-            paddleRightY = paddleRightY + 1;
+            paddleRightY += 1;
         }
     }
 
     let robotDistance: i32 = paddleLeftY / ROBOT_SPEED - ballY + (PADDLE_HEIGHT / 2 - BALL_HEIGHT / 2);
     if robotDistance < 0 {
-        paddleLeftY = paddleLeftY + 1;
+        paddleLeftY += 1;
     }
 
     if robotDistance > 0 {
-        paddleLeftY = paddleLeftY - 1;
+        paddleLeftY -= 1;
     }
 }
 
 inline function jumpUpdates(argc: i32, argv: &[string], paddleLeftCollision: bool, paddleRightCollision: bool) {
     // Gravity.
-    ballY = ballY + 1;
+    ballY += 1;
     if ballSpeedY < 0 {
-        ballSpeedY = ballSpeedY + 1;
+        ballSpeedY += 1;
     }
 
     // Jump handling.
@@ -264,21 +264,21 @@ inline function jumpUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
     //
     // ballSpeedX encodes gameState.
     if paddleLeftY / ROBOT_SPEED < HEIGHT - jumpHeights[ballSpeedX - 2] {
-        paddleLeftY = paddleLeftY + ROBOT_SPEED;
+        paddleLeftY += ROBOT_SPEED;
     } else {
-        paddleLeftX = paddleLeftX - 1;
+        paddleLeftX -= 1;
     }
 
     if paddleRightY < HEIGHT - jumpHeights[ballSpeedX - 1] {
-        paddleRightY = paddleRightY + 1;
+        paddleRightY += 1;
     } else {
-        paddleRightX = paddleRightX - 1;
+        paddleRightX -= 1;
     }
 
     // Swap out paddles when they reach the edge of the screen.
     if paddleLeftX + PADDLE_WIDTH <= 0 {
         // ballSpeedX encodes gameState.
-        ballSpeedX = ballSpeedX + 1;
+        ballSpeedX += 1;
         if ballSpeedX < 7 {
             paddleLeftX = paddleRightX;
             paddleLeftY = paddleRightY * ROBOT_SPEED;
@@ -308,9 +308,9 @@ inline function jumpUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
 function main(argc: i32, argv: &[string]) -> i32 {
     // ballSpeedX > 1 means it encodes gameState.
     if ballSpeedX < 2 {
-        ballX = ballX + ballSpeedX;
+        ballX += ballSpeedX;
     }
-    ballY = ballY + ballSpeedY;
+    ballY += ballSpeedY;
 
     // The left paddle needs conditional collision based on
     // the game mode (pong always collides on the right, jump

@@ -23,7 +23,7 @@ function main() {
     let w_acc: u32 = 0;
     let w_i: u32 = 0;
     while w_i <= max {
-        w_acc = w_acc + w_i;
+        w_acc += w_i;
         w_i = w_i + 1;
     }
     while_sum = w_acc;

@@ -1038,6 +1038,7 @@ pub enum MIRStatement<'a> {
     },
 
     /// Increments a place by one (place++).
+    /// This doesn't exist until after compact_statements runs.
     IncrementVariable {
         /// The place to increment.
         place: MIRExpression<'a>,
@@ -1048,6 +1049,7 @@ pub enum MIRStatement<'a> {
     },
 
     /// Decrements a place by one (place--).
+    /// This doesn't exist until after compact_statements runs.
     DecrementVariable {
         /// The place to decrement.
         place: MIRExpression<'a>,
@@ -1058,6 +1060,7 @@ pub enum MIRStatement<'a> {
     },
 
     /// Adds a value to a place in-place (place += value).
+    /// This doesn't exist until after compact_statements runs.
     AddAssign {
         /// The place to add to.
         place: MIRExpression<'a>,
@@ -1071,6 +1074,7 @@ pub enum MIRStatement<'a> {
     },
 
     /// Subtracts a value from a place in-place (place -= value).
+    /// This doesn't exist until after compact_statements runs.
     SubAssign {
         /// The place to subtract from.
         place: MIRExpression<'a>,
@@ -1084,6 +1088,7 @@ pub enum MIRStatement<'a> {
     },
 
     /// Multiplies a place by a value in-place (place *= value).
+    /// This doesn't exist until after compact_statements runs.
     MulAssign {
         /// The place to multiply.
         place: MIRExpression<'a>,
@@ -1097,6 +1102,7 @@ pub enum MIRStatement<'a> {
     },
 
     /// Divides a place by a value in-place (place /= value).
+    /// This doesn't exist until after compact_statements runs.
     DivAssign {
         /// The place to divide.
         place: MIRExpression<'a>,
