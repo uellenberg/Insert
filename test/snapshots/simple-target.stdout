@@ -1,1 +1,2 @@
-unsigned int a=21;int b=0;unsigned int c=2;void main(){a=5;a=25;b=1;}
+#define e unsigned int
+e a=21;int b=0;e c=2;e d=1;void main(){a=5;a=25;b=1;c=1;d=b?1:2;}

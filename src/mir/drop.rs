@@ -568,6 +568,14 @@ fn collect_refs(
             .flat_map(|expr| collect_refs(expr, relationships))
             .collect(),
 
+        // Either branch of a ternary could produce a ref.
+        MIRExpressionInner::Ternary(_, on_true, on_false) => {
+            let mut result = collect_refs(on_true, relationships);
+            result.extend(collect_refs(on_false, relationships));
+
+            result
+        }
+
         // Binary ops, unary ops, literals, etc: no refs flow through
         MIRExpressionInner::Add(..)
         | MIRExpressionInner::Sub(..)

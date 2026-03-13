@@ -385,6 +385,9 @@ impl<'a> Display for MIRExpressionInner<'a> {
             MIRExpressionInner::Binding(left, inner, _) => {
                 write!(f, "binding {} ({})", left.name, inner)
             }
+            MIRExpressionInner::Ternary(cond, on_true, on_false) => {
+                write!(f, "{} ? {} : {}", cond, on_true, on_false)
+            }
         }
     }
 }

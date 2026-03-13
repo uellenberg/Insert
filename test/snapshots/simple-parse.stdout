@@ -3,6 +3,7 @@ const val2: u32 = (5 + val1);
 static test: u32 = (((val2 + 5) + (2 * (8 - 5))) - 5);
 static test2: bool = (val1 == val2);
 static test3: u32 = ((5 - 1) - 2);
+static test4: u32 = 1;
 function main() : () {
     let v: u32;
     v = 5;
@@ -13,4 +14,6 @@ function main() : () {
     test = v;
     test = g;
     test2 = h;
+    test3 = h ? 1 : 2;
+    test4 = test2 ? 1 : 2;
 }

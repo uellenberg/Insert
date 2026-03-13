@@ -290,6 +290,15 @@ impl<'a> Interpreter<'a> {
             MIRExpressionInner::BoolOr(left, right) => {
                 simple_binary!(left, right, Bool > Bool, ||, BoolOr)
             }
+            MIRExpressionInner::Ternary(cond, on_true, on_false) => {
+                let cond_val = self.eval_expr(cond, scope, false)?;
+
+                match cond_val {
+                    InterpreterData::Bool(true) => self.eval_expr(on_true, scope, place),
+                    InterpreterData::Bool(false) => self.eval_expr(on_false, scope, place),
+                    _ => Err(()),
+                }
+            }
             MIRExpressionInner::Number(val) => {
                 let Some(ty) = &expr.ty else {
                     unreachable!();

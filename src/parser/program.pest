@@ -171,7 +171,9 @@ fnArgsType = {
     | variadic ~ ","?
 }
 
-expression = { logical }
+expression = { ternary }
+
+ternary = { logical ~ ("?" ~ expression ~ ":" ~ expression)? }
 
 logical = {
     comparison ~ (logicalOp ~ comparison)*

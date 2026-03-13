@@ -327,6 +327,24 @@ fn reduce_expr(expr: &mut MIRExpression, target: &dyn Target) -> (bool, bool) {
                 Some(MIRExpressionInner::Add(base.clone(), offset.clone()))
             }
 
+            MIRExpressionInner::Ternary(cond, on_true, on_false) => match &cond.inner {
+                MIRExpressionInner::Bool(true) => Some(on_true.inner.clone()),
+                MIRExpressionInner::Bool(false) => Some(on_false.inner.clone()),
+                MIRExpressionInner::Number(num) if target.truthy_coercion() => Some(if *num == 0 {
+                    on_false.inner.clone()
+                } else {
+                    on_true.inner.clone()
+                }),
+                MIRExpressionInner::Char(num) if target.truthy_coercion() => {
+                    Some(if *num == '\0' {
+                        on_false.inner.clone()
+                    } else {
+                        on_true.inner.clone()
+                    })
+                }
+                _ => None,
+            },
+
             // Already fully simplified (recursion handled by explore_expr_mut).
             MIRExpressionInner::Index(_, _)
             | MIRExpressionInner::FunctionCall(_)
@@ -432,6 +450,20 @@ macro_rules! explore_expr_body {
                 }
             }
 
+            MIRExpressionInner::Ternary(cond, on_true, on_false) => {
+                if !$recurse(cond, $visit) {
+                    return false;
+                }
+
+                if !$recurse(on_true, $visit) {
+                    return false;
+                }
+
+                if !$recurse(on_false, $visit) {
+                    return false;
+                }
+            }
+
             // No inner expressions.
             MIRExpressionInner::Number(_)
             | MIRExpressionInner::String(_)
@@ -503,6 +535,20 @@ pub fn explore_outer_place<'a>(
         // isn't returned.
         | MIRExpressionInner::Index(inner, _) => {
             if !explore_outer_place(inner, visit) {
+                return false;
+            }
+
+            should_visit = true;
+        }
+
+        // A ternary can be used in a place expression, but only the ref
+        // returned (i.e., the true and false branches) are the outer places,
+        // not the condition.
+        MIRExpressionInner::Ternary(_, on_true, on_false) => {
+            if !explore_outer_place(on_true, visit) {
+                return false;
+            }
+            if !explore_outer_place(on_false, visit) {
                 return false;
             }
 

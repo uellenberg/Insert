@@ -1141,6 +1141,33 @@ fn check_expression<'a, 'b>(
                 let inner_ty = check_expression(ctx, inner, scope)?;
                 Some(inner_ty.clone())
             }
+            MIRExpressionInner::Ternary(cond, on_true, on_false) => {
+                cond.ty = Some(MIRType {
+                    ty: MIRTypeInner::Bool,
+                    span: None,
+                });
+                check_expression(ctx, cond, scope)?;
+
+                if let Some(inherit_ty) = &expr.ty {
+                    on_true.ty = Some(inherit_ty.clone());
+                    on_false.ty = Some(inherit_ty.clone());
+                }
+
+                let t_true = check_expression(ctx, on_true, scope)?;
+                let t_false = check_expression(ctx, on_false, scope)?;
+
+                if !types_equal(ctx.target, t_true, t_false) {
+                    print_left_right_unequal(
+                        "Ternary",
+                        t_true.clone(),
+                        t_false.clone(),
+                        expr.span.clone(),
+                    );
+                    return None;
+                }
+
+                Some(t_true.clone())
+            }
 
             // TODO: Implement type checking for place expressions.
             MIRExpressionInner::Member(_, _) => todo!(),

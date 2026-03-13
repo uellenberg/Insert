@@ -695,7 +695,38 @@ fn parse_expression<'a>(
 ) -> MIRExpression<'a> {
     assert_eq!(value.as_rule(), Rule::expression);
 
-    parse_logical(location, value.into_inner().next().unwrap(), ctx)
+    parse_ternary(location, value.into_inner().next().unwrap(), ctx)
+}
+
+fn parse_ternary<'a>(
+    location: &'a Path,
+    value: Pair<'a, Rule>,
+    ctx: &mut MIRContext<'a>,
+) -> MIRExpression<'a> {
+    assert_eq!(value.as_rule(), Rule::ternary);
+
+    let span = to_span(location, value.as_span());
+    let mut data = value.into_inner();
+
+    // This is either a ternary or just a normal expression.
+    let condition = parse_logical(location, data.next().unwrap(), ctx);
+
+    if let Some(on_true_pair) = data.next() {
+        let on_true = parse_expression(location, on_true_pair, ctx);
+        let on_false = parse_expression(location, data.next().unwrap(), ctx);
+
+        MIRExpression {
+            inner: MIRExpressionInner::Ternary(
+                Box::new(condition),
+                Box::new(on_true),
+                Box::new(on_false),
+            ),
+            ty: None,
+            span,
+        }
+    } else {
+        condition
+    }
 }
 
 fn parse_logical<'a>(

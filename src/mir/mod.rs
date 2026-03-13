@@ -1262,6 +1262,16 @@ pub enum MIRExpressionInner<'a> {
     /// To do this, a left and right marker are needed to separate
     /// it. The left marker points to the item in the array.
     Binding(MIRMarker<'a>, Box<MIRExpression<'a>>, MIRMarker<'a>),
+
+    /// Ternary expression (condition ? on_true : on_false).
+    Ternary(
+        /// The condition.
+        Box<MIRExpression<'a>>,
+        /// The expression to evaluate if the condition is true.
+        Box<MIRExpression<'a>>,
+        /// The expression to evaluate if the condition is false.
+        Box<MIRExpression<'a>>,
+    ),
 }
 
 impl Eq for MIRExpressionInner<'_> {}
@@ -1300,6 +1310,9 @@ impl<'a> PartialEq for MIRExpressionInner<'a> {
             (Self::QuineSpace, Self::QuineSpace) => true,
             (Self::QuineLine, Self::QuineLine) => true,
             (Self::Binding(a1, a2, a3), Self::Binding(b1, b2, b3)) => {
+                a1 == b1 && a2 == b2 && a3 == b3
+            }
+            (Self::Ternary(a1, a2, a3), Self::Ternary(b1, b2, b3)) => {
                 a1 == b1 && a2 == b2 && a3 == b3
             }
             _ => false,

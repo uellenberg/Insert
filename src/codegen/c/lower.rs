@@ -625,6 +625,13 @@ impl Codegen for CLowerer {
             MIRExpressionInner::GreaterEq(left, right) => lower_binary!(left, ">=", right),
             MIRExpressionInner::BoolAnd(left, right) => lower_binary!(left, "&&", right),
             MIRExpressionInner::BoolOr(left, right) => lower_binary!(left, "||", right),
+            MIRExpressionInner::Ternary(cond, on_true, on_false) => {
+                let cond = self.lower_wrap_expression(cond, expr);
+                let on_true = self.lower_wrap_expression(on_true, expr);
+                let on_false = self.lower_wrap_expression(on_false, expr);
+
+                spread![...cond, Token::new("?".into()), ...on_true, Token::new(":".into()), ...on_false]
+            }
             MIRExpressionInner::Ref(inner) => lower_unary!("&", inner),
             MIRExpressionInner::Deref(inner) => lower_unary!("*", inner),
 
@@ -897,6 +904,8 @@ impl Codegen for CLowerer {
             MIRExpressionInner::BoolAnd(..) => Some(8),
 
             MIRExpressionInner::BoolOr(..) => Some(9),
+
+            MIRExpressionInner::Ternary(..) => Some(10),
 
             MIRExpressionInner::Binding(_, _, _) => todo!(),
         }
