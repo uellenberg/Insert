@@ -24,8 +24,6 @@ const JUMP_HEIGHT_0: i32 = 1;
 const JUMP_HEIGHT_1: i32 = 3;
 static i: [i32; 5] = [1, 3, 1, 4, 1];
 static j: &[&[char]] = $quine;
-const SPACE_CHAR: char = $quineSpace;
-const LINE_CHAR: char = $quineLine;
 static k: i32 = 0;
 static l: i32 = 1;
 function m() : i32 {

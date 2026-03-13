@@ -39,12 +39,11 @@ static jumpHeights: [i32; 5] = [JUMP_HEIGHT_0, JUMP_HEIGHT_1, 1, 4, 1];
 
 static quineStr: &[string] = $quine;
 
-const SPACE_CHAR: char = $quineSpace;
-const LINE_CHAR: char = $quineLine;
-
 import "std/print.int";
 import "std/string.int";
 
+// Index of the quine array item we're reading from,
+// or $quineLen if we're done.
 static idx: i32 = 0;
 // Offset 0 is the comma (optional), 1 is the opening quote, and one past the end of the string
 // is the closing quote.
@@ -99,6 +98,9 @@ helper function printQuineArrayChar() -> bool {
     return printQuineArrayChar();
 }
 
+/**
+  * Prints the quine array itself, and formats it to draw the ball and paddles.
+  */
 inline function printQuineArr() {
     // Printing the first character here helps keep the
     // backslashes at the end more consistent.
@@ -141,6 +143,10 @@ inline function printQuineArr() {
     }
 }
 
+/**
+  * Prints a single item of the quine array.
+  * On empty strings, this prints the quine array itself.
+  */
 inline function printQuineItem(s: string) {
     // This is the quine part of the string if it's completely
     // empty, except for spaces and newlines.
@@ -167,6 +173,9 @@ inline function printQuineItem(s: string) {
     }
 }
 
+/**
+  * Prints the full program source code.
+  */
 inline function printQuine() {
     for let i: i32 = 0; i < $quineLen; i += 1; {
         if i != 0 {
@@ -180,10 +189,18 @@ inline function printQuine() {
     putchar('\n');
 }
 
+/**
+  * Updates the given binding (index) to the value.
+  */
 helper function setQuineVar(index: i32, val: i32) {
     asprintf(&quineStr[index], "%i", val);
 }
 
+/**
+ * Updates the game state for pong.
+ * Afterwards, the frame will be ready to be
+ * printed.
+ */
 inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: bool, paddleRightCollision: bool) {
     // Paddle bounce.
     // paddleLeftCollision is conditional, here we select
@@ -244,6 +261,11 @@ inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
     }
 }
 
+/**
+ * Updates the game state for jump.
+ * Afterwards, the frame will be ready to be
+ * printed.
+ */
 inline function jumpUpdates(argc: i32, argv: &[string], paddleLeftCollision: bool, paddleRightCollision: bool) {
     // Gravity.
     ballY += 1;
