@@ -1,5 +1,7 @@
 //@check
 
+raw "\n/* IOCCC 2026, w = up, e = down */\n\n";
+
 const WIDTH: i32 = 70;
 const HEIGHT: i32 = 15;
 const BALL_WIDTH: i32 = 3;
@@ -227,7 +229,7 @@ inline function pongUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
             paddleRightY -= 1;
         }
 
-        if argv[1][0] == 's' && paddleRightY < HEIGHT - PADDLE_HEIGHT {
+        if argv[1][0] == 'e' && paddleRightY < HEIGHT - PADDLE_HEIGHT {
             paddleRightY += 1;
         }
     }
@@ -284,7 +286,7 @@ inline function jumpUpdates(argc: i32, argv: &[string], paddleLeftCollision: boo
             paddleLeftX = paddleRightX;
             paddleLeftY = paddleRightY * ROBOT_SPEED;
             paddleRightX = WIDTH;
-            paddleRightY = HEIGHT - jumpHeights[ballSpeedX - 2];
+            paddleRightY = HEIGHT - jumpHeights[ballSpeedX - 1];
         } else {
             paddleLeftX = STARTING_PADDLE_LEFT_X;
             paddleRightX = STARTING_PADDLE_RIGHT_X;

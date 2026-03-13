@@ -1,3 +1,7 @@
+raw "
+/* IOCCC 2026, w = up, e = down */
+
+";
 const WIDTH: i32 = 70;
 const HEIGHT: i32 = 15;
 const BALL_WIDTH: i32 = 3;
@@ -95,7 +99,7 @@ function main(o (0): i32, p (1): &[&[char]]) : i32 {
             if (((*(p (1)[1])) == 'w') && (h > 0)) {
                 h--;
             }
-            if (((*(p (1)[1])) == 's') && (h < 10)) {
+            if (((*(p (1)[1])) == 'e') && (h < 10)) {
                 h++;
             }
         }
@@ -133,7 +137,7 @@ function main(o (0): i32, p (1): &[&[char]]) : i32 {
                 e = g;
                 f = (h * 2);
                 g = 70;
-                h = (15 - (i[(c - 2)]));
+                h = (15 - (i[(c - 1)]));
             } else {
                 e = 5;
                 g = 62;
