@@ -1,6 +1,10 @@
 # Insert
 
-Insert is a programming language for self-modifying code. It can be used to create programs that produce modified versions of themselves. For example, see [test/snapshots/pong-target.stdout](./test/snapshots/pong-target.stdout) for a game (see [test/pong.int](./test/pong.int) for the source code and [quineRun.sh](./quineRun.sh) for a helper script to run it).
+Insert is a programming language for self-modifying code.
+
+![An animation of running the pong game](./pong.avif)
+
+It can be used to create programs that produce modified versions of themselves. For example, see [test/snapshots/pong-target.stdout](./test/snapshots/pong-target.stdout) for a game (see [test/pong.int](./test/pong.int) for the source code and [quineRun.sh](./quineRun.sh) for a helper script to run it).
 
 ## High-level Architecture
 
