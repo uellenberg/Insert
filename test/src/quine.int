@@ -6,7 +6,10 @@ static quineStr: &[string] = $quine;
 
 import "std/quine.int";
 
-function main() {
+// This returns i32 because it's implicitly 0 in C,
+// whereas a void function is undefined and will give
+// a non-zero return value.
+function main() -> i32 {
     quineStr[incrValMarker] = string(incrVal + 1);
     printQuine(quineStr, $quineLen);
 }
