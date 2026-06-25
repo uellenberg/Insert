@@ -10,7 +10,8 @@ at [test/snapshots/pong-target.stdout](./test/snapshots/pong-target.stdout), wit
 at [test/src/pong.int](./test/src/pong.int) and a helper script to run it at [quineRun.sh](./quineRun.sh).
 
 Each iteration of this program produces the source code to create the next frame, with the current frame (display and
-game state) rendered inside the source code itself.
+game state) rendered inside the source code itself. For a high-level overview of how this all works, check out
+the [IOCCC writeup](https://www.ioccc.org/2025/uellenberg/index.html).
 
 ## A simple quine
 
